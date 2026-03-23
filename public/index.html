@@ -809,13 +809,6 @@ function showGameOver(){
       html+=row(i<m.wagers?sign(m.subtotal):dash,'🤝',i<o.wagers?sign(o.subtotal):dash,i<m.wagers?goldPlus(m.subtotal):'',i<o.wagers?goldPlus(o.subtotal):'');
     }
 
-    if(maxW>0&&hasBonus){
-      html+=`<div class="r-sep"></div>`;
-      const mAW=m.count?m.subtotal*(1+m.wagers):null;
-      const oAW=o.count?o.subtotal*(1+o.wagers):null;
-      html+=row(mAW!==null?mAW:dash,'',oAW!==null?oAW:dash,mAW!==null?neg(mAW):'',oAW!==null?neg(oAW):'');
-    }
-
     if(hasBonus){
       html+=row(m.bonus?'+20':dash,'8+ cards',o.bonus?'+20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
