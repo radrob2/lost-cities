@@ -766,13 +766,13 @@ function showGameOver(){
   document.getElementById('score-summary').innerHTML=`
     <div style="display:flex;align-items:baseline;gap:0;width:100%">
       <span style="flex:1"></span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;opacity:.5">You</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;opacity:.5">Opp</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;${myWin?'color:var(--gold);text-shadow:0 0 8px rgba(212,168,67,.4)':'opacity:.5'}">You</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;${oppWin?'color:var(--gold);text-shadow:0 0 8px rgba(212,168,67,.4)':'opacity:.5'}">Opp</span>
     </div>
     <div style="display:flex;align-items:baseline;gap:0;width:100%">
       <span style="flex:1;font-family:'Cinzel',serif;font-size:13px;opacity:.5">Total</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(my.total,myWin)}">${my.total}</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(opp.total,oppWin)}">${opp.total}</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(my.total,myWin)}${myWin?';text-shadow:0 0 12px rgba(212,168,67,.5)':''}">${my.total}</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(opp.total,oppWin)}${oppWin?';text-shadow:0 0 12px rgba(212,168,67,.5)':''}">${opp.total}</span>
     </div>`;
 
   // Unified receipt row helper
