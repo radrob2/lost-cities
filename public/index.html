@@ -812,7 +812,7 @@ function showGameOver(){
       html+=row(m.bonus?'+20':dash,'8+ cards',o.bonus?'+20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
 
-    html+=`<div class="r-sep-bold"></div>`;
+    html+=`<div class="r-sep"></div>`;
     html+=`<div class="r-line" style="justify-content:center;font-weight:700">
       <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?m.score:dash}</span>
       <span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">Total</span>
