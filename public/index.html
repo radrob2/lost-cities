@@ -833,7 +833,7 @@ function showGameOver(){
 
     html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:16px;padding-top:2px">
       <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?fmt(m.score):dash}</span>
-      <span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">Total</span>
+      <span style="min-width:100px;text-align:center;padding:0 6px"></span>
       <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?fmt(o.score):dash}</span></div>`;
 
     html+=`</div>`;
@@ -843,7 +843,7 @@ function showGameOver(){
   html+=`<div style="border-top:3px solid var(--gold);margin:8px 0 4px;opacity:.5"></div>`;
   html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:8px 0;font-variant-numeric:tabular-nums">
     <span style="flex:1;text-align:left;font-size:22px" ${winStyle(my.total,myWin)}>${fmt(my.total)}</span>
-    <span style="min-width:100px;text-align:center;padding:0 6px;font-size:14px">Total</span>
+    <span style="min-width:100px;text-align:center;padding:0 6px"></span>
     <span style="flex:1;text-align:right;font-size:22px" ${winStyle(opp.total,oppWin)}>${fmt(opp.total)}</span>
   </div>`;
 
