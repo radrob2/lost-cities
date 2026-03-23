@@ -82,7 +82,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* EMPTY SLOTS & TARGETS */
 .card.empty-slot{background:rgba(255,255,255,.02);border:1.5px dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
-.card.target{border:2px solid var(--gold-bright)!important;background:rgba(212,168,67,.18)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 12px rgba(212,168,67,.25)}
+.card.target{border:2px solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 12px rgba(212,168,67,.25)}
+.card.target.empty-slot{background:rgba(212,168,67,.18)!important}
 .target-label{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 6px rgba(212,168,67,.5);z-index:1}
 @keyframes target-pulse{from{box-shadow:0 0 6px rgba(212,168,67,.2)}to{box-shadow:0 0 16px rgba(212,168,67,.4)}}
 .card.undoable{border:2px dashed var(--gold)!important;cursor:pointer;animation:undo-pulse .8s ease-in-out infinite alternate}
