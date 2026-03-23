@@ -752,100 +752,83 @@ function showGameOver(){
   const cls=v=>v>=0?'r-pos':'r-neg';
   const sign=v=>v>=0?'+'+v:''+v;
   const dash='<span class="r-muted">—</span>';
-
-  // Summary: aligned with columns below
-  // Gold only for positive winners, red for negative, dim for loser
-  function totalCls(score,isWinner){
-    if(isWinner&&score>=0)return'color:var(--gold-bright)';
-    if(score<0)return'color:#e07060';
-    if(isWinner)return'color:var(--parchment)';
-    return'color:var(--parchment-dark)';
-  }
   const myWin=my.total>opp.total;
   const oppWin=opp.total>my.total;
-  document.getElementById('score-summary').innerHTML=`
-    <div style="display:flex;align-items:baseline;gap:0;width:100%">
-      <span style="flex:1"></span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;${myWin?'color:var(--gold);text-shadow:0 0 8px rgba(212,168,67,.4)':'opacity:.5'}">You</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;${oppWin?'color:var(--gold);text-shadow:0 0 8px rgba(212,168,67,.4)':'opacity:.5'}">Opp</span>
-    </div>
-    <div style="display:flex;align-items:baseline;gap:0;width:100%">
-      <span style="flex:1;font-family:'Cinzel',serif;font-size:13px;opacity:.5">Total</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(my.total,myWin)}${myWin?';text-shadow:0 0 12px rgba(212,168,67,.5)':''}">${my.total}</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(opp.total,oppWin)}${oppWin?';text-shadow:0 0 12px rgba(212,168,67,.5)':''}">${opp.total}</span>
-    </div>`;
 
-  // Unified receipt row helper
-  function row(label,myVal,oppVal,myClass,oppClass,style){
-    style=style||'';
-    return `<div class="r-line" style="${style}"><span style="flex:1">${label}</span><span style="width:50px;text-align:right" class="${myClass||''}">${myVal}</span><span style="width:50px;text-align:right" class="${oppClass||''}">${oppVal}</span></div>`;
+  // Row helper — consistent 3-column layout everywhere
+  const W='width:50px;text-align:right';
+  function row(label,mV,oV,mC,oC,extra){
+    return `<div class="r-line" style="${extra||''}"><span style="flex:1">${label}</span><span style="${W}" class="${mC||''}">${mV}</span><span style="${W}" class="${oC||''}">${oV}</span></div>`;
   }
 
-  let details='';
+  // Column headers
+  let html=`<div class="r-line" style="opacity:.4;font-size:10px;font-family:'Cinzel',serif;padding-bottom:6px">
+    <span style="flex:1"></span><span style="${W}${myWin?';color:var(--gold);text-shadow:0 0 6px rgba(212,168,67,.3)':''}">You</span><span style="${W}${oppWin?';color:var(--gold);text-shadow:0 0 6px rgba(212,168,67,.3)':''}">Opp</span></div>`;
+
+  // Color rows — always visible
   COLORS.forEach(c=>{
     const m=my.breakdown[c], o=opp.breakdown[c];
     if(m.count===0&&o.count===0)return;
-    const mScore=m.count>0?m.score:'—';
-    const oScore=o.count>0?o.score:'—';
+    const mS=m.count>0?m.score:'—', oS=o.count>0?o.score:'—';
 
-    // Collapsed row: dot ▼ ... scores
-    details+=`<div style="cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'">
-      <div style="display:flex;align-items:center">
-        <span class="color-dot" style="background:${chex[c]};width:14px;height:14px"></span>
-        <span style="font-size:10px;opacity:.3;margin-left:4px">▼</span>
-        <span style="flex:1"></span>
-        <span class="${m.count?cls(m.score):'r-muted'}" style="width:50px;text-align:right;font-weight:700">${mScore}</span>
-        <span class="${o.count?cls(o.score):'r-muted'}" style="width:50px;text-align:right;font-weight:700">${oScore}</span>
-      </div>
+    html+=`<div style="cursor:pointer;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';this.querySelector('.arrow').textContent=d.style.display==='none'?'▼':'▲'">
+      <div class="r-line"><span style="flex:1"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span class="arrow" style="font-size:9px;opacity:.3">▼</span></span>
+      <span style="${W};font-weight:700" class="${m.count?cls(m.score):'r-muted'}">${mS}</span>
+      <span style="${W};font-weight:700" class="${o.count?cls(o.score):'r-muted'}">${oS}</span></div>
     </div>`;
 
-    // Expanded unified receipt
-    details+=`<div style="display:none"><div class="receipt">`;
+    // Expanded breakdown
+    html+=`<div style="display:none;padding:2px 0 8px;border-bottom:1px solid rgba(255,255,255,.03)">`;
 
-    // Cards row
-    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join('')+(m.values.length?' '+m.values.join('+'):'')):'';
-    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join('')+(o.values.length?' '+o.values.join('+'):'')):'';
-    details+=`<div class="r-line" style="font-size:11px;opacity:.6;margin-bottom:4px"><span style="flex:1"></span><span style="width:50px;text-align:right">${mCards||dash}</span><span style="width:50px;text-align:right">${oCards||dash}</span></div>`;
+    // Cards played — compact, no plus signs
+    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join(' ')+(m.values.length?(m.wagers?' ':'')+m.values.join(' '):'')):'';
+    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'';
+    html+=`<div class="r-line" style="font-size:10px;opacity:.5;margin-bottom:3px;overflow:hidden"><span style="flex:1"></span><span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mCards||'—'}</span><span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${oCards||'—'}</span></div>`;
 
-    // Card total
-    details+=row('Card total',m.count?m.sum:dash,o.count?o.sum:dash);
+    // Cards sum
+    html+=row('Cards',m.count?m.sum:dash,o.count?o.sum:dash,m.count?cls(m.sum):'',o.count?cls(o.sum):'');
 
-    // Expedition cost — neutral color, it's expected
-    details+=row('Expedition cost',m.count?'−20':dash,o.count?'−20':dash,'r-muted','r-muted');
-    details+=`<div class="r-sep"></div>`;
+    // Expedition cost — muted
+    html+=row('Expedition cost',m.count?'−20':dash,o.count?'−20':dash,'r-muted','r-muted');
+    html+=`<div class="r-sep"></div>`;
 
-    // Subtotal
-    details+=row('Subtotal',m.count?m.subtotal:dash,o.count?o.subtotal:dash,m.count?cls(m.subtotal):'',o.count?cls(o.subtotal):'');
+    // Profit
+    html+=row('Profit',m.count?m.subtotal:dash,o.count?o.subtotal:dash,m.count?cls(m.subtotal):'',o.count?cls(o.subtotal):'');
 
-    // Wagers — max of both sides
+    // Wagers
     const maxW=Math.max(m.wagers,o.wagers);
     const hasBonus=m.bonus||o.bonus;
     for(let i=0;i<maxW;i++){
-      const mV=i<m.wagers?sign(m.subtotal):dash;
-      const oV=i<o.wagers?sign(o.subtotal):dash;
-      const mC=i<m.wagers?cls(m.subtotal):'';
-      const oC=i<o.wagers?cls(o.subtotal):'';
-      details+=row('🤝',mV,oV,mC,oC);
+      html+=row('🤝',i<m.wagers?sign(m.subtotal):dash,i<o.wagers?sign(o.subtotal):dash,i<m.wagers?cls(m.subtotal):'',i<o.wagers?cls(o.subtotal):'');
     }
 
-    // Only show after-wagers subtotal if bonus follows (otherwise it duplicates the total)
+    // After-wagers subtotal — only if bonus follows
     if(maxW>0&&hasBonus){
-      details+=`<div class="r-sep"></div>`;
+      html+=`<div class="r-sep"></div>`;
       const mAW=m.count?m.subtotal*(1+m.wagers):null;
       const oAW=o.count?o.subtotal*(1+o.wagers):null;
-      details+=row('',mAW!==null?mAW:dash,oAW!==null?oAW:dash,mAW!==null?cls(mAW):'',oAW!==null?cls(oAW):'');
+      html+=row('',mAW!==null?mAW:dash,oAW!==null?oAW:dash,mAW!==null?cls(mAW):'',oAW!==null?cls(oAW):'');
     }
 
-    // Bonus
+    // 8+ cards bonus
     if(hasBonus){
-      details+=row('8+ bonus',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?'r-bonus':'',o.bonus?'r-bonus':'');
+      html+=row('8+ cards',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?cls(20):'',o.bonus?cls(20):'');
     }
 
-    // No "Total" row — the collapsed row already shows the total
-
-    details+=`</div></div>`;
+    html+=`</div>`;
   });
-  document.getElementById('score-details').innerHTML=details;
+
+  // Total at bottom — natural math order
+  html+=`<div class="r-sep-bold"></div>`;
+  html+=`<div class="r-line" style="font-weight:900;font-family:'Cinzel',serif;padding:8px 0">
+    <span style="flex:1;font-size:14px">Total</span>
+    <span style="${W};font-size:22px;${myWin?'text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${cls(my.total)}">${my.total}</span>
+    <span style="${W};font-size:22px;${oppWin?'text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${cls(opp.total)}">${opp.total}</span>
+  </div>`;
+
+  // Put it all in one container
+  document.getElementById('score-summary').innerHTML='';
+  document.getElementById('score-details').innerHTML=html;
   showScreen('gameover-screen');
 }
 
