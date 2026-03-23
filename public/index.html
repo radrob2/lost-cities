@@ -148,6 +148,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <button class="variant-btn active" id="vbtn-classic" onclick="setVariant('classic')">Classic (5 piles)</button>
     <button class="variant-btn" id="vbtn-single" onclick="setVariant('single')">Single pile</button>
   </div>
+  <button class="btn" onclick="startAIGame()">Play vs AI</button>
   <button class="btn" onclick="createRoom()">Create Room</button>
   <button class="btn" onclick="showJoin()">Join Room</button>
   <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="showRules()">How to Play</button>
@@ -286,6 +287,7 @@ const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',
 let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
 let selectedCard=null, listeners=[];
 let variant='classic'; // 'classic' or 'single'
+let isAIGame=false;
 
 function setVariant(v){
   variant=v;
@@ -391,7 +393,7 @@ async function startGame(){
     const oppSlot=mySlot==='player1'?'player2':'player1';
     if(p[oppSlot]){
       document.getElementById('opponent-name').textContent=p[oppSlot].name;
-      document.getElementById('opp-label').textContent=p[oppSlot].name+"'s Expeditions";
+      const ol=document.getElementById('opp-label');if(ol)ol.textContent=p[oppSlot].name+"'s Expeditions";
     }
   });
   listeners.push(()=>pRef.off('value',l2));
@@ -748,6 +750,255 @@ async function tryReconnect(){
     toast('Reconnected');
   }catch(e){clearSession();console.error(e)}
 }
+
+// ===== LOCAL UPDATE (for AI mode) =====
+function localUpdate(updates){
+  for(const [k,v] of Object.entries(updates)){
+    const parts=k.split('/');
+    let obj=gameState;
+    for(let i=0;i<parts.length-1;i++){
+      if(!obj[parts[i]])obj[parts[i]]={};
+      obj=obj[parts[i]];
+    }
+    obj[parts[parts.length-1]]=v;
+  }
+  renderGame();
+  if(gameState.status==='finished')showGameOver();
+}
+
+// ===== AI MODE =====
+function startAIGame(){
+  const name=getName();
+  if(!name){document.getElementById('lobby-error').textContent='Enter your name';return}
+  isAIGame=true; myId=genId(); mySlot='player1'; roomRef=null; roomCode=null;
+  const deck=createDeck();
+  const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
+  const exps={},discard={};
+  COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
+  gameState={
+    deck,hands:{player1:hand1,player2:hand2},
+    expeditions:{player1:{...exps},player2:Object.fromEntries(COLORS.map(c=>[c,[]]))},
+    discards:Object.fromEntries(COLORS.map(c=>[c,[]])),
+    singlePile:[],currentTurn:'player1',phase:'play',
+    lastDiscardedColor:null,justDiscarded:false,status:'playing'
+  };
+  document.getElementById('opponent-name').textContent='AI Explorer';
+  showScreen('game-screen');
+  renderGame();
+}
+
+// Override Firebase writes when in AI mode
+const _origPlayToExpedition=playToExpedition;
+playToExpedition=async function(color){
+  if(!isAIGame)return _origPlayToExpedition(color);
+  if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
+  if(selectedCard.color!==color)return;
+  const expedition=getCards(gameState,'expeditions',mySlot,color);
+  if(!canPlayOnExpedition(selectedCard,expedition)){toast('Must be higher than '+expedition[expedition.length-1].value);return}
+  vibrate(25);
+  const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==selectedCard.id);
+  expedition.push(selectedCard);
+  const u={};u[`hands/${mySlot}`]=hand;u[`expeditions/${mySlot}/${color}`]=expedition;u['phase']='draw';u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  selectedCard=null;localUpdate(u);
+};
+
+const _origDiscardTo=discardTo;
+discardTo=async function(color){
+  if(!isAIGame)return _origDiscardTo(color);
+  if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
+  if(selectedCard.color!==color){toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile');return}
+  vibrate(25);
+  const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==selectedCard.id);
+  const pile=getCards(gameState,'discards',color);pile.push(selectedCard);
+  const u={};u[`hands/${mySlot}`]=hand;u[`discards/${color}`]=pile;u['phase']='draw';u['lastDiscardedColor']=color;
+  selectedCard=null;localUpdate(u);
+};
+
+const _origDrawFromDeck=drawFromDeck;
+drawFromDeck=async function(){
+  if(!isAIGame)return _origDrawFromDeck();
+  if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
+  const deck=getCards(gameState,'deck');if(deck.length===0)return;
+  vibrate(25);
+  const card=deck.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  if(deck.length===0)u['status']='finished';
+  localUpdate(u);
+  if(gameState.status!=='finished')setTimeout(()=>aiTurn(),800);
+};
+
+const _origDrawFromDiscard=drawFromDiscard;
+drawFromDiscard=async function(color){
+  if(!isAIGame)return _origDrawFromDiscard(color);
+  if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
+  if(color===gameState.lastDiscardedColor){toast("Can't draw from pile you just discarded to");return}
+  const pile=getCards(gameState,'discards',color);if(pile.length===0)return;
+  vibrate(25);
+  const card=pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
+  localUpdate(u);
+  if(gameState.status!=='finished')setTimeout(()=>aiTurn(),800);
+};
+
+const _origDiscardToSingle=discardToSingle;
+discardToSingle=async function(){
+  if(!isAIGame)return _origDiscardToSingle();
+  if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
+  vibrate(25);
+  const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==selectedCard.id);
+  const pile=getCards(gameState,'singlePile');pile.push(selectedCard);
+  const u={};u[`hands/${mySlot}`]=hand;u['singlePile']=pile;u['phase']='draw';u['justDiscarded']=true;
+  selectedCard=null;localUpdate(u);
+};
+
+const _origDrawFromSingle=drawFromSingle;
+drawFromSingle=async function(){
+  if(!isAIGame)return _origDrawFromSingle();
+  if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
+  if(gameState.justDiscarded){toast("Can't draw from pile you just discarded to");return}
+  const pile=getCards(gameState,'singlePile');if(pile.length===0)return;
+  vibrate(25);
+  const card=pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const u={};u['singlePile']=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['justDiscarded']=false;
+  localUpdate(u);
+  if(gameState.status!=='finished')setTimeout(()=>aiTurn(),800);
+};
+
+// AI TURN LOGIC
+function aiTurn(){
+  if(gameState.status==='finished'||gameState.currentTurn!=='player2')return;
+  const hand=getCards(gameState,'hands','player2');
+  if(hand.length===0)return;
+  const aiExps=gameState.expeditions.player2||{};
+
+  // PLAY PHASE: decide what to play or discard
+  let bestPlay=null,bestScore=-999;
+  for(const card of hand){
+    const exp=getCards(gameState,'expeditions','player2',card.color);
+    if(canPlayOnExpedition(card,exp)){
+      // Score: prefer extending expeditions already started, prefer higher cards
+      let score=card.value||1;
+      if(exp.length>0)score+=15; // bonus for continuing an expedition
+      if(card.value===0&&exp.length===0)score+=8; // wager on empty is ok early
+      if(card.value===0&&exp.length>0)score-=50; // wager after numbers is blocked by canPlay anyway
+      const deckLeft=getCards(gameState,'deck').length;
+      if(exp.length===0&&card.value>=7&&deckLeft<20)score-=10; // late game, don't start expensive expeditions
+      if(score>bestScore){bestScore=score;bestPlay={action:'play',card,color:card.color}}
+    }
+  }
+
+  // If no good play (score < threshold), discard instead
+  if(!bestPlay||bestScore<3){
+    // Find least useful card to discard
+    let worstCard=null,worstScore=999;
+    for(const card of hand){
+      const exp=getCards(gameState,'expeditions','player2',card.color);
+      let score=card.value||1;
+      if(exp.length>0)score+=20; // don't discard cards we're building on
+      if(card.value===0&&exp.length===0)score-=5; // wagers for unstarted expeditions are cheap to discard
+      // Check if opponent might want it
+      const oppExp=getCards(gameState,'expeditions','player1',card.color);
+      if(oppExp.length>0)score-=3; // slightly prefer discarding colors opponent isn't using... wait that's backwards
+      if(oppExp.length===0)score-=2; // safer to discard if opponent hasn't started this color
+      if(score<worstScore){worstScore=score;worstCard=card}
+    }
+    if(worstCard){bestPlay={action:'discard',card:worstCard,color:worstCard.color}}
+  }
+
+  if(!bestPlay){bestPlay={action:'discard',card:hand[0],color:hand[0].color}}
+
+  // Execute play phase
+  const u={};
+  const newHand=hand.filter(c=>c.id!==bestPlay.card.id);
+  u['hands/player2']=newHand;
+
+  if(bestPlay.action==='play'){
+    const exp=getCards(gameState,'expeditions','player2',bestPlay.color);
+    exp.push(bestPlay.card);
+    u[`expeditions/player2/${bestPlay.color}`]=exp;
+    u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  } else {
+    if(variant==='single'){
+      const pile=getCards(gameState,'singlePile');pile.push(bestPlay.card);
+      u['singlePile']=pile;u['justDiscarded']=true;
+    } else {
+      const pile=getCards(gameState,'discards',bestPlay.color);pile.push(bestPlay.card);
+      u[`discards/${bestPlay.color}`]=pile;u['lastDiscardedColor']=bestPlay.color;
+    }
+  }
+  u['phase']='draw';
+  localUpdate(u);
+
+  // DRAW PHASE: decide where to draw from (after short delay)
+  setTimeout(()=>{
+    if(gameState.status==='finished')return;
+    const u2={};
+
+    // Check discard piles for useful cards
+    let bestDraw=null,bestDrawScore=-1;
+    if(variant==='classic'){
+      for(const c of COLORS){
+        if(c===gameState.lastDiscardedColor)continue;
+        const pile=getCards(gameState,'discards',c);
+        if(pile.length===0)continue;
+        const top=pile[pile.length-1];
+        const exp=getCards(gameState,'expeditions','player2',c);
+        if(canPlayOnExpedition(top,exp)){
+          let score=top.value||2;
+          if(exp.length>0)score+=10;
+          if(score>bestDrawScore){bestDrawScore=score;bestDraw={color:c,card:top}}
+        }
+      }
+    } else if(!gameState.justDiscarded){
+      const pile=getCards(gameState,'singlePile');
+      if(pile.length>0){
+        const top=pile[pile.length-1];
+        const exp=getCards(gameState,'expeditions','player2',top.color);
+        if(canPlayOnExpedition(top,exp)){
+          let score=top.value||2;if(exp.length>0)score+=10;
+          if(score>bestDrawScore){bestDrawScore=score;bestDraw={single:true,card:top}}
+        }
+      }
+    }
+
+    const aiHand=getCards(gameState,'hands','player2');
+    // Draw from discard if valuable, otherwise draw from deck
+    if(bestDraw&&bestDrawScore>5){
+      if(bestDraw.single){
+        const pile=getCards(gameState,'singlePile');pile.pop();
+        u2['singlePile']=pile;
+      } else {
+        const pile=getCards(gameState,'discards',bestDraw.color);pile.pop();
+        u2[`discards/${bestDraw.color}`]=pile;
+      }
+      aiHand.push(bestDraw.card);
+    } else {
+      const deck=getCards(gameState,'deck');
+      if(deck.length===0){u2['status']='finished';localUpdate(u2);return}
+      const card=deck.pop();aiHand.push(card);
+      u2['deck']=deck;
+      if(deck.length===0)u2['status']='finished';
+    }
+
+    u2['hands/player2']=aiHand;
+    u2['currentTurn']='player1';u2['phase']='play';u2['lastDiscardedColor']=null;u2['justDiscarded']=false;
+    localUpdate(u2);
+  },600);
+}
+
+// Override playAgain and leaveGame for AI mode
+const _origPlayAgain=playAgain;
+playAgain=async function(){
+  if(!isAIGame)return _origPlayAgain();
+  startAIGame();
+};
+
+const _origLeaveGame=leaveGame;
+leaveGame=function(){
+  if(!isAIGame)return _origLeaveGame();
+  isAIGame=false;gameState=null;selectedCard=null;
+  showScreen('lobby-screen');
+};
 
 document.getElementById('player-name').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom()});
 document.getElementById('room-code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom()});
