@@ -527,8 +527,8 @@ function renderBoard(){
   const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
 
   // Card jitter — deterministic per card identity
-  function jitter(card){
-    const h=(card.color.charCodeAt(0)*31+card.value*97)&0xFFFF;
+  function jitter(card,i){
+    const h=(card.color.charCodeAt(0)*31+card.value*97+i*53)&0xFFFF;
     const rot=((h%100)/100*4-2).toFixed(1);       // ±2 degrees
     const dx=((((h>>4)%100)/100*3-1.5)).toFixed(1);  // ±1.5px
     const dy=((((h>>8)%100)/100*3-1.5)).toFixed(1);  // ±1.5px
@@ -543,7 +543,7 @@ function renderBoard(){
       return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
     }
     const stackH=`calc(var(--card-h) + ${(cards.length-1)*stackOffset}px)`;
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*stackOffset}px;left:0;z-index:${i};transform:${jitter(card)}">${cardHTML(card)}</div>`).join('');
+    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*stackOffset}px;left:0;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col"><div class="expedition-stack" style="height:${stackH}">${inner}</div></div>`;
   }).join('');
 
@@ -582,7 +582,7 @@ function renderBoard(){
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${i*stackOffset}px;left:0;z-index:${i};transform:${jitter(card)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      return `<div style="position:absolute;top:${i*stackOffset}px;left:0;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
     let html=`<div class="card-col" onclick="playToExpedition('${c}')"><div class="expedition-stack" style="height:${stackH}">${inner}</div>`;
     if(canPlay) html+=`<div class="card target" onclick="event.stopPropagation();playToExpedition('${c}')" style="margin-top:2px"><div class="card-value" style="color:var(--gold-bright);font-size:14px">+</div><span class="target-label">Play</span></div>`;
