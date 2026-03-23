@@ -743,13 +743,23 @@ function showGameOver(){
   const w=document.getElementById('winner-text');
   w.textContent=my.total>opp.total?'Victory!':my.total<opp.total?'Defeated':'A Draw!';
   const chex={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
-  const cls=v=>v>=0?'r-pos':'r-neg';
+  const glow='text-shadow:0 0 10px rgba(212,168,67,.4)';
+  // Color helpers: neutral for positive, red for negative
+  const neg=v=>v<0?'r-neg':'';
+  // Gold only for wager/bonus plusses and winner scores
+  const goldPlus=v=>v>=0?'r-pos':'r-neg';
   const sign=v=>v>=0?'+'+v:''+v;
   const dash='<span class="r-muted">—</span>';
   const myWin=my.total>opp.total;
   const oppWin=opp.total>my.total;
+  // Winner score style: always gold glow, red text if negative
+  function winStyle(score,isWinner){
+    if(!isWinner)return'class="r-muted"';
+    if(score<0)return`class="r-neg" style="${glow}"`;
+    return`class="r-pos" style="${glow}"`;
+  }
 
-  // Row helper — consistent 3-column layout everywhere
+  // Row helper — consistent 3-column layout
   const W='width:50px;text-align:right';
   function row(label,mV,oV,mC,oC,extra){
     return `<div class="r-line" style="${extra||''}"><span style="flex:1">${label}</span><span style="${W}" class="${mC||''}">${mV}</span><span style="${W}" class="${oC||''}">${oV}</span></div>`;
@@ -757,9 +767,9 @@ function showGameOver(){
 
   // Column headers
   let html=`<div class="r-line" style="opacity:.4;font-size:10px;font-family:'Cinzel',serif;padding-bottom:6px">
-    <span style="flex:1"></span><span style="${W}${myWin?';color:var(--gold);text-shadow:0 0 6px rgba(212,168,67,.3)':''}">You</span><span style="${W}${oppWin?';color:var(--gold);text-shadow:0 0 6px rgba(212,168,67,.3)':''}">Opp</span></div>`;
+    <span style="flex:1"></span><span style="${W}${myWin?';color:var(--gold);'+glow:''}">You</span><span style="${W}${oppWin?';color:var(--gold);'+glow:''}">Opp</span></div>`;
 
-  // Color rows — always visible, tap to expand
+  // Color rows
   let colorIdx=0;
   COLORS.forEach(c=>{
     const m=my.breakdown[c], o=opp.breakdown[c];
@@ -767,42 +777,47 @@ function showGameOver(){
     const mS=m.count>0?m.score:'—', oS=o.count>0?o.score:'—';
     const idx=colorIdx++;
 
-    // Cards string for expanded header
+    // Cards strings
     const mCards=m.count>0?(Array(m.wagers).fill('🤝').join(' ')+(m.values.length?(m.wagers?' ':'')+m.values.join(' '):'')):'—';
     const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'—';
 
-    // Collapsed row: dot ▼ scores
+    // Winner of this color
+    const mWinC=m.score>o.score, oWinC=o.score>m.score;
+
+    // Collapsed row: dot ▼ scores (winner gets gold)
     html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="toggleScore(${idx})">
       <div class="r-line"><span style="flex:1"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.3">▼</span></span>
-      <span style="${W};font-weight:700" class="${m.count?cls(m.score):'r-muted'}">${mS}</span>
-      <span style="${W};font-weight:700" class="${o.count?cls(o.score):'r-muted'}">${oS}</span></div>
+      <span style="${W};font-weight:700" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
+      <span style="${W};font-weight:700" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span></div>
     </div>`;
 
-    // Expanded header: dot ▲ cards (replaces scores)
+    // Expanded header: dot ▲ + full-width card rows
     html+=`<div id="sc-exp-${idx}" style="display:none;cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
-      <div class="r-line" style="font-size:10px;opacity:.6"><span style="flex:1"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.3">▲</span></span>
-      <span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mCards}</span>
-      <span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${oCards}</span></div>
+      <div style="display:flex;align-items:center;margin-bottom:4px"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.3;margin-left:4px">▲</span></div>
+      <div style="display:flex;gap:12px;font-size:11px;opacity:.6;line-height:1.4;padding-left:18px">
+        <div style="flex:1"><span style="font-size:9px;opacity:.5">You</span><br>${mCards}</div>
+        <div style="flex:1"><span style="font-size:9px;opacity:.5">Opp</span><br>${oCards}</div>
+      </div>
     </div>`;
 
     // Breakdown body
     html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,.05)">`;
 
-    // Cards sum
-    html+=row('Cards',m.count?m.sum:dash,o.count?o.sum:dash,m.count?cls(m.sum):'',o.count?cls(o.sum):'');
+    // Cards sum — neutral color
+    html+=row('Cards',m.count?m.sum:dash,o.count?o.sum:dash,m.count?neg(m.sum):'',o.count?neg(o.sum):'');
 
     // Expedition cost — muted
     html+=row('Expedition cost',m.count?'−20':dash,o.count?'−20':dash,'r-muted','r-muted');
     html+=`<div class="r-sep"></div>`;
 
-    // Profit
-    html+=row('Profit',m.count?m.subtotal:dash,o.count?o.subtotal:dash,m.count?cls(m.subtotal):'',o.count?cls(o.subtotal):'');
+    // Profit — red if negative, neutral if positive
+    html+=row('Profit',m.count?m.subtotal:dash,o.count?o.subtotal:dash,m.count?neg(m.subtotal):'',o.count?neg(o.subtotal):'');
 
-    // Wagers
+    // Wagers — gold for positive, red for negative
     const maxW=Math.max(m.wagers,o.wagers);
     const hasBonus=m.bonus||o.bonus;
     for(let i=0;i<maxW;i++){
-      html+=row('🤝',i<m.wagers?sign(m.subtotal):dash,i<o.wagers?sign(o.subtotal):dash,i<m.wagers?cls(m.subtotal):'',i<o.wagers?cls(o.subtotal):'');
+      html+=row('🤝',i<m.wagers?sign(m.subtotal):dash,i<o.wagers?sign(o.subtotal):dash,i<m.wagers?goldPlus(m.subtotal):'',i<o.wagers?goldPlus(o.subtotal):'');
     }
 
     // After-wagers subtotal — only if bonus follows
@@ -810,27 +825,29 @@ function showGameOver(){
       html+=`<div class="r-sep"></div>`;
       const mAW=m.count?m.subtotal*(1+m.wagers):null;
       const oAW=o.count?o.subtotal*(1+o.wagers):null;
-      html+=row('',mAW!==null?mAW:dash,oAW!==null?oAW:dash,mAW!==null?cls(mAW):'',oAW!==null?cls(oAW):'');
+      html+=row('',mAW!==null?mAW:dash,oAW!==null?oAW:dash,mAW!==null?neg(mAW):'',oAW!==null?neg(oAW):'');
     }
 
-    // 8+ cards bonus
+    // 8+ cards bonus — gold
     if(hasBonus){
-      html+=row('8+ cards',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?cls(20):'',o.bonus?cls(20):'');
+      html+=row('8+ cards',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
 
-    // Total at bottom of breakdown
+    // Total at bottom — winner gold, loser muted
     html+=`<div class="r-sep-bold"></div>`;
-    html+=row('Total',m.count?m.score:dash,o.count?o.score:dash,m.count?cls(m.score):'',o.count?cls(o.score):'','font-weight:700');
+    html+=`<div class="r-line" style="font-weight:700"><span style="flex:1">Total</span>
+      <span style="${W}" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?m.score:dash}</span>
+      <span style="${W}" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?o.score:dash}</span></div>`;
 
     html+=`</div>`;
   });
 
-  // Total at bottom — natural math order
+  // Game total at bottom — winner gold+glow (red+glow if negative)
   html+=`<div class="r-sep-bold"></div>`;
   html+=`<div class="r-line" style="font-weight:900;font-family:'Cinzel',serif;padding:8px 0">
     <span style="flex:1;font-size:14px">Total</span>
-    <span style="${W};font-size:22px;${myWin?'color:var(--gold-bright);text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${myWin?'':'r-muted'}">${my.total}</span>
-    <span style="${W};font-size:22px;${oppWin?'color:var(--gold-bright);text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${oppWin?'':'r-muted'}">${opp.total}</span>
+    <span style="${W};font-size:22px" ${winStyle(my.total,myWin)}>${my.total}</span>
+    <span style="${W};font-size:22px" ${winStyle(opp.total,oppWin)}>${opp.total}</span>
   </div>`;
 
   // Put it all in one container
