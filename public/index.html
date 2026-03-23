@@ -804,10 +804,6 @@ function showGameOver(){
     const maxW=Math.max(m.wagers,o.wagers);
     const hasBonus=m.bonus||o.bonus;
 
-    if(maxW>0||hasBonus){
-      html+=`<div class="r-sep"></div>`;
-      html+=row(m.count?m.subtotal:dash,'Profit',o.count?o.subtotal:dash,m.count?neg(m.subtotal):'',o.count?neg(o.subtotal):'');
-    }
     for(let i=0;i<maxW;i++){
       html+=row(i<m.wagers?sign(m.subtotal):dash,'🤝',i<o.wagers?sign(o.subtotal):dash,i<m.wagers?goldPlus(m.subtotal):'',i<o.wagers?goldPlus(o.subtotal):'');
     }
