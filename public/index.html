@@ -135,19 +135,13 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(30,20,10,.92);color:var(--gold-bright);padding:10px 24px;border-radius:24px;font-family:'Cinzel',serif;font-size:12px;font-weight:700;z-index:50;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;border:1px solid rgba(212,168,67,.25);box-shadow:0 4px 16px rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .toast.show{opacity:1}
 
-/* SCORE RECEIPT */
-.receipt{padding:4px 0 8px;margin:0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
-.receipt .r-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.receipt .r-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700}
-.receipt .r-total{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
-.receipt .r-cards{font-size:12px;opacity:.7;margin-bottom:4px}
-.receipt .r-line{display:flex;justify-content:space-between;padding:1px 0}
-.receipt .r-sep{border-top:1px solid rgba(201,168,76,.15);margin:3px 0}
-.receipt .r-sep-bold{border-top:2px solid rgba(201,168,76,.3);margin:4px 0}
-.receipt .r-pos{color:var(--gold-bright)}
-.receipt .r-neg{color:#e07060}
-.receipt .r-bonus{color:#60d080}
-.receipt .r-muted{opacity:.5}
+/* SCORE TABLE */
+.r-line{display:flex;align-items:baseline;padding:1px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
+.r-sep{border-top:1px solid rgba(201,168,76,.15);margin:3px 0}
+.r-sep-bold{border-top:2px solid rgba(201,168,76,.3);margin:4px 0}
+.r-pos{color:var(--gold-bright)}
+.r-neg{color:#e07060}
+.r-muted{opacity:.5}
 @media(min-width:420px){:root{--card-w:56px;--card-h:91px}}
 @media(min-width:500px){:root{--card-w:64px;--card-h:104px}}
 </style>
@@ -765,25 +759,34 @@ function showGameOver(){
   let html=`<div class="r-line" style="opacity:.4;font-size:10px;font-family:'Cinzel',serif;padding-bottom:6px">
     <span style="flex:1"></span><span style="${W}${myWin?';color:var(--gold);text-shadow:0 0 6px rgba(212,168,67,.3)':''}">You</span><span style="${W}${oppWin?';color:var(--gold);text-shadow:0 0 6px rgba(212,168,67,.3)':''}">Opp</span></div>`;
 
-  // Color rows — always visible
+  // Color rows — always visible, tap to expand
+  let colorIdx=0;
   COLORS.forEach(c=>{
     const m=my.breakdown[c], o=opp.breakdown[c];
     if(m.count===0&&o.count===0)return;
     const mS=m.count>0?m.score:'—', oS=o.count>0?o.score:'—';
+    const idx=colorIdx++;
 
-    html+=`<div style="cursor:pointer;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none';this.querySelector('.arrow').textContent=d.style.display==='none'?'▼':'▲'">
-      <div class="r-line"><span style="flex:1"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span class="arrow" style="font-size:9px;opacity:.3">▼</span></span>
+    // Cards string for expanded header
+    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join(' ')+(m.values.length?(m.wagers?' ':'')+m.values.join(' '):'')):'—';
+    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'—';
+
+    // Collapsed row: dot ▼ scores
+    html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="toggleScore(${idx})">
+      <div class="r-line"><span style="flex:1"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.3">▼</span></span>
       <span style="${W};font-weight:700" class="${m.count?cls(m.score):'r-muted'}">${mS}</span>
       <span style="${W};font-weight:700" class="${o.count?cls(o.score):'r-muted'}">${oS}</span></div>
     </div>`;
 
-    // Expanded breakdown
-    html+=`<div style="display:none;padding:2px 0 8px;border-bottom:1px solid rgba(255,255,255,.03)">`;
+    // Expanded header: dot ▲ cards (replaces scores)
+    html+=`<div id="sc-exp-${idx}" style="display:none;cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
+      <div class="r-line" style="font-size:10px;opacity:.6"><span style="flex:1"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.3">▲</span></span>
+      <span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mCards}</span>
+      <span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${oCards}</span></div>
+    </div>`;
 
-    // Cards played — compact, no plus signs
-    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join(' ')+(m.values.length?(m.wagers?' ':'')+m.values.join(' '):'')):'';
-    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'';
-    html+=`<div class="r-line" style="font-size:10px;opacity:.5;margin-bottom:3px;overflow:hidden"><span style="flex:1"></span><span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${mCards||'—'}</span><span style="${W};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${oCards||'—'}</span></div>`;
+    // Breakdown body
+    html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,.05)">`;
 
     // Cards sum
     html+=row('Cards',m.count?m.sum:dash,o.count?o.sum:dash,m.count?cls(m.sum):'',o.count?cls(o.sum):'');
@@ -814,6 +817,10 @@ function showGameOver(){
     if(hasBonus){
       html+=row('8+ cards',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?cls(20):'',o.bonus?cls(20):'');
     }
+
+    // Total at bottom of breakdown
+    html+=`<div class="r-sep-bold"></div>`;
+    html+=row('Total',m.count?m.score:dash,o.count?o.score:dash,m.count?cls(m.score):'',o.count?cls(o.score):'','font-weight:700');
 
     html+=`</div>`;
   });
@@ -927,6 +934,16 @@ async function undoLastPlay(){
   selectedCard=card;
   if(isAIGame){localUpdate(u)} else {await roomRef.child('game').update(u)}
   toast('Undone');
+}
+
+function toggleScore(idx){
+  const row=document.getElementById('sc-row-'+idx);
+  const exp=document.getElementById('sc-exp-'+idx);
+  const body=document.getElementById('sc-body-'+idx);
+  const isOpen=body.style.display!=='none';
+  row.style.display=isOpen?'block':'none';
+  exp.style.display=isOpen?'none':'block';
+  body.style.display=isOpen?'none':'block';
 }
 
 function viewFinalBoard(){
