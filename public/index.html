@@ -157,7 +157,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- LOBBY -->
 <div id="lobby-screen" class="screen active">
   <div class="lobby-compass">&#x1F9ED;</div>
-  <div class="lobby-title">Lost Cities</div>
+  <div class="lobby-title" onclick="debugTapTitle()">Lost Cities</div>
   <div class="lobby-subtitle">An Expedition for Two</div>
   <input class="name-input" id="player-name" placeholder="Your name" maxlength="12" autocomplete="off">
   <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
@@ -863,6 +863,21 @@ async function playAgain(){
     });
   }
   selectedCard=null; document.getElementById('back-to-scores').style.display='none'; showScreen('game-screen');
+}
+
+// Debug: tap title 5x to see score screen
+let debugTaps=0;let debugTimer=null;
+function debugTapTitle(){
+  debugTaps++;if(debugTimer)clearTimeout(debugTimer);
+  debugTimer=setTimeout(()=>debugTaps=0,2000);
+  if(debugTaps>=5){
+    debugTaps=0;mySlot='player1';
+    gameState={expeditions:{
+      player1:{red:[{color:'red',value:0,id:'r_w0'},{color:'red',value:0,id:'r_w1'},{color:'red',value:2,id:'r_2'},{color:'red',value:4,id:'r_4'},{color:'red',value:5,id:'r_5'},{color:'red',value:6,id:'r_6'},{color:'red',value:7,id:'r_7'},{color:'red',value:8,id:'r_8'}],green:[{color:'green',value:3,id:'g_3'},{color:'green',value:6,id:'g_6'}],blue:[],white:[{color:'white',value:0,id:'w_w0'},{color:'white',value:3,id:'w_3'}],yellow:[]},
+      player2:{red:[{color:'red',value:0,id:'r2_w0'},{color:'red',value:3,id:'r2_3'}],green:[{color:'green',value:4,id:'g2_4'},{color:'green',value:6,id:'g2_6'},{color:'green',value:8,id:'g2_8'},{color:'green',value:10,id:'g2_10'}],blue:[{color:'blue',value:2,id:'b2_2'},{color:'blue',value:5,id:'b2_5'},{color:'blue',value:9,id:'b2_9'}],white:[],yellow:[{color:'yellow',value:7,id:'y2_7'}]}
+    }};
+    showGameOver();
+  }
 }
 
 function leaveGame(){
