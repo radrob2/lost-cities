@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a0f0a">
+<title>Lost Cities</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#120c07;--parchment:#f0e0c0;--parchment-dark:#b8a888;
+  --gold:#d4a843;--gold-bright:#f0c850;
+  --card-w:56px;--card-h:80px;
+}
+html,body{height:100%;overflow:hidden;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment)}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+.screen{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:20px;position:absolute;top:0;left:0}
+.screen.active{display:flex}
+
+/* LOBBY */
+.lobby-title{font-family:'Cinzel',serif;font-size:clamp(28px,8vw,48px);font-weight:900;color:var(--gold);text-shadow:0 2px 8px rgba(0,0,0,.6);margin-bottom:4px;text-align:center}
+.lobby-subtitle{font-size:clamp(14px,3.5vw,18px);color:var(--parchment-dark);margin-bottom:32px;font-style:italic;text-align:center}
+.lobby-compass{font-size:48px;margin-bottom:24px;animation:spin 20s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn{font-family:'Cinzel',serif;font-weight:700;padding:14px 32px;border:1.5px solid var(--gold);background:linear-gradient(160deg,#30241a,#221810);color:var(--gold);font-size:16px;border-radius:10px;cursor:pointer;transition:all .2s;min-width:200px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.04)}
+.btn:active{transform:scale(.96);background:linear-gradient(160deg,#3a2e20,#2a1e14);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.btn+.btn{margin-top:12px}
+.input-group{margin-bottom:16px;text-align:center}
+.input-group label{display:block;margin-bottom:6px;color:var(--parchment-dark);font-size:14px}
+.input-group input{font-family:'Cinzel',serif;font-size:24px;padding:10px 16px;border:2px solid var(--gold);background:rgba(255,255,255,.08);color:var(--gold-bright);border-radius:8px;text-align:center;width:180px;letter-spacing:8px;text-transform:uppercase}
+.input-group input::placeholder{color:rgba(201,168,76,.3);letter-spacing:4px;font-size:16px}
+.input-group input:focus{outline:none;border-color:var(--gold-bright);box-shadow:0 0 12px rgba(201,168,76,.3)}
+.room-code-display{font-family:'Cinzel',serif;font-size:clamp(32px,10vw,56px);color:var(--gold-bright);letter-spacing:12px;text-shadow:0 0 20px rgba(201,168,76,.4);margin:16px 0}
+.waiting-text{color:var(--parchment-dark);font-style:italic;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.back-btn{position:absolute;top:20px;left:20px;background:none;border:none;color:var(--parchment-dark);font-size:24px;cursor:pointer;padding:8px}
+.name-input{font-family:'Crimson Text',serif;font-size:18px;padding:10px 16px;border:2px solid rgba(201,168,76,.4);background:rgba(255,255,255,.06);color:var(--parchment);border-radius:8px;text-align:center;width:200px;margin-bottom:16px}
+.name-input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 12px rgba(201,168,76,.2)}
+.name-input::placeholder{color:rgba(244,228,193,.3)}
+.error-msg{color:#c0392b;font-size:14px;margin-top:8px;min-height:20px}
+.variant-btn{font-family:'Cinzel',serif;font-size:11px;padding:8px 12px;border:1.5px solid rgba(201,168,76,.3);background:rgba(255,255,255,.04);color:var(--parchment-dark);border-radius:6px;cursor:pointer;transition:all .2s}
+.variant-btn.active{border-color:var(--gold);background:rgba(201,168,76,.15);color:var(--gold)}
+
+/* GAME BOARD */
+#game-screen{padding:0;flex-direction:column;justify-content:space-between;background:var(--bg)}
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;
+  padding-top:max(8px,env(safe-area-inset-top));background:rgba(0,0,0,.4);width:100%;font-size:13px;z-index:10}
+.top-bar .player-info{color:var(--parchment-dark)}
+.turn-indicator{font-family:'Cinzel',serif;font-weight:700;padding:5px 12px;border-radius:14px;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.your-turn{background:var(--gold);color:var(--bg)}
+.their-turn{background:rgba(255,255,255,.08);color:rgba(240,224,192,.4)}
+.menu-btn{background:none;border:none;color:rgba(240,224,192,.4);font-size:18px;cursor:pointer;padding:4px 8px}
+
+/* BOARD LAYOUT */
+.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:hidden;width:100%;padding:8px 0}
+.card-row{display:flex;justify-content:center;gap:6px;padding:0 8px}
+.card-col{display:flex;flex-direction:column;align-items:center;width:calc(20% - 6px);max-width:72px}
+.expedition-stack{position:relative;width:100%}
+.middle-row{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0}
+
+/* CARDS */
+.card{width:var(--card-w);height:var(--card-h);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:1.5px solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
+.card:active{transform:scale(.95)}
+.card.selected{transform:translateY(-14px);box-shadow:0 8px 28px rgba(212,168,67,.7);border-color:var(--gold-bright)!important;z-index:5}
+.card-value{font-size:22px;text-shadow:0 1px 4px rgba(0,0,0,.5);line-height:1;font-weight:400;z-index:1}
+.card-corner{font-size:9px;position:absolute;top:4px;left:5px;opacity:.8;z-index:1;font-weight:400}
+.card.color-red{background:#9b2020;color:#ffe8e8;border-color:rgba(200,60,60,.4)}
+.card.color-green{background:#1a6b35;color:#e0ffe8;border-color:rgba(50,160,80,.4)}
+.card.color-blue{background:#1a4a80;color:#e0eeff;border-color:rgba(60,120,200,.4)}
+.card.color-white{background:#686878;color:#f0f0ff;border-color:rgba(160,160,180,.4)}
+.card.color-yellow{background:#8a6a10;color:#fff8e0;border-color:rgba(200,160,30,.4)}
+.card.card-back{background:#2a1a0e;border-color:rgba(212,168,67,.4)}
+.card.card-back::after{content:'';position:absolute;inset:4px;border:1px solid rgba(212,168,67,.2);border-radius:4px}
+
+/* EMPTY SLOTS & TARGETS */
+.card.empty-slot{background:rgba(255,255,255,.02);border:1.5px dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
+.card.target{border:2px solid var(--gold-bright)!important;background:rgba(212,168,67,.18)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 12px rgba(212,168,67,.25)}
+.target-label{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 6px rgba(212,168,67,.5);z-index:1}
+@keyframes target-pulse{from{box-shadow:0 0 6px rgba(212,168,67,.2)}to{box-shadow:0 0 16px rgba(212,168,67,.4)}}
+
+/* HAND */
+.hand-area{padding:6px 6px;padding-bottom:max(10px,env(safe-area-inset-bottom));
+  background:rgba(0,0,0,.4);width:100%}
+.hand-cards{display:flex;justify-content:center;gap:5px;overflow-x:auto;padding:4px 0;-webkit-overflow-scrolling:touch}
+.hand-cards .card{flex-shrink:0}
+
+/* PHASE BAR */
+.phase-bar{text-align:center;padding:4px 12px;font-size:12px;color:var(--parchment-dark);min-height:24px;font-family:'Crimson Text',serif;font-style:italic}
+.phase-bar.draw-phase{color:var(--gold-bright);font-style:normal;font-weight:600}
+
+.deck-card{cursor:pointer;position:relative;display:inline-block}
+.deck-card .deck-num{font-size:9px;color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
+.deck-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
+
+/* SCORE SCREEN */
+.score-board{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:2px solid var(--gold);border-radius:12px;padding:20px;width:90%;max-width:360px}
+.score-board h2{font-family:'Cinzel',serif;color:var(--gold);text-align:center;margin-bottom:16px}
+.score-table{width:100%;border-collapse:collapse}
+.score-table th,.score-table td{padding:6px 8px;text-align:center;font-size:14px}
+.score-table th{color:var(--gold);border-bottom:1px solid rgba(201,168,76,.3);font-family:'Cinzel',serif;font-size:12px}
+.score-table td{color:var(--parchment)}
+.score-table .total-row td{border-top:2px solid var(--gold);font-weight:700;font-size:18px;color:var(--gold-bright);padding-top:10px}
+.score-table .winner{text-shadow:0 0 10px rgba(201,168,76,.5)}
+.color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:4px}
+
+/* RULES MODAL */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:2px solid var(--gold);border-radius:12px;padding:24px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal h2{font-family:'Cinzel',serif;color:var(--gold);margin-bottom:12px}
+.modal h3{font-family:'Cinzel',serif;color:var(--gold);font-size:14px;margin:12px 0 6px}
+.modal p,.modal li{font-size:14px;color:var(--parchment-dark);line-height:1.5}
+.modal ul{padding-left:20px;margin-bottom:8px}
+.modal .btn{margin-top:16px;width:100%}
+
+/* TOAST */
+.toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(30,20,10,.92);color:var(--gold-bright);padding:10px 24px;border-radius:24px;font-family:'Cinzel',serif;font-size:12px;font-weight:700;z-index:50;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;border:1px solid rgba(212,168,67,.25);box-shadow:0 4px 16px rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.toast.show{opacity:1}
+
+@media(min-width:420px){:root{--card-w:62px;--card-h:88px}}
+@media(min-width:500px){:root{--card-w:68px;--card-h:96px}}
+</style>
+</head>
+<body>
+
+<!-- LOBBY -->
+<div id="lobby-screen" class="screen active">
+  <div class="lobby-compass">&#x1F9ED;</div>
+  <div class="lobby-title">Lost Cities</div>
+  <div class="lobby-subtitle">An Expedition for Two</div>
+  <input class="name-input" id="player-name" placeholder="Your name" maxlength="12" autocomplete="off">
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+    <button class="variant-btn active" id="vbtn-classic" onclick="setVariant('classic')">Classic (5 piles)</button>
+    <button class="variant-btn" id="vbtn-single" onclick="setVariant('single')">Single pile</button>
+  </div>
+  <button class="btn" onclick="createRoom()">Create Room</button>
+  <button class="btn" onclick="showJoin()">Join Room</button>
+  <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="showRules()">How to Play</button>
+  <div class="error-msg" id="lobby-error"></div>
+</div>
+
+<!-- JOIN -->
+<div id="join-screen" class="screen">
+  <button class="back-btn" onclick="showScreen('lobby-screen')">&larr;</button>
+  <div class="lobby-title" style="font-size:clamp(24px,6vw,36px)">Join Expedition</div>
+  <div class="input-group">
+    <label>Enter Room Code</label>
+    <input id="room-code-input" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+  </div>
+  <button class="btn" onclick="joinRoom()">Join</button>
+  <div class="error-msg" id="join-error"></div>
+</div>
+
+<!-- WAITING -->
+<div id="waiting-screen" class="screen">
+  <div class="lobby-compass">&#x1F9ED;</div>
+  <div class="lobby-subtitle">Room Code</div>
+  <div class="room-code-display" id="display-code"></div>
+  <div class="waiting-text" id="waiting-text">Waiting for fellow explorer...</div>
+  <div class="lobby-subtitle" style="margin-top:20px;font-size:12px">Share this code with your opponent</div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen" class="screen">
+  <div class="top-bar">
+    <div class="player-info"><span id="opponent-name">Opponent</span></div>
+    <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
+    <button class="menu-btn" onclick="showRules()">?</button>
+  </div>
+
+  <div class="board-area">
+    <div class="card-row" id="opp-row"></div>
+    <div class="middle-row">
+      <div class="card-row" id="discard-row"></div>
+      <div id="single-pile-area" style="display:none"></div>
+      <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
+        <div class="card card-back"></div>
+        <div class="deck-num" id="deck-count-label">44 left</div>
+      </div>
+    </div>
+    <div class="card-row" id="my-row"></div>
+  </div>
+
+  <div class="phase-bar" id="phase-bar">Select a card from your hand</div>
+
+  <div class="hand-area">
+    <div class="hand-cards" id="hand-cards"></div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen" class="screen">
+  <div class="lobby-title" style="font-size:clamp(22px,6vw,36px);margin-bottom:4px" id="winner-text">Game Over</div>
+  <div class="score-board">
+    <h2>Final Scores</h2>
+    <table class="score-table" id="score-table"></table>
+  </div>
+  <button class="btn" style="margin-top:20px" onclick="playAgain()">New Expedition</button>
+  <button class="btn" onclick="leaveGame()">Leave</button>
+</div>
+
+<!-- RULES -->
+<div class="modal-overlay" id="rules-modal" onclick="if(event.target===this)closeRules()">
+  <div class="modal">
+    <h2>How to Play</h2>
+    <h3>Goal</h3><p>Score the most points by building expeditions (ascending card sequences).</p>
+    <h3>Cards</h3><p>5 colors. Each has numbers 2-10 plus three wager (x2) cards that multiply your score.</p>
+    <h3>Your Turn</h3>
+    <ul>
+      <li><b>Step 1: Play or Discard</b> &mdash; Tap a card in your hand. Then tap the matching color expedition below to play it, or the matching color discard pile to discard it.</li>
+      <li><b>Step 2: Draw</b> &mdash; Tap the deck to draw, or tap any discard pile to take its top card.</li>
+    </ul>
+    <h3>Rules</h3>
+    <ul>
+      <li>Cards must be played in <b>ascending order</b> on expeditions.</li>
+      <li>Wager (x2) cards must be played <b>before</b> any number cards.</li>
+      <li>You <b>cannot</b> draw from the discard pile you just discarded to.</li>
+    </ul>
+    <h3>Scoring</h3>
+    <ul>
+      <li>Starting an expedition costs 20 points.</li>
+      <li>Score = (sum of numbers - 20) &times; (1 + wager count).</li>
+      <li>Bonus +20 if expedition has 8+ cards.</li>
+    </ul>
+    <button class="btn" onclick="closeRules()">Got It</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCS6rxbyuvgg66RCd1WmrDg0UR9RMiAuBQ",
+  authDomain: "lost-cities-dd1c0.firebaseapp.com",
+  databaseURL: "https://lost-cities-dd1c0-default-rtdb.firebaseio.com",
+  projectId: "lost-cities-dd1c0",
+  storageBucket: "lost-cities-dd1c0.firebasestorage.app",
+  messagingSenderId: "398537405195",
+  appId: "1:398537405195:web:f7c902f8f2df8cdfc2e80e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const COLORS = ['red','green','blue','white','yellow'];
+const COLOR_LABELS = {red:'Red',green:'Green',blue:'Blue',white:'White',yellow:'Yellow'};
+const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',yellow:'#c0a030'};
+
+let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
+let selectedCard=null, listeners=[];
+let variant='classic'; // 'classic' or 'single'
+
+function setVariant(v){
+  variant=v;
+  document.getElementById('vbtn-classic').className='variant-btn'+(v==='classic'?' active':'');
+  document.getElementById('vbtn-single').className='variant-btn'+(v==='single'?' active':'');
+}
+
+// Firebase strips empty arrays — this safely gets nested arrays
+function getCards(obj, ...keys){
+  let v=obj;
+  for(const k of keys){if(!v||typeof v!=='object')return[];v=v[k]}
+  return Array.isArray(v)?v:[];
+}
+
+function genId(){return Math.random().toString(36).substr(2,9)}
+function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
+function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function vibrate(ms=15){try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function showRules(){document.getElementById('rules-modal').classList.add('active')}
+function closeRules(){document.getElementById('rules-modal').classList.remove('active')}
+function showJoin(){showScreen('join-screen');document.getElementById('room-code-input').focus()}
+function getName(){let n=document.getElementById('player-name').value.trim();if(!n)n='Explorer';return n.substring(0,12)}
+
+function createDeck(){
+  let deck=[];
+  COLORS.forEach(c=>{
+    for(let i=0;i<3;i++)deck.push({color:c,value:0,id:c+'_w'+i});
+    for(let v=2;v<=10;v++)deck.push({color:c,value:v,id:c+'_'+v});
+  });
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
+  return deck;
+}
+
+async function createRoom(){
+  const name=getName();
+  if(!name){document.getElementById('lobby-error').textContent='Enter your name';return}
+  myId=genId(); roomCode=genRoomCode(); roomRef=db.ref('rooms/'+roomCode);
+  try{
+    await roomRef.set({players:{player1:{id:myId,name:name},player2:null},status:'waiting',variant:variant,createdAt:firebase.database.ServerValue.TIMESTAMP});
+    mySlot='player1';
+    document.getElementById('display-code').textContent=roomCode;
+    showScreen('waiting-screen');
+    saveSession();
+    const ref=roomRef.child('players/player2');
+    const l=ref.on('value',snap=>{if(snap.val())startGame()});
+    listeners.push(()=>ref.off('value',l));
+  }catch(e){document.getElementById('lobby-error').textContent='Connection error. Try again.';console.error(e)}
+}
+
+async function joinRoom(){
+  const code=document.getElementById('room-code-input').value.trim().toUpperCase();
+  if(code.length!==4){document.getElementById('join-error').textContent='Enter a 4-letter code';return}
+  const name=getName();
+  if(!name){document.getElementById('join-error').textContent='Enter your name first';showScreen('lobby-screen');return}
+  myId=genId(); roomCode=code; roomRef=db.ref('rooms/'+roomCode);
+  try{
+    const snap=await roomRef.once('value');
+    const data=snap.val();
+    if(!data){document.getElementById('join-error').textContent='Room not found';return}
+    if(data.status!=='waiting'){document.getElementById('join-error').textContent='Game already started';return}
+    if(data.players.player2){document.getElementById('join-error').textContent='Room is full';return}
+    await roomRef.child('players/player2').set({id:myId,name:name});
+    variant=data.variant||'classic';
+    mySlot='player2'; saveSession(); startGame();
+  }catch(e){document.getElementById('join-error').textContent='Error joining room';console.error(e)}
+}
+
+async function startGame(){
+  showScreen('game-screen');
+  if(mySlot==='player1'){
+    const deck=createDeck();
+    const hand1=deck.splice(0,8), hand2=deck.splice(0,8);
+    const exps={}, discard={};
+    COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
+    await roomRef.child('game').set({
+      deck, hands:{player1:hand1,player2:hand2},
+      expeditions:{player1:exps,player2:exps},
+      discards:discard, singlePile:[],
+      currentTurn:'player1', phase:'play',
+      lastDiscardedColor:null, justDiscarded:false, status:'playing'
+    });
+    await roomRef.child('status').set('playing');
+  }
+  // Read variant from room
+  const vSnap=await roomRef.child('variant').once('value');
+  if(vSnap.val()) variant=vSnap.val();
+
+  const gRef=roomRef.child('game');
+  const l=gRef.on('value',snap=>{
+    const data=snap.val(); if(!data)return;
+    gameState=data; renderGame();
+    if(data.status==='finished')showGameOver();
+  });
+  listeners.push(()=>gRef.off('value',l));
+  const pRef=roomRef.child('players');
+  const l2=pRef.on('value',snap=>{
+    const p=snap.val(); if(!p)return;
+    const oppSlot=mySlot==='player1'?'player2':'player1';
+    if(p[oppSlot]){
+      document.getElementById('opponent-name').textContent=p[oppSlot].name;
+      document.getElementById('opp-label').textContent=p[oppSlot].name+"'s Expeditions";
+    }
+  });
+  listeners.push(()=>pRef.off('value',l2));
+}
+
+// ===== RENDERING =====
+function cardHTML(card, extra=''){
+  const isWager = card.value===0;
+  const valText = isWager ? '&#x1F91D;' : card.value;
+  const corner = isWager ? '&#x1F91D;' : card.value;
+  return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}">
+    <div class="card-corner">${corner}</div>
+    <div class="card-value">${valText}</div>
+  </div>`;
+}
+
+function renderGame(){
+  if(!gameState)return;
+  const isMyTurn = gameState.currentTurn===mySlot;
+  const inPlayPhase = gameState.phase==='play';
+  const inDrawPhase = gameState.phase==='draw';
+
+  // Turn indicator
+  const ti=document.getElementById('turn-indicator');
+  ti.textContent=isMyTurn?'Your Turn':'Their Turn';
+  ti.className='turn-indicator '+(isMyTurn?'your-turn':'their-turn');
+
+  // Deck count
+  const deckLen = getCards(gameState,'deck').length;
+  document.getElementById('deck-count-label').textContent=deckLen+' left';
+
+  // Phase bar
+  const pb=document.getElementById('phase-bar');
+  if(!isMyTurn){
+    pb.textContent='Waiting for opponent...'; pb.className='phase-bar';
+  } else if(inPlayPhase){
+    pb.textContent=selectedCard
+      ? (variant==='single'?'Tap expedition to play or discard pile':'Tap a highlighted zone to play or discard')
+      : 'Tap a card in your hand';
+    pb.className='phase-bar';
+  } else {
+    pb.textContent='Draw from deck or a discard pile';
+    pb.className='phase-bar draw-phase';
+  }
+
+  // Deck draw target highlight
+  const deckEl=document.getElementById('deck-draw');
+  deckEl.className = 'deck-card' + (isMyTurn && inDrawPhase ? ' target' : '');
+
+  renderHand();
+  renderBoard();
+}
+
+function renderHand(){
+  const container=document.getElementById('hand-cards');
+  const hand=getCards(gameState,'hands',mySlot);
+  const sorted=[...hand].sort((a,b)=>{
+    const ci=COLORS.indexOf(a.color)-COLORS.indexOf(b.color);
+    return ci!==0 ? ci : a.value-b.value;
+  });
+  container.innerHTML=sorted.map(c=>{
+    const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
+    return `<div onclick="selectCard('${c.id}')">${cardHTML(c,sel)}</div>`;
+  }).join('');
+}
+
+function renderBoard(){
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  const isMyTurn=gameState.currentTurn===mySlot;
+  const inPlayPhase=gameState.phase==='play';
+  const inDrawPhase=gameState.phase==='draw';
+  const oppRow=document.getElementById('opp-row');
+  const discardRow=document.getElementById('discard-row');
+  const myRow=document.getElementById('my-row');
+  const singleContainer=document.getElementById('single-pile-area');
+
+  // Single pile
+  if(variant==='single'){
+    singleContainer.style.display='inline-block';
+    discardRow.style.display='none';
+    const pile=getCards(gameState,'singlePile');
+    const topCard=pile.length>0?pile[pile.length-1]:null;
+    const canDiscard=selectedCard && inPlayPhase && isMyTurn;
+    const canDraw=inDrawPhase && isMyTurn && topCard && !gameState.justDiscarded;
+    let inner='';
+    if(!topCard){
+      const cls=canDiscard?'card target':'card empty-slot';
+      inner=`<div class="${cls}" onclick="discardToSingle()">${canDiscard?'<span class="target-label">Discard</span>':''}</div>`;
+    } else {
+      const extra=canDraw?'target':(canDiscard?'target':'');
+      const handler=inDrawPhase&&isMyTurn?'drawFromSingle()':'discardToSingle()';
+      inner=`<div onclick="${handler}" style="position:relative">${cardHTML(topCard,extra)}${canDraw?'<span class="target-label">Draw</span>':''}${canDiscard?'<span class="target-label">Discard</span>':''}</div>`;
+    }
+    singleContainer.innerHTML=inner;
+  } else {
+    singleContainer.style.display='none';
+    discardRow.style.display='flex';
+  }
+
+  // Opponent row
+  oppRow.innerHTML=COLORS.map(c=>{
+    const cards=getCards(gameState,'expeditions',oppSlot,c);
+    if(cards.length===0){
+      return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
+    }
+    const top=cards[cards.length-1];
+    return `<div class="card-col"><div style="position:relative">${cardHTML(top)}<div style="position:absolute;top:2px;right:4px;font-size:8px;opacity:.5">${cards.length}</div></div></div>`;
+  }).join('');
+
+  // Discard row (classic)
+  if(variant==='classic'){
+    discardRow.innerHTML=COLORS.map(c=>{
+      const pile=getCards(gameState,'discards',c);
+      const topCard=pile.length>0?pile[pile.length-1]:null;
+      const canDiscard=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn;
+      const canDraw=inDrawPhase && isMyTurn && topCard && c!==gameState.lastDiscardedColor;
+      if(!topCard){
+        const cls=canDiscard?'card target':'card empty-slot';
+        return `<div class="card-col"><div class="${cls}" style="${canDiscard?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="discardTo('${c}')">${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+      }
+      const extra=canDraw?'target':(canDiscard?'target':'');
+      const handler=inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`;
+      return `<div class="card-col"><div onclick="${handler}" style="position:relative">${cardHTML(topCard,extra)}${canDraw?'<span class="target-label">Draw</span>':''}${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+    }).join('');
+  }
+
+  // My expedition row
+  myRow.innerHTML=COLORS.map(c=>{
+    const cards=getCards(gameState,'expeditions',mySlot,c);
+    const canPlay=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn && canPlayOnExpedition(selectedCard,cards);
+    if(cards.length===0){
+      const cls=canPlay?'card target':'card empty-slot';
+      return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}</div></div>`;
+    }
+    const top=cards[cards.length-1];
+    let html=`<div class="card-col" onclick="playToExpedition('${c}')"><div style="position:relative">${cardHTML(top)}<div style="position:absolute;top:2px;right:4px;font-size:8px;opacity:.5">${cards.length}</div></div>`;
+    if(canPlay) html+=`<div class="card target" onclick="event.stopPropagation();playToExpedition('${c}')" style="margin-top:2px"><div class="card-value" style="color:var(--gold-bright);font-size:14px">+</div><span class="target-label">Play</span></div>`;
+    return html+`</div>`;
+  }).join('');
+}
+
+// ===== GAME LOGIC =====
+function canPlayOnExpedition(card, expedition){
+  if(expedition.length===0) return true;
+  const top=expedition[expedition.length-1];
+  if(card.value===0) return top.value===0; // wager only before numbers
+  return card.value > top.value;
+}
+
+function selectCard(cardId){
+  if(gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
+  vibrate();
+  const hand=getCards(gameState,'hands',mySlot);
+  const card=hand.find(c=>c.id===cardId);
+  if(!card) return;
+  selectedCard = (selectedCard && selectedCard.id===cardId) ? null : card;
+  renderGame();
+}
+
+async function playToExpedition(color){
+  if(!selectedCard || gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
+  if(selectedCard.color!==color) return;
+  const expedition=getCards(gameState,'expeditions',mySlot,color);
+  if(!canPlayOnExpedition(selectedCard, expedition)){
+    toast('Must be higher than '+expedition[expedition.length-1].value); return;
+  }
+  vibrate(25);
+  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
+  expedition.push(selectedCard);
+  const updates={};
+  updates[`hands/${mySlot}`]=hand;
+  updates[`expeditions/${mySlot}/${color}`]=expedition;
+  updates['phase']='draw';
+  updates['lastDiscardedColor']=null;
+  updates['justDiscarded']=false;
+  selectedCard=null;
+  await roomRef.child('game').update(updates);
+}
+
+async function discardTo(color){
+  if(!selectedCard || gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
+  if(selectedCard.color!==color){
+    toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile'); return;
+  }
+  vibrate(25);
+  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
+  const pile=getCards(gameState,'discards',color);
+  pile.push(selectedCard);
+  const updates={};
+  updates[`hands/${mySlot}`]=hand;
+  updates[`discards/${color}`]=pile;
+  updates['phase']='draw';
+  updates['lastDiscardedColor']=color;
+  selectedCard=null;
+  await roomRef.child('game').update(updates);
+}
+
+async function drawFromDeck(){
+  if(gameState.currentTurn!==mySlot || gameState.phase!=='draw') return;
+  const deck=getCards(gameState,'deck');
+  if(deck.length===0) return;
+  vibrate(25);
+  const card=deck.pop();
+  const hand=getCards(gameState,'hands',mySlot);
+  hand.push(card);
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  const updates={};
+  updates['deck']=deck;
+  updates[`hands/${mySlot}`]=hand;
+  updates['currentTurn']=oppSlot;
+  updates['phase']='play';
+  updates['lastDiscardedColor']=null;
+  updates['justDiscarded']=false;
+  if(deck.length===0) updates['status']='finished';
+  await roomRef.child('game').update(updates);
+}
+
+// SINGLE PILE VARIANT
+async function discardToSingle(){
+  if(!selectedCard || gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
+  vibrate(25);
+  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
+  const pile=getCards(gameState,'singlePile');
+  pile.push(selectedCard);
+  const updates={};
+  updates[`hands/${mySlot}`]=hand;
+  updates['singlePile']=pile;
+  updates['phase']='draw';
+  updates['justDiscarded']=true;
+  selectedCard=null;
+  await roomRef.child('game').update(updates);
+}
+
+async function drawFromSingle(){
+  if(gameState.currentTurn!==mySlot || gameState.phase!=='draw') return;
+  if(gameState.justDiscarded){toast("Can't draw from pile you just discarded to");return}
+  const pile=getCards(gameState,'singlePile');
+  if(pile.length===0) return;
+  vibrate(25);
+  const card=pile.pop();
+  const hand=getCards(gameState,'hands',mySlot);
+  hand.push(card);
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  const updates={};
+  updates['singlePile']=pile;
+  updates[`hands/${mySlot}`]=hand;
+  updates['currentTurn']=oppSlot;
+  updates['phase']='play';
+  updates['justDiscarded']=false;
+  await roomRef.child('game').update(updates);
+}
+
+async function drawFromDiscard(color){
+  if(gameState.currentTurn!==mySlot || gameState.phase!=='draw') return;
+  if(color===gameState.lastDiscardedColor){toast("Can't draw from pile you just discarded to");return}
+  const pile=getCards(gameState,'discards',color);
+  if(pile.length===0) return;
+  vibrate(25);
+  const card=pile.pop();
+  const hand=getCards(gameState,'hands',mySlot);
+  hand.push(card);
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  const updates={};
+  updates[`discards/${color}`]=pile;
+  updates[`hands/${mySlot}`]=hand;
+  updates['currentTurn']=oppSlot;
+  updates['phase']='play';
+  updates['lastDiscardedColor']=null;
+  await roomRef.child('game').update(updates);
+}
+
+// ===== SCORING =====
+function calcScore(expeditions){
+  let total=0; const breakdown={};
+  COLORS.forEach(c=>{
+    const cards=(expeditions&&expeditions[c])||[];
+    if(cards.length===0){breakdown[c]=0;return}
+    const wagers=cards.filter(x=>x.value===0).length;
+    const sum=cards.reduce((s,x)=>s+x.value,0);
+    let score=(sum-20)*(1+wagers);
+    if(cards.length>=8)score+=20;
+    breakdown[c]=score; total+=score;
+  });
+  return {total,breakdown};
+}
+
+function showGameOver(){
+  const s1=calcScore(gameState.expeditions.player1);
+  const s2=calcScore(gameState.expeditions.player2);
+  const my=mySlot==='player1'?s1:s2;
+  const opp=mySlot==='player1'?s2:s1;
+  const w=document.getElementById('winner-text');
+  w.textContent=my.total>opp.total?'Victory!':my.total<opp.total?'Defeated':'A Draw!';
+  const colors={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
+  let html=`<tr><th></th><th>You</th><th>Opp</th></tr>`;
+  COLORS.forEach(c=>{
+    html+=`<tr><td><span class="color-dot" style="background:${colors[c]}"></span>${COLOR_LABELS[c]}</td><td>${my.breakdown[c]}</td><td>${opp.breakdown[c]}</td></tr>`;
+  });
+  html+=`<tr class="total-row"><td>Total</td><td class="${my.total>=opp.total?'winner':''}">${my.total}</td><td class="${opp.total>=my.total?'winner':''}">${opp.total}</td></tr>`;
+  document.getElementById('score-table').innerHTML=html;
+  showScreen('gameover-screen');
+}
+
+async function playAgain(){
+  if(mySlot==='player1'){
+    const deck=createDeck();
+    const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
+    const exps={},discard={};
+    COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
+    await roomRef.child('game').set({
+      deck,hands:{player1:hand1,player2:hand2},
+      expeditions:{player1:exps,player2:exps},
+      discards:discard,currentTurn:'player1',phase:'play',
+      lastDiscardedColor:null,status:'playing'
+    });
+  }
+  selectedCard=null; showScreen('game-screen');
+}
+
+function leaveGame(){
+  listeners.forEach(fn=>fn()); listeners=[];
+  roomRef=null;roomCode=null;gameState=null;selectedCard=null;
+  clearSession();
+  showScreen('lobby-screen');
+}
+
+// Session save/restore
+function saveSession(){
+  localStorage.setItem('lc_session',JSON.stringify({myId,mySlot,roomCode,variant}));
+}
+function clearSession(){
+  localStorage.removeItem('lc_session');
+}
+
+async function tryReconnect(){
+  const raw=localStorage.getItem('lc_session');
+  if(!raw)return;
+  try{
+    const s=JSON.parse(raw);
+    const ref=db.ref('rooms/'+s.roomCode);
+    const snap=await ref.once('value');
+    const data=snap.val();
+    if(!data||!data.game){clearSession();return}
+    // Verify our player still exists
+    const player=data.players&&data.players[s.mySlot];
+    if(!player||player.id!==s.myId){clearSession();return}
+    // Reconnect
+    myId=s.myId; mySlot=s.mySlot; roomCode=s.roomCode; variant=s.variant||'classic';
+    roomRef=ref;
+    startGame();
+    toast('Reconnected');
+  }catch(e){clearSession();console.error(e)}
+}
+
+document.getElementById('player-name').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom()});
+document.getElementById('room-code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom()});
+window.addEventListener('beforeunload',()=>{listeners.forEach(fn=>fn())});
+tryReconnect();
+</script>
+</body>
+</html>
