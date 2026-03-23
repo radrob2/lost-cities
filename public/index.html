@@ -139,11 +139,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .toast.show{opacity:1}
 
 /* SCORE TABLE */
-.r-line{display:flex;align-items:baseline;padding:1px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
+.r-line{display:flex;align-items:baseline;padding:1px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6;font-variant-numeric:tabular-nums}
 .r-sep-color{border-top:1px solid rgba(201,168,76,.25);margin:6px 0 2px}
-.sc-row>span:first-child{padding-left:8px}
-.sc-row>span:last-child{padding-right:8px}
-.sc-row>span:first-child>.sc-sign{margin-left:-8px;display:inline-block;width:8px;text-align:center}
+.sc-row>span:first-child{padding-left:10px}
+.sc-row>span:last-child{padding-right:10px}
+.sc-sign{display:inline-block;width:10px;text-align:center;margin-left:-10px}
 .r-pos{color:var(--gold-bright)}
 .r-neg{color:#e07060}
 .r-muted{opacity:.5}
@@ -761,11 +761,12 @@ function showGameOver(){
   const neg=v=>v<0?'r-neg':'';
   const goldPlus=v=>v>=0?'r-pos':'r-neg';
   const sign=v=>v>=0?'<span class="sc-sign">+</span>'+v:'<span class="sc-sign">−</span>'+Math.abs(v);
+  const fmt=v=>v<0?'<span class="sc-sign">−</span>'+Math.abs(v):''+v;
   const dash='';
   const myWin=my.total>opp.total;
   const oppWin=opp.total>my.total;
   function winStyle(score,isW){
-    if(isW) return score<0?`class="r-neg" style="${glow}"`:`class="r-pos" style="${glow}"`;
+    if(isW) return score<0?`class="r-neg r-winner" style="${glow}"`:`class="r-pos r-winner" style="${glow}"`;
     return score<0?'class="r-neg"':'class="r-muted"';
   }
 
@@ -783,7 +784,7 @@ function showGameOver(){
   COLORS.forEach(c=>{
     const m=my.breakdown[c], o=opp.breakdown[c];
     if(m.count===0&&o.count===0)return;
-    const mS=m.count>0?m.score:'', oS=o.count>0?o.score:'';
+    const mS=m.count>0?fmt(m.score):'', oS=o.count>0?fmt(o.score):'';
     const idx=colorIdx++;
     const mWinC=m.score>o.score, oWinC=o.score>m.score;
 
@@ -830,20 +831,20 @@ function showGameOver(){
       html+=row(m.bonus?'<span class="sc-sign">+</span>20':dash,'8+ cards',o.bonus?'<span class="sc-sign">+</span>20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
 
-    html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:800;font-size:14px">
-      <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?m.score:dash}</span>
+    html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:16px;padding-top:2px">
+      <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?fmt(m.score):dash}</span>
       <span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">Total</span>
-      <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?o.score:dash}</span></div>`;
+      <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?fmt(o.score):dash}</span></div>`;
 
     html+=`</div>`;
   });
 
   // Game total — most significant separator
   html+=`<div style="border-top:3px solid var(--gold);margin:8px 0 4px;opacity:.5"></div>`;
-  html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:8px 0">
-    <span style="flex:1;text-align:left;font-size:22px" ${winStyle(my.total,myWin)}>${my.total}</span>
+  html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:8px 0;font-variant-numeric:tabular-nums">
+    <span style="flex:1;text-align:left;font-size:22px" ${winStyle(my.total,myWin)}>${fmt(my.total)}</span>
     <span style="min-width:100px;text-align:center;padding:0 6px;font-size:14px">Total</span>
-    <span style="flex:1;text-align:right;font-size:22px" ${winStyle(opp.total,oppWin)}>${opp.total}</span>
+    <span style="flex:1;text-align:right;font-size:22px" ${winStyle(opp.total,oppWin)}>${fmt(opp.total)}</span>
   </div>`;
 
   // Put it all in one container
