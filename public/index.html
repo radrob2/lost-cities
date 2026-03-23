@@ -531,7 +531,8 @@ function renderBoard(){
     const h=(card.color.charCodeAt(0)*31+card.value*97)&0xFFFF;
     const rot=((h%100)/100*4-2).toFixed(1);       // ±2 degrees
     const dx=((((h>>4)%100)/100*3-1.5)).toFixed(1);  // ±1.5px
-    return `rotate(${rot}deg) translateX(${dx}px)`;
+    const dy=((((h>>8)%100)/100*3-1.5)).toFixed(1);  // ±1.5px
+    return `rotate(${rot}deg) translate(${dx}px,${dy}px)`;
   }
 
   // Opponent row
