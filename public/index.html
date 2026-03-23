@@ -829,8 +829,8 @@ function showGameOver(){
   html+=`<div class="r-sep-bold"></div>`;
   html+=`<div class="r-line" style="font-weight:900;font-family:'Cinzel',serif;padding:8px 0">
     <span style="flex:1;font-size:14px">Total</span>
-    <span style="${W};font-size:22px;${myWin?'text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${cls(my.total)}">${my.total}</span>
-    <span style="${W};font-size:22px;${oppWin?'text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${cls(opp.total)}">${opp.total}</span>
+    <span style="${W};font-size:22px;${myWin?'color:var(--gold-bright);text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${myWin?'':'r-muted'}">${my.total}</span>
+    <span style="${W};font-size:22px;${oppWin?'color:var(--gold-bright);text-shadow:0 0 10px rgba(212,168,67,.4)':''}" class="${oppWin?'':'r-muted'}">${opp.total}</span>
   </div>`;
 
   // Put it all in one container
