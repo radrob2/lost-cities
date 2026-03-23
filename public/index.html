@@ -527,7 +527,7 @@ function renderBoard(){
   const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
 
   // Opponent row
-  const stackOffset=12;
+  const stackOffset=20;
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
