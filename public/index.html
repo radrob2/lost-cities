@@ -136,7 +136,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .toast.show{opacity:1}
 
 /* SCORE RECEIPT */
-.receipt{background:rgba(255,255,255,.04);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:8px 0;margin:6px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
+.receipt{padding:4px 0 8px;margin:0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
 .receipt .r-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .receipt .r-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700}
 .receipt .r-total{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
@@ -754,7 +754,15 @@ function showGameOver(){
   const dash='<span class="r-muted">—</span>';
 
   // Summary: aligned with columns below
-  const myWin=my.total>=opp.total;
+  // Gold only for positive winners, red for negative, dim for loser
+  function totalCls(score,isWinner){
+    if(isWinner&&score>=0)return'color:var(--gold-bright)';
+    if(score<0)return'color:#e07060';
+    if(isWinner)return'color:var(--parchment)';
+    return'color:var(--parchment-dark)';
+  }
+  const myWin=my.total>opp.total;
+  const oppWin=opp.total>my.total;
   document.getElementById('score-summary').innerHTML=`
     <div style="display:flex;align-items:baseline;gap:0;width:100%">
       <span style="flex:1"></span>
@@ -763,8 +771,8 @@ function showGameOver(){
     </div>
     <div style="display:flex;align-items:baseline;gap:0;width:100%">
       <span style="flex:1;font-family:'Cinzel',serif;font-size:13px;opacity:.5">Total</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:${myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${my.total}</span>
-      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:${!myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${opp.total}</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(my.total,myWin)}">${my.total}</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;${totalCls(opp.total,oppWin)}">${opp.total}</span>
     </div>`;
 
   // Unified receipt row helper
@@ -802,8 +810,8 @@ function showGameOver(){
     // Card total
     details+=row('Card total',m.count?m.sum:dash,o.count?o.sum:dash);
 
-    // Expedition cost
-    details+=row('Expedition cost',m.count?'−20':dash,o.count?'−20':dash,m.count?'r-neg':'',o.count?'r-neg':'');
+    // Expedition cost — neutral color, it's expected
+    details+=row('Expedition cost',m.count?'−20':dash,o.count?'−20':dash,'r-muted','r-muted');
     details+=`<div class="r-sep"></div>`;
 
     // Subtotal
@@ -811,6 +819,7 @@ function showGameOver(){
 
     // Wagers — max of both sides
     const maxW=Math.max(m.wagers,o.wagers);
+    const hasBonus=m.bonus||o.bonus;
     for(let i=0;i<maxW;i++){
       const mV=i<m.wagers?sign(m.subtotal):dash;
       const oV=i<o.wagers?sign(o.subtotal):dash;
@@ -819,7 +828,8 @@ function showGameOver(){
       details+=row('🤝',mV,oV,mC,oC);
     }
 
-    if(maxW>0){
+    // Only show after-wagers subtotal if bonus follows (otherwise it duplicates the total)
+    if(maxW>0&&hasBonus){
       details+=`<div class="r-sep"></div>`;
       const mAW=m.count?m.subtotal*(1+m.wagers):null;
       const oAW=o.count?o.subtotal*(1+o.wagers):null;
@@ -827,13 +837,11 @@ function showGameOver(){
     }
 
     // Bonus
-    if(m.bonus||o.bonus){
+    if(hasBonus){
       details+=row('8+ bonus',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?'r-bonus':'',o.bonus?'r-bonus':'');
     }
 
-    // Total
-    details+=`<div class="r-sep-bold"></div>`;
-    details+=row('Total',m.count?m.score:dash,o.count?o.score:dash,m.count?cls(m.score):'',o.count?cls(o.score):'','font-weight:700;font-size:15px');
+    // No "Total" row — the collapsed row already shows the total
 
     details+=`</div></div>`;
   });
