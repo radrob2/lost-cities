@@ -805,7 +805,7 @@ function showGameOver(){
     html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px">`;
 
     html+=row(m.count?m.sum:dash,'Card total',o.count?o.sum:dash,m.count?neg(m.sum):'',o.count?neg(o.sum):'');
-    html+=row(m.count?'−20':dash,'Expedition cost',o.count?'−20':dash,'r-muted','r-muted');
+    html+=row(m.count?'<span class="sc-sign">−</span>20':dash,'Expedition cost',o.count?'<span class="sc-sign">−</span>20':dash,'r-muted','r-muted');
 
     const maxW=Math.max(m.wagers,o.wagers);
     const hasBonus=m.bonus||o.bonus;
