@@ -159,6 +159,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div id="join-screen" class="screen">
   <button class="back-btn" onclick="showScreen('lobby-screen')">&larr;</button>
   <div class="lobby-title" style="font-size:clamp(24px,6vw,36px)">Join Expedition</div>
+  <input class="name-input" id="join-player-name" placeholder="Your name" maxlength="12" autocomplete="off">
   <div class="input-group">
     <label>Enter Room Code</label>
     <input id="room-code-input" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
@@ -202,6 +203,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="hand-area">
     <div class="hand-cards" id="hand-cards"></div>
   </div>
+  <div id="back-to-scores" style="display:none;position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:20">
+    <button class="btn" onclick="backToScores()">Back to Scores</button>
+  </div>
 </div>
 
 <!-- GAME OVER -->
@@ -211,7 +215,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <h2>Final Scores</h2>
     <table class="score-table" id="score-table"></table>
   </div>
-  <button class="btn" style="margin-top:20px" onclick="playAgain()">New Expedition</button>
+  <button class="btn" style="margin-top:20px" onclick="viewFinalBoard()">View Board</button>
+  <button class="btn" onclick="playAgain()">New Expedition</button>
   <button class="btn" onclick="leaveGame()">Leave</button>
 </div>
 
@@ -314,7 +319,11 @@ function closeGameMenu(){document.getElementById('game-menu').classList.remove('
 function confirmQuit(){closeGameMenu();document.getElementById('quit-confirm').classList.add('active')}
 function closeQuitConfirm(){document.getElementById('quit-confirm').classList.remove('active')}
 function showJoin(){showScreen('join-screen');document.getElementById('room-code-input').focus()}
-function getName(){let n=document.getElementById('player-name').value.trim();if(!n)n='Explorer';return n.substring(0,12)}
+function getName(screen){
+  const id=screen==='join'?'join-player-name':'player-name';
+  let n=document.getElementById(id).value.trim();
+  if(!n)n='Explorer';return n.substring(0,12);
+}
 
 function createDeck(){
   let deck=[];
@@ -345,8 +354,7 @@ async function createRoom(){
 async function joinRoom(){
   const code=document.getElementById('room-code-input').value.trim().toUpperCase();
   if(code.length!==4){document.getElementById('join-error').textContent='Enter a 4-letter code';return}
-  const name=getName();
-  if(!name){document.getElementById('join-error').textContent='Enter your name first';showScreen('lobby-screen');return}
+  const name=getName('join');
   myId=genId(); roomCode=code; roomRef=db.ref('rooms/'+roomCode);
   try{
     const snap=await roomRef.once('value');
@@ -367,11 +375,12 @@ async function startGame(){
     const hand1=deck.splice(0,8), hand2=deck.splice(0,8);
     const exps={}, discard={};
     COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
+    const firstPlayer=Math.random()<0.5?'player1':'player2';
     await roomRef.child('game').set({
       deck, hands:{player1:hand1,player2:hand2},
       expeditions:{player1:exps,player2:exps},
       discards:discard, singlePile:[],
-      currentTurn:'player1', phase:'play',
+      currentTurn:firstPlayer, phase:'play',
       lastDiscardedColor:null, justDiscarded:false, status:'playing'
     });
     await roomRef.child('status').set('playing');
@@ -709,11 +718,11 @@ async function playAgain(){
     await roomRef.child('game').set({
       deck,hands:{player1:hand1,player2:hand2},
       expeditions:{player1:exps,player2:exps},
-      discards:discard,currentTurn:'player1',phase:'play',
+      discards:discard,currentTurn:Math.random()<0.5?'player1':'player2',phase:'play',
       lastDiscardedColor:null,status:'playing'
     });
   }
-  selectedCard=null; showScreen('game-screen');
+  selectedCard=null; document.getElementById('back-to-scores').style.display='none'; showScreen('game-screen');
 }
 
 function leaveGame(){
@@ -749,6 +758,17 @@ async function tryReconnect(){
     startGame();
     toast('Reconnected');
   }catch(e){clearSession();console.error(e)}
+}
+
+function viewFinalBoard(){
+  showScreen('game-screen');
+  renderGame();
+  document.getElementById('back-to-scores').style.display='block';
+  document.getElementById('phase-bar').textContent='Game Over — Final Board';
+}
+function backToScores(){
+  document.getElementById('back-to-scores').style.display='none';
+  showScreen('gameover-screen');
 }
 
 // ===== LOCAL UPDATE (for AI mode) =====
