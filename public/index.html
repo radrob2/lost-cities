@@ -818,7 +818,7 @@ function showGameOver(){
       html+=row(m.bonus?'<span class="sc-sign">+</span>20':dash,'8+ cards',o.bonus?'<span class="sc-sign">+</span>20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
 
-    html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:700">
+    html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:800;font-size:14px">
       <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?m.score:dash}</span>
       <span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">Total</span>
       <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?o.score:dash}</span></div>`;
