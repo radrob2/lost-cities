@@ -138,6 +138,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* SCORE TABLE */
 .r-line{display:flex;align-items:baseline;padding:1px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
 .r-sep-color{border-top:1px solid rgba(201,168,76,.25);margin:6px 0 2px}
+.sc-row>span:first-child{padding-left:8px}
+.sc-row>span:last-child{padding-right:8px}
+.sc-row>span:first-child>.sc-sign{margin-left:-8px;display:inline-block;width:8px;text-align:center}
 .r-pos{color:var(--gold-bright)}
 .r-neg{color:#e07060}
 .r-muted{opacity:.5}
@@ -745,8 +748,8 @@ function showGameOver(){
   const glow='text-shadow:0 0 10px rgba(212,168,67,.4)';
   const neg=v=>v<0?'r-neg':'';
   const goldPlus=v=>v>=0?'r-pos':'r-neg';
-  const sign=v=>v>=0?'+'+v:''+v;
-  const dash='<span class="r-muted">—</span>';
+  const sign=v=>v>=0?'<span class="sc-sign">+</span>'+v:'<span class="sc-sign">−</span>'+Math.abs(v);
+  const dash='';
   const myWin=my.total>opp.total;
   const oppWin=opp.total>my.total;
   function winStyle(score,isW){
@@ -756,11 +759,11 @@ function showGameOver(){
 
   // Centered-label row: [You value left-aligned] [label centered] [Opp value right-aligned]
   function row(mV,label,oV,mC,oC,extra){
-    return `<div class="r-line" style="justify-content:center;${extra||''}"><span style="flex:1;text-align:left" class="${mC||''}">${mV}</span><span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">${label}</span><span style="flex:1;text-align:right" class="${oC||''}">${oV}</span></div>`;
+    return `<div class="r-line sc-row" style="justify-content:center;${extra||''}"><span style="flex:1;text-align:left" class="${mC||''}">${mV}</span><span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">${label}</span><span style="flex:1;text-align:right" class="${oC||''}">${oV}</span></div>`;
   }
 
   // Column headers
-  let html=`<div class="r-line" style="justify-content:center;opacity:.4;font-size:10px;font-family:'Cinzel',serif;padding-bottom:6px">
+  let html=`<div class="r-line sc-row" style="justify-content:center;opacity:.4;font-size:10px;font-family:'Cinzel',serif;padding-bottom:6px">
     <span style="flex:1;text-align:left;${myWin?'color:var(--gold);'+glow:''}">You</span><span style="min-width:100px;text-align:center;padding:0 6px"></span><span style="flex:1;text-align:right;${oppWin?'color:var(--gold);'+glow:''}">Opp</span></div>`;
 
   // Color rows
@@ -768,20 +771,21 @@ function showGameOver(){
   COLORS.forEach(c=>{
     const m=my.breakdown[c], o=opp.breakdown[c];
     if(m.count===0&&o.count===0)return;
-    const mS=m.count>0?m.score:'—', oS=o.count>0?o.score:'—';
+    const mS=m.count>0?m.score:'', oS=o.count>0?o.score:'';
     const idx=colorIdx++;
     const mWinC=m.score>o.score, oWinC=o.score>m.score;
 
     // Cards strings
-    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join(' ')+(m.values.length?(m.wagers?' ':'')+m.values.join(' '):'')):'—';
-    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'—';
+    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join(' ')+(m.values.length?(m.wagers?' ':'')+m.values.join(' '):'')):'';
+    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'';
+
 
     // Between-color separator (skip first)
     if(idx>0) html+=`<div class="r-sep-color"></div>`;
 
     // Collapsed: scores flanking color dot
     html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
-      <div class="r-line" style="justify-content:center">
+      <div class="r-line sc-row" style="justify-content:center">
         <span style="flex:1;text-align:left;font-weight:700" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
         <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
         <span style="flex:1;text-align:right;font-weight:700" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
@@ -811,10 +815,10 @@ function showGameOver(){
     }
 
     if(hasBonus){
-      html+=row(m.bonus?'+20':dash,'8+ cards',o.bonus?'+20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
+      html+=row(m.bonus?'<span class="sc-sign">+</span>20':dash,'8+ cards',o.bonus?'<span class="sc-sign">+</span>20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
 
-    html+=`<div class="r-line" style="justify-content:center;font-weight:700">
+    html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:700">
       <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?m.score:dash}</span>
       <span style="min-width:100px;text-align:center;padding:0 6px;font-size:11px;opacity:.7">Total</span>
       <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?o.score:dash}</span></div>`;
@@ -824,7 +828,7 @@ function showGameOver(){
 
   // Game total — most significant separator
   html+=`<div style="border-top:3px solid var(--gold);margin:8px 0 4px;opacity:.5"></div>`;
-  html+=`<div class="r-line" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:8px 0">
+  html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:8px 0">
     <span style="flex:1;text-align:left;font-size:22px" ${winStyle(my.total,myWin)}>${my.total}</span>
     <span style="min-width:100px;text-align:center;padding:0 6px;font-size:14px">Total</span>
     <span style="flex:1;text-align:right;font-size:22px" ${winStyle(opp.total,oppWin)}>${opp.total}</span>
