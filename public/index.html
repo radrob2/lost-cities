@@ -138,7 +138,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* SCORE TABLE */
 .r-line{display:flex;align-items:baseline;padding:1px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
 .r-sep{border-top:1px solid rgba(255,255,255,.06);margin:3px 0}
-.r-sep-bold{border-top:1px solid rgba(201,168,76,.2);margin:3px 0}
+.r-sep-bold{border-top:1px solid rgba(255,255,255,.12);margin:3px 0}
 .r-pos{color:var(--gold-bright)}
 .r-neg{color:#e07060}
 .r-muted{opacity:.5}
@@ -778,10 +778,10 @@ function showGameOver(){
     const oCards=o.count>0?(Array(o.wagers).fill('🤝').join(' ')+(o.values.length?(o.wagers?' ':'')+o.values.join(' '):'')):'—';
 
     // Collapsed: scores flanking color dot
-    html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.08)" onclick="toggleScore(${idx})">
+    html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0;border-bottom:1px solid rgba(201,168,76,.2)" onclick="toggleScore(${idx})">
       <div class="r-line" style="justify-content:center">
         <span style="flex:1;text-align:left;font-weight:700" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
-        <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.3">▼</span></span>
+        <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
         <span style="flex:1;text-align:right;font-weight:700" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
       </div>
     </div>`;
@@ -790,13 +790,13 @@ function showGameOver(){
     html+=`<div id="sc-exp-${idx}" style="display:none;cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
       <div class="r-line" style="justify-content:center;font-size:11px;opacity:.6">
         <span style="flex:1;text-align:left">${mCards}</span>
-        <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:12px;height:12px"></span> <span style="font-size:9px;opacity:.5">▲</span></span>
+        <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▲</span></span>
         <span style="flex:1;text-align:right">${oCards}</span>
       </div>
     </div>`;
 
     // Breakdown body
-    html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,.05)">`;
+    html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px;border-bottom:1px solid rgba(201,168,76,.2)">`;
 
     html+=row(m.count?m.sum:dash,'Cards',o.count?o.sum:dash,m.count?neg(m.sum):'',o.count?neg(o.sum):'');
     html+=row(m.count?'−20':dash,'Expedition cost',o.count?'−20':dash,'r-muted','r-muted');
