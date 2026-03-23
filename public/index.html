@@ -704,19 +704,22 @@ function showGameOver(){
   const w=document.getElementById('winner-text');
   w.textContent=my.total>opp.total?'Victory!':my.total<opp.total?'Defeated':'A Draw!';
   const colors={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
-  function detail(b){
+  function scoreCell(b){
     if(b.cards===0)return'<span style="opacity:.3">—</span>';
-    let s=`<div style="font-size:16px;font-weight:700">${b.score}</div>`;
-    s+=`<div style="font-size:9px;opacity:.6;line-height:1.3">`;
-    s+=`(${b.sum}−20)×${b.mult}`;
-    if(b.bonus)s+=` +20🏆`;
-    s+=`</div>`;
-    s+=`<div style="font-size:8px;opacity:.4">${b.cards} cards${b.wagers>0?', '+b.wagers+'🤝':''}</div>`;
-    return s;
+    return `<span>${b.score}</span>`;
+  }
+  function detailRow(b){
+    if(b.cards===0)return'<td colspan="2" style="opacity:.3;font-size:10px">No expedition</td>';
+    let s=`<td colspan="2" style="font-size:10px;opacity:.7;line-height:1.5;text-align:center">`;
+    s+=`(${b.sum}−20) × ${b.mult} = ${b.base*b.mult}`;
+    if(b.bonus)s+=`<br>+20 bonus (8+ cards)`;
+    s+=`<br><span style="opacity:.6">${b.cards} cards${b.wagers>0?', '+b.wagers+' wager'+( b.wagers>1?'s':''):''}</span>`;
+    return s+`</td>`;
   }
   let html=`<tr><th></th><th>You</th><th>Opp</th></tr>`;
   COLORS.forEach(c=>{
-    html+=`<tr><td><span class="color-dot" style="background:${colors[c]}"></span>${COLOR_LABELS[c]}</td><td>${detail(my.breakdown[c])}</td><td>${detail(opp.breakdown[c])}</td></tr>`;
+    html+=`<tr style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'table-row':'none'"><td><span class="color-dot" style="background:${colors[c]}"></span>${COLOR_LABELS[c]} <span style="font-size:8px;opacity:.3">▼</span></td><td>${scoreCell(my.breakdown[c])}</td><td>${scoreCell(opp.breakdown[c])}</td></tr>`;
+    html+=`<tr style="display:none;background:rgba(255,255,255,.03)"><td style="font-size:9px;opacity:.5;vertical-align:top;padding:2px 4px">You<br>Opp</td><td style="font-size:10px;opacity:.7;line-height:1.4;padding:2px">${my.breakdown[c].cards===0?'—':`(${my.breakdown[c].sum}−20)×${my.breakdown[c].mult}${my.breakdown[c].bonus?' +20🏆':''}`}</td><td style="font-size:10px;opacity:.7;line-height:1.4;padding:2px">${opp.breakdown[c].cards===0?'—':`(${opp.breakdown[c].sum}−20)×${opp.breakdown[c].mult}${opp.breakdown[c].bonus?' +20🏆':''}`}</td></tr>`;
   });
   html+=`<tr class="total-row"><td>Total</td><td class="${my.total>=opp.total?'winner':''}">${my.total}</td><td class="${opp.total>=my.total?'winner':''}">${opp.total}</td></tr>`;
   document.getElementById('score-table').innerHTML=html;
