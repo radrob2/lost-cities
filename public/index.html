@@ -132,6 +132,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(30,20,10,.92);color:var(--gold-bright);padding:10px 24px;border-radius:24px;font-family:'Cinzel',serif;font-size:12px;font-weight:700;z-index:50;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;border:1px solid rgba(212,168,67,.25);box-shadow:0 4px 16px rgba(0,0,0,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .toast.show{opacity:1}
 
+/* SCORE RECEIPT */
+.receipt{background:rgba(255,255,255,.04);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:10px 12px;margin:6px 0;font-family:'Crimson Text',serif;font-size:13px;line-height:1.6}
+.receipt .r-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.receipt .r-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700}
+.receipt .r-total{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
+.receipt .r-cards{font-size:12px;opacity:.7;margin-bottom:4px}
+.receipt .r-line{display:flex;justify-content:space-between;padding:1px 0}
+.receipt .r-sep{border-top:1px solid rgba(201,168,76,.15);margin:3px 0}
+.receipt .r-sep-bold{border-top:2px solid rgba(201,168,76,.3);margin:4px 0}
+.receipt .r-pos{color:var(--gold-bright)}
+.receipt .r-neg{color:#e07060}
+.receipt .r-bonus{color:#60d080}
+.receipt .r-muted{opacity:.5}
 @media(min-width:420px){:root{--card-w:56px;--card-h:91px}}
 @media(min-width:500px){:root{--card-w:64px;--card-h:104px}}
 </style>
@@ -209,15 +222,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 </div>
 
 <!-- GAME OVER -->
-<div id="gameover-screen" class="screen">
+<div id="gameover-screen" class="screen" style="overflow-y:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-top:max(24px,env(safe-area-inset-top))">
   <div class="lobby-title" style="font-size:clamp(22px,6vw,36px);margin-bottom:4px" id="winner-text">Game Over</div>
-  <div class="score-board">
+  <div class="score-board" style="overflow:visible">
     <h2>Final Scores</h2>
-    <table class="score-table" id="score-table"></table>
+    <div id="score-summary" style="display:flex;justify-content:space-around;margin-bottom:12px"></div>
+    <div id="score-details"></div>
   </div>
-  <button class="btn" style="margin-top:20px" onclick="viewFinalBoard()">View Board</button>
-  <button class="btn" onclick="playAgain()">New Expedition</button>
-  <button class="btn" onclick="leaveGame()">Leave</button>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px;padding-bottom:max(20px,env(safe-area-inset-bottom))">
+    <button class="btn" onclick="viewFinalBoard()">View Board</button>
+    <button class="btn" onclick="playAgain()">New Expedition</button>
+    <button class="btn" onclick="leaveGame()">Leave</button>
+  </div>
 </div>
 
 <!-- RULES -->
@@ -682,15 +698,16 @@ function calcScore(expeditions){
   let total=0; const breakdown={};
   COLORS.forEach(c=>{
     const cards=(expeditions&&expeditions[c])||[];
-    if(cards.length===0){breakdown[c]={score:0,cards:0,wagers:0,sum:0,mult:1,bonus:false};return}
+    if(cards.length===0){breakdown[c]={score:0,count:0,wagers:0,sum:0,subtotal:0,bonus:false,values:[]};return}
     const wagers=cards.filter(x=>x.value===0).length;
-    const sum=cards.reduce((s,x)=>s+x.value,0);
-    const mult=1+wagers;
-    const base=sum-20;
-    let score=base*mult;
+    const numCards=cards.filter(x=>x.value>0).sort((a,b)=>a.value-b.value);
+    const values=numCards.map(x=>x.value);
+    const sum=values.reduce((s,v)=>s+v,0);
+    const subtotal=sum-20;
+    const afterWagers=subtotal*(1+wagers);
     const bonus=cards.length>=8;
-    if(bonus)score+=20;
-    breakdown[c]={score,cards:cards.length,wagers,sum,mult,bonus,base};
+    const score=afterWagers+(bonus?20:0);
+    breakdown[c]={score,count:cards.length,wagers,sum,subtotal,bonus,values};
     total+=score;
   });
   return {total,breakdown};
@@ -703,26 +720,88 @@ function showGameOver(){
   const opp=mySlot==='player1'?s2:s1;
   const w=document.getElementById('winner-text');
   w.textContent=my.total>opp.total?'Victory!':my.total<opp.total?'Defeated':'A Draw!';
-  const colors={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
-  function scoreCell(b){
-    if(b.cards===0)return'<span style="opacity:.3">—</span>';
-    return `<span>${b.score}</span>`;
+  const chex={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
+
+  // Summary: big totals
+  const myWin=my.total>=opp.total;
+  document.getElementById('score-summary').innerHTML=`
+    <div style="text-align:center"><div style="font-size:12px;opacity:.6">You</div><div style="font-family:'Cinzel',serif;font-size:28px;font-weight:900;color:${myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${my.total}</div></div>
+    <div style="text-align:center;align-self:center;opacity:.3;font-size:18px">vs</div>
+    <div style="text-align:center"><div style="font-size:12px;opacity:.6">Opp</div><div style="font-family:'Cinzel',serif;font-size:28px;font-weight:900;color:${!myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${opp.total}</div></div>`;
+
+  // Per-color receipts
+  function receipt(b,color){
+    if(b.count===0)return null;
+    const cls=v=>v>=0?'r-pos':'r-neg';
+    const sign=v=>v>=0?'+'+v:''+v;
+    let r='';
+    // Cards played
+    const wagerStr=Array(b.wagers).fill('🤝').join(' ');
+    const valStr=b.values.join(' + ');
+    r+=`<div class="r-cards">${wagerStr}${wagerStr&&valStr?' ':''}${valStr}</div>`;
+    // Card total
+    if(b.values.length>0) r+=`<div class="r-line"><span>Card total</span><span>${b.sum}</span></div>`;
+    // Expedition cost
+    r+=`<div class="r-line"><span>Expedition cost</span><span class="r-neg">−20</span></div>`;
+    r+=`<div class="r-sep"></div>`;
+    // Subtotal
+    r+=`<div class="r-line"><span>Subtotal</span><span class="${cls(b.subtotal)}">${b.subtotal}</span></div>`;
+    // Wagers
+    for(let i=0;i<b.wagers;i++){
+      r+=`<div class="r-line"><span>Wager 🤝</span><span class="${cls(b.subtotal)}">${sign(b.subtotal)}</span></div>`;
+    }
+    if(b.wagers>0){
+      r+=`<div class="r-sep"></div>`;
+      const afterW=b.subtotal*(1+b.wagers);
+      r+=`<div class="r-line"><span></span><span class="${cls(afterW)}">${afterW}</span></div>`;
+    }
+    // Bonus
+    if(b.bonus){
+      r+=`<div class="r-line"><span class="r-bonus">8+ card bonus</span><span class="r-bonus">+20</span></div>`;
+    }
+    // Total
+    r+=`<div class="r-sep-bold"></div>`;
+    r+=`<div class="r-line" style="font-weight:700"><span>Total</span><span class="${cls(b.score)}" style="font-size:16px">${b.score}</span></div>`;
+    return r;
   }
-  function detailRow(b){
-    if(b.cards===0)return'<td colspan="2" style="opacity:.3;font-size:10px">No expedition</td>';
-    let s=`<td colspan="2" style="font-size:10px;opacity:.7;line-height:1.5;text-align:center">`;
-    s+=`(${b.sum}−20) × ${b.mult} = ${b.base*b.mult}`;
-    if(b.bonus)s+=`<br>+20 bonus (8+ cards)`;
-    s+=`<br><span style="opacity:.6">${b.cards} cards${b.wagers>0?', '+b.wagers+' wager'+( b.wagers>1?'s':''):''}</span>`;
-    return s+`</td>`;
-  }
-  let html=`<tr><th></th><th>You</th><th>Opp</th></tr>`;
+
+  let details=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;opacity:.4;font-size:10px;font-family:'Cinzel',serif">
+    <span style="width:14px"></span><span style="flex:1"></span>
+    <span style="width:40px;text-align:right">You</span>
+    <span style="opacity:.2;font-size:10px">│</span>
+    <span style="width:40px;text-align:right">Opp</span>
+    <span style="width:12px"></span>
+  </div>`;
   COLORS.forEach(c=>{
-    html+=`<tr style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'table-row':'none'"><td><span class="color-dot" style="background:${colors[c]}"></span>${COLOR_LABELS[c]} <span style="font-size:8px;opacity:.3">▼</span></td><td>${scoreCell(my.breakdown[c])}</td><td>${scoreCell(opp.breakdown[c])}</td></tr>`;
-    html+=`<tr style="display:none;background:rgba(255,255,255,.03)"><td style="font-size:9px;opacity:.5;vertical-align:top;padding:2px 4px">You<br>Opp</td><td style="font-size:10px;opacity:.7;line-height:1.4;padding:2px">${my.breakdown[c].cards===0?'—':`(${my.breakdown[c].sum}−20)×${my.breakdown[c].mult}${my.breakdown[c].bonus?' +20🏆':''}`}</td><td style="font-size:10px;opacity:.7;line-height:1.4;padding:2px">${opp.breakdown[c].cards===0?'—':`(${opp.breakdown[c].sum}−20)×${opp.breakdown[c].mult}${opp.breakdown[c].bonus?' +20🏆':''}`}</td></tr>`;
+    const myB=my.breakdown[c], oppB=opp.breakdown[c];
+    if(myB.count===0&&oppB.count===0)return;
+    // Collapsed row
+    const myScore=myB.count>0?myB.score:'—';
+    const oppScore=oppB.count>0?oppB.score:'—';
+    const myCls=myB.score>=0?'r-pos':'r-neg';
+    const oppCls=oppB.score>=0?'r-pos':'r-neg';
+    details+=`<div style="cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="color-dot" style="background:${chex[c]};width:14px;height:14px"></span>
+        <span style="flex:1"></span>
+        <span class="${myB.count?myCls:'r-muted'}" style="width:40px;text-align:right;font-weight:700">${myScore}</span>
+        <span style="opacity:.2;font-size:10px">│</span>
+        <span class="${oppB.count?oppCls:'r-muted'}" style="width:40px;text-align:right;font-weight:700">${oppScore}</span>
+        <span style="font-size:10px;opacity:.3">▼</span>
+      </div>
+    </div>`;
+    // Expanded detail
+    details+=`<div style="display:none;padding:0 0 8px">`;
+    const myR=receipt(myB,c), oppR=receipt(oppB,c);
+    if(myR||oppR){
+      details+=`<div style="display:flex;gap:8px">`;
+      details+=`<div style="flex:1">${myR?`<div class="receipt"><div class="r-header"><span class="r-title" style="opacity:.5;font-size:10px">YOU</span></div>${myR}</div>`:'<div class="receipt" style="opacity:.3;text-align:center;padding:16px 0">No expedition</div>'}</div>`;
+      details+=`<div style="flex:1">${oppR?`<div class="receipt"><div class="r-header"><span class="r-title" style="opacity:.5;font-size:10px">OPP</span></div>${oppR}</div>`:'<div class="receipt" style="opacity:.3;text-align:center;padding:16px 0">No expedition</div>'}</div>`;
+      details+=`</div>`;
+    }
+    details+=`</div>`;
   });
-  html+=`<tr class="total-row"><td>Total</td><td class="${my.total>=opp.total?'winner':''}">${my.total}</td><td class="${opp.total>=my.total?'winner':''}">${opp.total}</td></tr>`;
-  document.getElementById('score-table').innerHTML=html;
+  document.getElementById('score-details').innerHTML=details;
   showScreen('gameover-screen');
 }
 
