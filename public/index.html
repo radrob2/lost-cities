@@ -721,79 +721,93 @@ function showGameOver(){
   const w=document.getElementById('winner-text');
   w.textContent=my.total>opp.total?'Victory!':my.total<opp.total?'Defeated':'A Draw!';
   const chex={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
+  const cls=v=>v>=0?'r-pos':'r-neg';
+  const sign=v=>v>=0?'+'+v:''+v;
+  const dash='<span class="r-muted">—</span>';
 
-  // Summary: big totals
+  // Summary: aligned with columns below
   const myWin=my.total>=opp.total;
   document.getElementById('score-summary').innerHTML=`
-    <div style="text-align:center"><div style="font-size:12px;opacity:.6">You</div><div style="font-family:'Cinzel',serif;font-size:28px;font-weight:900;color:${myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${my.total}</div></div>
-    <div style="text-align:center;align-self:center;opacity:.3;font-size:18px">vs</div>
-    <div style="text-align:center"><div style="font-size:12px;opacity:.6">Opp</div><div style="font-family:'Cinzel',serif;font-size:28px;font-weight:900;color:${!myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${opp.total}</div></div>`;
+    <div style="display:flex;align-items:baseline;gap:0;width:100%">
+      <span style="flex:1"></span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;opacity:.5">You</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:11px;opacity:.5">Opp</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:0;width:100%">
+      <span style="flex:1;font-family:'Cinzel',serif;font-size:13px;opacity:.5">Total</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:${myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${my.total}</span>
+      <span style="width:50px;text-align:right;font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:${!myWin?'var(--gold-bright)':'var(--parchment-dark)'}">${opp.total}</span>
+    </div>`;
 
-  // Per-color receipts
-  function receipt(b,color){
-    if(b.count===0)return null;
-    const cls=v=>v>=0?'r-pos':'r-neg';
-    const sign=v=>v>=0?'+'+v:''+v;
-    let r='';
-    // Cards played
-    const wagerStr=Array(b.wagers).fill('🤝').join(' ');
-    const valStr=b.values.join(' + ');
-    r+=`<div class="r-cards">${wagerStr}${wagerStr&&valStr?' ':''}${valStr}</div>`;
-    // Card total
-    if(b.values.length>0) r+=`<div class="r-line"><span>Card total</span><span>${b.sum}</span></div>`;
-    // Expedition cost
-    r+=`<div class="r-line"><span>Expedition cost</span><span class="r-neg">−20</span></div>`;
-    r+=`<div class="r-sep"></div>`;
-    // Subtotal
-    r+=`<div class="r-line"><span>Subtotal</span><span class="${cls(b.subtotal)}">${b.subtotal}</span></div>`;
-    // Wagers
-    for(let i=0;i<b.wagers;i++){
-      r+=`<div class="r-line"><span>Wager 🤝</span><span class="${cls(b.subtotal)}">${sign(b.subtotal)}</span></div>`;
-    }
-    if(b.wagers>0){
-      r+=`<div class="r-sep"></div>`;
-      const afterW=b.subtotal*(1+b.wagers);
-      r+=`<div class="r-line"><span></span><span class="${cls(afterW)}">${afterW}</span></div>`;
-    }
-    // Bonus
-    if(b.bonus){
-      r+=`<div class="r-line"><span class="r-bonus">8+ card bonus</span><span class="r-bonus">+20</span></div>`;
-    }
-    // Total
-    r+=`<div class="r-sep-bold"></div>`;
-    r+=`<div class="r-line" style="font-weight:700"><span>Total</span><span class="${cls(b.score)}" style="font-size:16px">${b.score}</span></div>`;
-    return r;
+  // Unified receipt row helper
+  function row(label,myVal,oppVal,myClass,oppClass,style){
+    style=style||'';
+    return `<div class="r-line" style="${style}"><span style="flex:1">${label}</span><span style="width:50px;text-align:right" class="${myClass||''}">${myVal}</span><span style="width:50px;text-align:right" class="${oppClass||''}">${oppVal}</span></div>`;
   }
 
   let details='';
   COLORS.forEach(c=>{
-    const myB=my.breakdown[c], oppB=opp.breakdown[c];
-    if(myB.count===0&&oppB.count===0)return;
-    // Collapsed row
-    const myScore=myB.count>0?myB.score:'—';
-    const oppScore=oppB.count>0?oppB.score:'—';
-    const myCls=myB.score>=0?'r-pos':'r-neg';
-    const oppCls=oppB.score>=0?'r-pos':'r-neg';
+    const m=my.breakdown[c], o=opp.breakdown[c];
+    if(m.count===0&&o.count===0)return;
+    const mScore=m.count>0?m.score:'—';
+    const oScore=o.count>0?o.score:'—';
+
+    // Collapsed row: dot ▼ ... scores
     details+=`<div style="cursor:pointer;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)" onclick="var d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'">
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center">
         <span class="color-dot" style="background:${chex[c]};width:14px;height:14px"></span>
+        <span style="font-size:10px;opacity:.3;margin-left:4px">▼</span>
         <span style="flex:1"></span>
-        <span class="${myB.count?myCls:'r-muted'}" style="width:40px;text-align:right;font-weight:700">${myScore}</span>
-        <span style="opacity:.2;font-size:10px">│</span>
-        <span class="${oppB.count?oppCls:'r-muted'}" style="width:40px;text-align:right;font-weight:700">${oppScore}</span>
-        <span style="font-size:10px;opacity:.3">▼</span>
+        <span class="${m.count?cls(m.score):'r-muted'}" style="width:50px;text-align:right;font-weight:700">${mScore}</span>
+        <span class="${o.count?cls(o.score):'r-muted'}" style="width:50px;text-align:right;font-weight:700">${oScore}</span>
       </div>
     </div>`;
-    // Expanded detail
-    details+=`<div style="display:none;padding:0 0 8px">`;
-    const myR=receipt(myB,c), oppR=receipt(oppB,c);
-    if(myR||oppR){
-      details+=`<div style="display:flex;gap:8px">`;
-      details+=`<div style="flex:1">${myR?`<div class="receipt"><div class="r-header"><span class="r-title" style="opacity:.5;font-size:10px">YOU</span></div>${myR}</div>`:'<div class="receipt" style="opacity:.3;text-align:center;padding:16px 0">No expedition</div>'}</div>`;
-      details+=`<div style="flex:1">${oppR?`<div class="receipt"><div class="r-header"><span class="r-title" style="opacity:.5;font-size:10px">OPP</span></div>${oppR}</div>`:'<div class="receipt" style="opacity:.3;text-align:center;padding:16px 0">No expedition</div>'}</div>`;
-      details+=`</div>`;
+
+    // Expanded unified receipt
+    details+=`<div style="display:none"><div class="receipt">`;
+
+    // Cards row
+    const mCards=m.count>0?(Array(m.wagers).fill('🤝').join('')+(m.values.length?' '+m.values.join('+'):'')):'';
+    const oCards=o.count>0?(Array(o.wagers).fill('🤝').join('')+(o.values.length?' '+o.values.join('+'):'')):'';
+    details+=`<div class="r-line" style="font-size:11px;opacity:.6;margin-bottom:4px"><span style="flex:1"></span><span style="width:50px;text-align:right">${mCards||dash}</span><span style="width:50px;text-align:right">${oCards||dash}</span></div>`;
+
+    // Card total
+    details+=row('Card total',m.count?m.sum:dash,o.count?o.sum:dash);
+
+    // Expedition cost
+    details+=row('Expedition cost',m.count?'−20':dash,o.count?'−20':dash,m.count?'r-neg':'',o.count?'r-neg':'');
+    details+=`<div class="r-sep"></div>`;
+
+    // Subtotal
+    details+=row('Subtotal',m.count?m.subtotal:dash,o.count?o.subtotal:dash,m.count?cls(m.subtotal):'',o.count?cls(o.subtotal):'');
+
+    // Wagers — max of both sides
+    const maxW=Math.max(m.wagers,o.wagers);
+    for(let i=0;i<maxW;i++){
+      const mV=i<m.wagers?sign(m.subtotal):dash;
+      const oV=i<o.wagers?sign(o.subtotal):dash;
+      const mC=i<m.wagers?cls(m.subtotal):'';
+      const oC=i<o.wagers?cls(o.subtotal):'';
+      details+=row('🤝',mV,oV,mC,oC);
     }
-    details+=`</div>`;
+
+    if(maxW>0){
+      details+=`<div class="r-sep"></div>`;
+      const mAW=m.count?m.subtotal*(1+m.wagers):null;
+      const oAW=o.count?o.subtotal*(1+o.wagers):null;
+      details+=row('',mAW!==null?mAW:dash,oAW!==null?oAW:dash,mAW!==null?cls(mAW):'',oAW!==null?cls(oAW):'');
+    }
+
+    // Bonus
+    if(m.bonus||o.bonus){
+      details+=row('8+ bonus',m.bonus?'+20':dash,o.bonus?'+20':dash,m.bonus?'r-bonus':'',o.bonus?'r-bonus':'');
+    }
+
+    // Total
+    details+=`<div class="r-sep-bold"></div>`;
+    details+=row('Total',m.count?m.score:dash,o.count?o.score:dash,m.count?cls(m.score):'',o.count?cls(o.score):'','font-weight:700;font-size:15px');
+
+    details+=`</div></div>`;
   });
   document.getElementById('score-details').innerHTML=details;
   showScreen('gameover-screen');
