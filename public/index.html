@@ -83,7 +83,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.card-back::after{content:'';position:absolute;inset:4px;border:1px solid rgba(212,168,67,.2);border-radius:4px}
 /* Card flip animation container */
 .flip-container{perspective:600px;position:fixed;z-index:9999;pointer-events:none}
-.flip-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .3s cubic-bezier(.2,.8,.3,1)}
+.flip-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.2,.8,.3,1)}
 .flip-inner .flip-front,.flip-inner .flip-back{position:absolute;inset:0;backface-visibility:hidden}
 .flip-inner .flip-back{transform:rotateY(180deg)}
 
@@ -437,7 +437,7 @@ function animateCard(cardId, fromRect, clone, flip){
     faceClone.className=faceClone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
     wrapper=document.createElement('div');
     wrapper.className='flip-container';
-    wrapper.style.cssText=`left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;transition:left .3s cubic-bezier(.2,.8,.3,1),top .3s cubic-bezier(.2,.8,.3,1);`;
+    wrapper.style.cssText=`left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;transition:left .5s cubic-bezier(.2,.8,.3,1),top .5s cubic-bezier(.2,.8,.3,1);`;
     const inner=document.createElement('div');
     inner.className='flip-inner';
     const backSide=document.createElement('div');
@@ -458,14 +458,14 @@ function animateCard(cardId, fromRect, clone, flip){
     inner.addEventListener('transitionend',done,{once:true});
   } else {
     clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-    clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.3,1);margin:0;`;
+    clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform .5s cubic-bezier(.2,.8,.3,1);margin:0;`;
     wrapper=clone;
     document.body.appendChild(clone);
     clone.offsetHeight;
     clone.style.transform=`translate(${toRect.left-fromRect.left}px,${toRect.top-fromRect.top}px)`;
     clone.addEventListener('transitionend',done,{once:true});
   }
-  setTimeout(done,400);
+  setTimeout(done,600);
 }
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
