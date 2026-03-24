@@ -701,6 +701,9 @@ function renderBoard(){
   const myRow=document.getElementById('my-row');
   const singleContainer=document.getElementById('single-pile-area');
 
+  // Undo state
+  const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
+
   // Single pile
   if(variant==='single'){
     singleContainer.style.display='inline-block';
@@ -728,9 +731,6 @@ function renderBoard(){
     singleContainer.style.display='none';
     discardRow.style.display='flex';
   }
-
-  // Undo state
-  const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
 
   // Card jitter — deterministic per card identity
   function jitter(card,i){
