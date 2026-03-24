@@ -14,6 +14,7 @@
   --bg:#120c07;--parchment:#f0e0c0;--parchment-dark:#b8a888;
   --gold:#d4a843;--gold-bright:#f0c850;
   --card-w:48px;--card-h:78px;
+  --anim-dur:0.5s;--anim-ease:cubic-bezier(.2,.8,.3,1);
 }
 html,body{height:100%;overflow:hidden;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment)}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -83,7 +84,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.card-back::after{content:'';position:absolute;inset:4px;border:1px solid rgba(212,168,67,.2);border-radius:4px}
 /* Card flip animation container */
 .flip-container{perspective:600px;position:fixed;z-index:9999;pointer-events:none}
-.flip-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 3s cubic-bezier(.2,.8,.3,1)}
+.flip-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform var(--anim-dur) var(--anim-ease)}
 .flip-inner .flip-front,.flip-inner .flip-back{position:absolute;inset:0;backface-visibility:hidden}
 .flip-inner .flip-back{transform:rotateY(180deg)}
 
@@ -436,8 +437,10 @@ function animateCard(cardId, fromRect, clone, flip){
     if(el) el.style.opacity='';
     checkAnimationQueue();
   }
-  const DUR='3s';
-  const EASE='cubic-bezier(.2,.8,.3,1)';
+  const styles=getComputedStyle(document.documentElement);
+  const DUR=styles.getPropertyValue('--anim-dur').trim();
+  const EASE=styles.getPropertyValue('--anim-ease').trim();
+  const durMs=parseFloat(DUR)*1000;
   let wrapper;
   if(flip){
     // Build a 3D flip container: front=card-back, back=face card
@@ -468,14 +471,14 @@ function animateCard(cardId, fromRect, clone, flip){
   } else {
     // Non-flip: use translate-based animation
     clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-    clone.style.cssText=`position:fixed;left:${toRect.left}px;top:${toRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform ${DUR} ${EASE};margin:0;transform:translate(${fromRect.left-toRect.left}px,${fromRect.top-toRect.top}px);`;
+    clone.style.cssText=`position:fixed;left:${toRect.left}px;top:${toRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform var(--anim-dur) var(--anim-ease);margin:0;transform:translate(${fromRect.left-toRect.left}px,${fromRect.top-toRect.top}px);`;
     wrapper=clone;
     document.body.appendChild(clone);
     clone.offsetHeight;
     clone.style.transform='translate(0,0)';
     clone.addEventListener('transitionend',e=>{if(e.target===clone)done();},{once:true});
   }
-  setTimeout(done,3200);
+  setTimeout(done,durMs+200);
 }
 function isAnimating(){return Object.keys(animatingCards).length>0}
 function onAnimationsDone(cb){
