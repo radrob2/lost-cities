@@ -671,7 +671,10 @@ function renderGame(){
 
   // Deck count
   const deckLen = getCards(gameState,'deck').length;
-  document.getElementById('deck-count-label').textContent=deckLen+' left';
+  const deckLabel=document.getElementById('deck-count-label');
+  deckLabel.textContent=deckLen+' left';
+  deckLabel.style.opacity=deckLen<=10?'1':'.5';
+  deckLabel.style.color=deckLen<=5?'#e74c3c':deckLen<=10?'var(--gold)':'var(--parchment-dark)';
 
   // Phase bar
   const pb=document.getElementById('phase-bar');
