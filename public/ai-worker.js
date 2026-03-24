@@ -204,6 +204,10 @@ function greedyTurn(sim, player){
         // That's the value of the whole sequence; approximate single card's contribution
         // by dividing by sequence length (each card matters roughly equally)
         if(a.count>1) cost=cost/a.count;
+        // Floor at card's face value — high cards are always costly to discard.
+        // Without this, the -20 expedition penalty makes unstarted-expedition cards
+        // appear worthless (a lone 10 scores -10, so cost = -10 = "free to discard").
+        cost=Math.max(cost, card.value||3);
       }
     }
 
