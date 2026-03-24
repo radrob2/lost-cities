@@ -62,6 +62,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack{position:relative;width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);overflow:visible}
 .expedition-stack .card{position:absolute;left:5px;top:5px}
 .card.empty-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
+.card-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);display:flex;align-items:center;justify-content:center;position:relative}
 .middle-row{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0}
 
 /* CARDS */
@@ -562,11 +563,11 @@ function renderBoard(){
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
       if(isUndoDiscard){
-        return `<div class="card-col"><div onclick="undoLastPlay()" style="position:relative">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div></div>`;
+        return `<div class="card-col"><div class="card-slot" onclick="undoLastPlay()">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div></div>`;
       }
       const extra=canDraw?'target':(canDiscard?'target':'');
       const handler=inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`;
-      return `<div class="card-col"><div onclick="${handler}" style="position:relative">${cardHTML(topCard,extra)}${canDraw?'<span class="target-label">Draw</span>':''}${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+      return `<div class="card-col"><div class="card-slot" onclick="${handler}">${cardHTML(topCard,extra)}${canDraw?'<span class="target-label">Draw</span>':''}${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
     }).join('');
   }
 
@@ -754,9 +755,8 @@ function showGameOver(){
   const my=mySlot==='player1'?s1:s2;
   const opp=mySlot==='player1'?s2:s1;
   const chex={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
-  const glow='text-shadow:0 0 6px rgba(212,168,67,.8),0 0 16px rgba(212,168,67,.5),0 0 30px rgba(212,168,67,.3)';
   const w=document.getElementById('winner-text');
-  if(my.total>opp.total){w.textContent='Victory!';w.style.cssText='color:var(--gold-bright);'+glow;}
+  if(my.total>opp.total){w.textContent='Victory!';w.style.cssText='color:var(--gold-bright);';}
   else if(my.total<opp.total){w.textContent='Defeated';w.style.cssText='color:#e07060;';}
   else{w.textContent='A Draw!';w.style.cssText='color:var(--parchment);';}
   const neg=v=>v<0?'r-neg':'';
@@ -767,7 +767,7 @@ function showGameOver(){
   const myWin=my.total>opp.total;
   const oppWin=opp.total>my.total;
   function winStyle(score,isW){
-    if(isW) return score<0?`class="r-neg r-winner" style="${glow}"`:`class="r-pos r-winner" style="${glow}"`;
+    if(isW) return score<0?'class="r-neg r-winner"':'class="r-pos r-winner"';
     return score<0?'class="r-neg"':'class="r-muted"';
   }
 
@@ -778,7 +778,7 @@ function showGameOver(){
 
   // Column headers
   let html=`<div class="r-line sc-row" style="justify-content:center;font-size:15px;font-family:'Cinzel',serif;padding-bottom:8px;color:var(--parchment)">
-    <span style="flex:1;text-align:left;${myWin?'color:var(--gold);'+glow:''}">You</span><span style="min-width:100px;text-align:center;padding:0 6px"></span><span style="flex:1;text-align:right;${oppWin?'color:var(--gold);'+glow:''}">Opp</span></div>`;
+    <span style="flex:1;text-align:left;${myWin?'color:var(--gold-bright)':''}">You</span><span style="min-width:100px;text-align:center;padding:0 6px"></span><span style="flex:1;text-align:right;${oppWin?'color:var(--gold-bright)':''}">Opp</span></div>`;
 
   // Color rows
   let colorIdx=0;
