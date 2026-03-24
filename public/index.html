@@ -493,6 +493,8 @@ function checkAnimationQueue(){
     gameState=data;
     renderGame();
     if(data.status==='finished') showGameOver();
+    // If no animation started (e.g. duplicate state), process next immediately
+    if(!isAnimating() && animationQueue.length>0) checkAnimationQueue();
   }
 }
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
@@ -819,7 +821,9 @@ async function playToExpedition(color){
   updates['justDiscarded']=false;
   lastPlayedCard={card:selectedCard,to:'expedition',color};
   selectedCard=null;
-  await roomRef.child('game').update(updates);
+  // Render immediately so animation starts before any async callback
+  renderGame();
+  roomRef.child('game').update(updates);
 }
 
 async function discardTo(color){
@@ -839,7 +843,9 @@ async function discardTo(color){
   updates['lastDiscardedColor']=color;
   lastPlayedCard={card:selectedCard,to:'discard',color};
   selectedCard=null;
-  await roomRef.child('game').update(updates);
+  // Render immediately so animation starts before any async callback
+  renderGame();
+  roomRef.child('game').update(updates);
 }
 
 async function drawFromDeck(){
@@ -863,7 +869,9 @@ async function drawFromDeck(){
   updates['justDiscarded']=false;
   if(deck.length===0) updates['status']='finished';
   lastPlayedCard=null;
-  await roomRef.child('game').update(updates);
+  // Render immediately so animation starts before any async callback
+  renderGame();
+  roomRef.child('game').update(updates);
 }
 
 // SINGLE PILE VARIANT
@@ -881,7 +889,8 @@ async function discardToSingle(){
   updates['justDiscarded']=true;
   lastPlayedCard={card:selectedCard,to:'single',color:selectedCard.color};
   selectedCard=null;
-  await roomRef.child('game').update(updates);
+  renderGame();
+  roomRef.child('game').update(updates);
 }
 
 async function drawFromSingle(){
@@ -903,7 +912,8 @@ async function drawFromSingle(){
   updates['phase']='play';
   updates['justDiscarded']=false;
   lastPlayedCard=null;
-  await roomRef.child('game').update(updates);
+  renderGame();
+  roomRef.child('game').update(updates);
 }
 
 async function drawFromDiscard(color){
@@ -925,7 +935,8 @@ async function drawFromDiscard(color){
   updates['phase']='play';
   lastPlayedCard=null;
   updates['lastDiscardedColor']=null;
-  await roomRef.child('game').update(updates);
+  renderGame();
+  roomRef.child('game').update(updates);
 }
 
 // ===== SCORING =====
@@ -1250,7 +1261,7 @@ drawFromDeck=async function(){
   if(deck.length===0)u['status']='finished';
   lastPlayedCard=null;
   localUpdate(u);
-  if(gameState.status!=='finished')setTimeout(()=>aiTurn(),800);
+  if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
 };
 
 const _origDrawFromDiscard=drawFromDiscard;
@@ -1264,7 +1275,7 @@ drawFromDiscard=async function(color){
   const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
   lastPlayedCard=null;
   localUpdate(u);
-  if(gameState.status!=='finished')setTimeout(()=>aiTurn(),800);
+  if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
 };
 
 const _origDiscardToSingle=discardToSingle;
@@ -1290,7 +1301,7 @@ drawFromSingle=async function(){
   const u={};u['singlePile']=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['justDiscarded']=false;
   lastPlayedCard=null;
   localUpdate(u);
-  if(gameState.status!=='finished')setTimeout(()=>aiTurn(),800);
+  if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
 };
 
 // AI TURN LOGIC
@@ -1358,8 +1369,8 @@ function aiTurn(){
   u['phase']='draw';
   localUpdate(u);
 
-  // DRAW PHASE: decide where to draw from (after short delay)
-  setTimeout(()=>{
+  // DRAW PHASE: wait for play animation, then draw
+  onAnimationsDone(()=>{
     if(gameState.status==='finished')return;
     const u2={};
 
@@ -1412,7 +1423,7 @@ function aiTurn(){
     u2['hands/player2']=aiHand;
     u2['currentTurn']='player1';u2['phase']='play';u2['lastDiscardedColor']=null;u2['justDiscarded']=false;
     localUpdate(u2);
-  },600);
+  });
 }
 
 // Override playAgain and leaveGame for AI mode
