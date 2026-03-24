@@ -1376,10 +1376,13 @@ function getAIWorker(){
   return aiWorker;
 }
 
+let aiThinking=false;
 function aiTurn(){
+  if(aiThinking)return;
   if(gameState.status==='finished'||gameState.currentTurn!=='player2')return;
   const hand=getCards(gameState,'hands','player2');
   if(hand.length===0)return;
+  aiThinking=true;
 
   // Show thinking indicator
   const oppNameEl=document.getElementById('opponent-name');
@@ -1405,10 +1408,10 @@ function aiTurn(){
 
   const worker=getAIWorker();
   worker.onmessage=function(e){
+    aiThinking=false;
     oppNameEl.textContent=origName;
     const {result,elapsed}=e.data;
     if(!result){
-      // Fallback: discard first card, draw from deck
       aiFallbackTurn();
       return;
     }
@@ -1433,6 +1436,7 @@ function aiTurn(){
 
   worker.onerror=function(err){
     console.error('AI worker error:',err);
+    aiThinking=false;
     oppNameEl.textContent=origName;
     aiFallbackTurn();
   };
