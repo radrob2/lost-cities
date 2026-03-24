@@ -1337,40 +1337,134 @@ function aiTurn(){
   if(gameState.status==='finished'||gameState.currentTurn!=='player2')return;
   const hand=getCards(gameState,'hands','player2');
   if(hand.length===0)return;
-  const aiExps=gameState.expeditions.player2||{};
 
-  // PLAY PHASE: decide what to play or discard
-  let bestPlay=null,bestScore=-999;
+  const deckLeft=getCards(gameState,'deck').length;
+  const totalCards=60; // 5 colors * 12 cards each
+  const gameProgress=1-(deckLeft/totalCards); // 0=start, 1=end
+  const isEarly=gameProgress<0.3, isMid=gameProgress>=0.3&&gameProgress<0.65, isLate=gameProgress>=0.65;
+
+  // Helper: estimate the value of an expedition (current + potential)
+  function expValue(color,player){
+    const exp=getCards(gameState,'expeditions',player,color);
+    if(exp.length===0)return{score:0,invested:false,wagers:0,sum:0,count:0};
+    const wagers=exp.filter(x=>x.value===0).length;
+    const nums=exp.filter(x=>x.value>0);
+    const sum=nums.reduce((s,v)=>s+v.value,0);
+    const score=(sum-20)*(1+wagers)+(exp.length>=8?20:0);
+    return{score,invested:true,wagers,sum,count:exp.length,topValue:exp.length?exp[exp.length-1].value:0};
+  }
+
+  // Helper: count how many playable cards we hold for a color
+  function cardsForColor(color){
+    return hand.filter(c=>c.color===color);
+  }
+
+  // Helper: estimate future value of committing to a color
+  function expeditionPotential(color){
+    const exp=getCards(gameState,'expeditions','player2',color);
+    const myCards=cardsForColor(color).filter(c=>canPlayOnExpedition(c,exp));
+    const wagers=exp.filter(x=>x.value===0).length;
+    const currentNums=exp.filter(x=>x.value>0);
+    // Simulate playing all playable cards
+    const allNums=[...currentNums.map(c=>c.value),...myCards.filter(c=>c.value>0).map(c=>c.value)].sort((a,b)=>a-b);
+    const allWagers=wagers+myCards.filter(c=>c.value===0).length;
+    const totalCount=exp.length+myCards.length;
+    const sum=allNums.reduce((s,v)=>s+v,0);
+    const projected=(sum-20)*(1+allWagers)+(totalCount>=8?20:0);
+    return{projected,cardCount:myCards.length,totalCount};
+  }
+
+  // PLAY PHASE
+  let bestPlay=null,bestScore=-9999;
+
   for(const card of hand){
     const exp=getCards(gameState,'expeditions','player2',card.color);
+    const ev=expValue(card.color,'player2');
+
     if(canPlayOnExpedition(card,exp)){
-      // Score: prefer extending expeditions already started, prefer higher cards
-      let score=card.value||1;
-      if(exp.length>0)score+=15; // bonus for continuing an expedition
-      if(card.value===0&&exp.length===0)score+=8; // wager on empty is ok early
-      if(card.value===0&&exp.length>0)score-=50; // wager after numbers is blocked by canPlay anyway
-      const deckLeft=getCards(gameState,'deck').length;
-      if(exp.length===0&&card.value>=7&&deckLeft<20)score-=10; // late game, don't start expensive expeditions
+      let score=0;
+      const pot=expeditionPotential(card.color);
+
+      if(ev.invested){
+        // Already committed to this color — strongly prefer continuing
+        score+=25;
+        score+=card.value||3; // higher cards add more points
+        // Extra bonus if we have more cards to play after this
+        score+=pot.cardCount*3;
+      } else {
+        // Starting a new expedition — evaluate carefully
+        if(card.value===0){
+          // Wager on empty expedition
+          if(isEarly){
+            // Good if we have cards to back it up
+            score+=pot.projected>0?15:2;
+            score+=pot.cardCount*4; // more backup cards = better
+          } else if(isMid){
+            score+=pot.projected>5?10:-5;
+          } else {
+            score-=10; // late game wager is risky
+          }
+        } else {
+          // Number card starting new expedition
+          const potential=pot.projected;
+          if(potential>0)score+=10+potential/3;
+          else if(isEarly&&pot.cardCount>=2)score+=5; // early game with backup
+          else score+=potential/3; // likely negative, will push score down
+
+          // Penalize starting expeditions late
+          if(isLate)score-=15;
+          if(isMid&&pot.cardCount<2)score-=8;
+        }
+      }
+
       if(score>bestScore){bestScore=score;bestPlay={action:'play',card,color:card.color}}
     }
   }
 
-  // If no good play (score < threshold), discard instead
-  if(!bestPlay||bestScore<3){
-    // Find least useful card to discard
-    let worstCard=null,worstScore=999;
+  // Evaluate discarding — find the safest card to throw away
+  if(!bestPlay||bestScore<5){
+    let worstCard=null,worstScore=9999;
     for(const card of hand){
-      const exp=getCards(gameState,'expeditions','player2',card.color);
-      let score=card.value||1;
-      if(exp.length>0)score+=20; // don't discard cards we're building on
-      if(card.value===0&&exp.length===0)score-=5; // wagers for unstarted expeditions are cheap to discard
-      // Check if opponent might want it
-      const oppExp=getCards(gameState,'expeditions','player1',card.color);
-      if(oppExp.length>0)score-=3; // slightly prefer discarding colors opponent isn't using... wait that's backwards
-      if(oppExp.length===0)score-=2; // safer to discard if opponent hasn't started this color
+      const ev=expValue(card.color,'player2');
+      const oppEv=expValue(card.color,'player1');
+      let score=0;
+
+      // How useful is this card to US?
+      if(ev.invested){
+        // We're building this color — very costly to discard
+        const exp=getCards(gameState,'expeditions','player2',card.color);
+        if(canPlayOnExpedition(card,exp)){
+          score+=40; // playable on our expedition, terrible to discard
+        } else {
+          score+=5; // can't play it anyway, less costly
+        }
+      } else {
+        // We haven't started this color
+        const pot=expeditionPotential(card.color);
+        if(isEarly&&pot.cardCount>=3&&pot.projected>0)score+=15; // promising hand, keep
+        else if(card.value===0)score+=isEarly?8:1; // wagers less valuable as game goes on
+        else score+=card.value/2; // higher cards slightly harder to discard
+      }
+
+      // How useful is this card to the OPPONENT?
+      if(oppEv.invested){
+        // Opponent is building this color — they might pick it up!
+        score-=12; // AVOID discarding cards opponent wants
+        if(card.value>oppEv.topValue)score-=5; // they can definitely play this
+      } else {
+        // Opponent hasn't started this color — safer to discard
+        score-=3;
+      }
+
+      // In classic mode, discarding creates a pickup opportunity for opponent
+      if(variant==='classic'&&oppEv.invested)score-=5;
+
       if(score<worstScore){worstScore=score;worstCard=card}
     }
-    if(worstCard){bestPlay={action:'discard',card:worstCard,color:worstCard.color}}
+    // Only discard if it's better than our best play option
+    if(worstCard&&(!bestPlay||worstScore<bestScore-5)){
+      bestPlay={action:'discard',card:worstCard,color:worstCard.color};
+    }
   }
 
   if(!bestPlay){bestPlay={action:'discard',card:hand[0],color:hand[0].color}}
@@ -1397,12 +1491,11 @@ function aiTurn(){
   u['phase']='draw';
   localUpdate(u);
 
-  // DRAW PHASE: wait for play animation, then draw
+  // DRAW PHASE
   onAnimationsDone(()=>{
     if(gameState.status==='finished')return;
     const u2={};
 
-    // Check discard piles for useful cards
     let bestDraw=null,bestDrawScore=-1;
     if(variant==='classic'){
       for(const c of COLORS){
@@ -1411,9 +1504,21 @@ function aiTurn(){
         if(pile.length===0)continue;
         const top=pile[pile.length-1];
         const exp=getCards(gameState,'expeditions','player2',c);
+        const ev=expValue(c,'player2');
+
         if(canPlayOnExpedition(top,exp)){
           let score=top.value||2;
-          if(exp.length>0)score+=10;
+          if(ev.invested){
+            score+=15; // great, fits our expedition
+            if(ev.count>=6)score+=5; // chasing the 8-card bonus
+          }
+          // Even if we haven't started, a high card from discard could be worth grabbing
+          if(!ev.invested&&top.value>=6){
+            const pot=expeditionPotential(c);
+            if(pot.cardCount>=2&&pot.projected>0)score+=8;
+          }
+          // Don't pick up cards that don't fit our strategy late game
+          if(isLate&&!ev.invested)score-=10;
           if(score>bestDrawScore){bestDrawScore=score;bestDraw={color:c,card:top}}
         }
       }
@@ -1422,16 +1527,18 @@ function aiTurn(){
       if(pile.length>0){
         const top=pile[pile.length-1];
         const exp=getCards(gameState,'expeditions','player2',top.color);
+        const ev=expValue(top.color,'player2');
         if(canPlayOnExpedition(top,exp)){
-          let score=top.value||2;if(exp.length>0)score+=10;
+          let score=top.value||2;
+          if(ev.invested)score+=15;
+          if(isLate&&!ev.invested)score-=10;
           if(score>bestDrawScore){bestDrawScore=score;bestDraw={single:true,card:top}}
         }
       }
     }
 
     const aiHand=getCards(gameState,'hands','player2');
-    // Draw from discard if valuable, otherwise draw from deck
-    if(bestDraw&&bestDrawScore>5){
+    if(bestDraw&&bestDrawScore>6){
       if(bestDraw.single){
         const pile=getCards(gameState,'singlePile');pile.pop();
         u2['singlePile']=pile;
