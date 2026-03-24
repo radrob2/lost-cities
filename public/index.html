@@ -648,17 +648,10 @@ function renderGame(){
 
   renderHand();
   renderBoard();
-  // Re-hide cards that are mid-animation or about to animate
-  for(const id in animatingCards){
-    const el=document.querySelector(`[data-id="${id}"]`);
-    if(el) el.style.opacity='0';
-  }
-  if(pendingAnim){
-    const el=document.querySelector(`[data-id="${pendingAnim.cardId}"]`);
-    if(el) el.style.opacity='0';
-  }
-  // Run FLIP animations after DOM update
-  requestAnimationFrame(flyCards);
+  // Run FLIP animations synchronously — no rAF gap means:
+  // 1. No frame where target card is visible before animation hides it
+  // 2. isAnimating() is true before next Firebase update can arrive
+  flyCards();
 }
 
 function renderHand(){
