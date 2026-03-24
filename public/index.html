@@ -789,10 +789,14 @@ function renderBoard(){
       return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
-    const so=isExp?22:getStackOffset(cards.length);
-    const stackH=`calc(var(--card-h) + ${(cards.length-1)*so+10}px)`;
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};transition:height .2s ease">${inner}</div></div>`;
+    const baseSo=getStackOffset(cards.length);
+    const expSo=28;
+    const stackH=`calc(var(--card-h) + ${(cards.length-1)*baseSo+10}px)`; // Height always uses compressed size
+    let inner=cards.map((card,i)=>{
+      const top=isExp?i*expSo+4:i*baseSo+4;
+      return `<div style="position:absolute;top:${top}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`;
+    }).join('');
+    return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div></div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -836,17 +840,19 @@ function renderBoard(){
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
-    const so=isExp?22:getStackOffset(canPlay?nextIdx+1:cards.length);
-    const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*so+10}px)`;
+    const baseSo=getStackOffset(canPlay?nextIdx+1:cards.length);
+    const expSo=28;
+    const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*baseSo+10}px)`; // Always compressed height
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      const top=isExp?i*expSo+4:i*baseSo+4;
+      return `<div style="position:absolute;top:${top}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*so+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
+    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*baseSo+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" onclick="${stackClick}"><div class="expedition-stack" style="height:${stackH};transition:height .2s ease">${inner}</div>`;
+    let html=`<div class="card-col" onclick="${stackClick}"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>`;
     return html+`</div>`;
   }).join('');
 }
