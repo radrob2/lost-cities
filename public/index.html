@@ -795,7 +795,7 @@ function renderBoard(){
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
-    const so=isExp?28:baseSo;
+    const so=isExp?18:baseSo;
     const stackH=`calc(var(--card-h) + ${(cards.length-1)*baseSo+10}px)`;
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div></div>`;
@@ -843,7 +843,7 @@ function renderBoard(){
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
     const baseSo=getStackOffset(canPlay?nextIdx+1:cards.length);
-    const so=isExp?28:baseSo;
+    const so=isExp?18:baseSo;
     const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*baseSo+10}px)`;
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
