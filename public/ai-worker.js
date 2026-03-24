@@ -860,13 +860,52 @@ function evaluate(gs, variant, simCount, genome){
     if(pairs[i].wins>best.wins) best=pairs[i];
   }
 
+  // Build diagnostic info
+  const sorted=[...pairs].sort((a,b)=>b.wins-a.wins);
+  const topN=sorted.slice(0,8).map(p=>({
+    action: p.p1.type+'_'+p.p1.color+'_'+(p.p1.card.value||'W'),
+    draw: p.p2.type+(p.p2.color?'_'+p.p2.color:''),
+    winRate: (p.wins/simsRan*100).toFixed(1)+'%',
+    wins: p.wins
+  }));
+
+  // Opponent expedition info
+  const oppExps={};
+  for(const c of COLORS){
+    const exp=gs.expeditions.player1[c]||[];
+    if(exp.length>0) oppExps[c]=exp.map(c=>c.value||'W').join(',');
+  }
+
+  // What AI is discarding and why it's dangerous
+  const chosen=best.p1;
+  let dangerNote='';
+  if(chosen.type==='discard'){
+    const oppExp=gs.expeditions.player1[chosen.color]||[];
+    if(oppExp.length>0){
+      dangerNote=`WARNING: Discarding ${chosen.card.value||'W'} of ${chosen.color} — opponent has ${oppExp.length} cards in ${chosen.color}!`;
+    }
+  }
+
+  // Genome rollout evaluation of the chosen discard (for comparison)
+  let genomeDiscardCost=null;
+  if(chosen.type==='discard'){
+    const sensors=buildSensors(gs, 'player2', genome, variant);
+    genomeDiscardCost=evaluateDiscard(genome, sensors, chosen.card, chosen.color).toFixed(2);
+    const oppGain=evaluateOppGain(genome, sensors, chosen.card, chosen.color).toFixed(2);
+    dangerNote+=` | Genome discard cost: ${genomeDiscardCost}, oppGain: ${oppGain}`;
+  }
+
   return {phase1: best.p1, phase2: best.p2, winRate: best.wins/simsRan,
           simsRan,
-          stats: pairs.map(p=>({
-            p1: p.p1.type+'_'+p.p1.color+'_'+(p.p1.card.value||'W'),
-            p2: p.p2.type+(p.p2.color?'_'+p.p2.color:''),
-            wr: (p.wins/simsRan*100).toFixed(1)+'%'
-          }))};
+          debug: {
+            hand: gs.hands.player2.map(c=>c.color[0].toUpperCase()+(c.value||'W')).join(' '),
+            oppExps,
+            deckSize: gs.deckSize,
+            chosen: chosen.type+'_'+chosen.color+'_'+(chosen.card.value||'W'),
+            chosenDraw: best.p2.type+(best.p2.color?'_'+best.p2.color:''),
+            dangerNote,
+            topMoves: topN,
+          }};
 }
 
 // ========== WORKER MESSAGE HANDLER ==========

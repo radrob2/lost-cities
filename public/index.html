@@ -1412,7 +1412,17 @@ function aiTurn(){
       aiFallbackTurn();
       return;
     }
-    console.log(`AI: ${result.phase1.type} ${result.phase1.color} ${result.phase1.card.value||'W'} → draw ${result.phase2.type}${result.phase2.color?' '+result.phase2.color:''} (${(result.winRate*100).toFixed(0)}% win, ${elapsed}ms)`);
+    // Rich decision logging
+    const d=result.debug;
+    console.group(`🤖 AI Turn (${elapsed}ms, ${result.simsRan} sims)`);
+    console.log(`Hand: ${d.hand}`);
+    console.log(`Deck: ${d.deckSize} cards left`);
+    console.log(`Opp expeditions:`, Object.keys(d.oppExps).length?d.oppExps:'(none)');
+    console.log(`CHOSE: ${d.chosen} → draw ${d.chosenDraw} (${(result.winRate*100).toFixed(1)}% win)`);
+    if(d.dangerNote) console.warn(d.dangerNote);
+    console.log('Top moves considered:');
+    console.table(d.topMoves);
+    console.groupEnd();
 
     // Execute phase 1
     executeAIPhase1(result.phase1, function(){
