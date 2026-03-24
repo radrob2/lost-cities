@@ -487,10 +487,9 @@ function checkAnimationQueue(){
   // Fire all waiting callbacks
   const cbs=animationDoneCallbacks.splice(0);
   cbs.forEach(cb=>cb());
-  // Process next queued state update
+  // Process next queued state update (one at a time so each gets animated)
   if(animationQueue.length>0){
-    const data=animationQueue.pop(); // take latest, skip intermediate states
-    animationQueue.length=0;
+    const data=animationQueue.shift();
     gameState=data;
     renderGame();
     if(data.status==='finished') showGameOver();
@@ -581,8 +580,8 @@ async function startGame(){
   const l=gRef.on('value',snap=>{
     const data=snap.val(); if(!data)return;
     if(isAnimating()){
-      // Queue the update — only latest matters
-      animationQueue=[data];
+      // Queue update — keep all so each gets its own animation beat
+      animationQueue.push(data);
     } else {
       gameState=data; renderGame();
       if(data.status==='finished')showGameOver();
@@ -649,9 +648,13 @@ function renderGame(){
 
   renderHand();
   renderBoard();
-  // Re-hide cards that are mid-animation (DOM was rebuilt by render)
+  // Re-hide cards that are mid-animation or about to animate
   for(const id in animatingCards){
     const el=document.querySelector(`[data-id="${id}"]`);
+    if(el) el.style.opacity='0';
+  }
+  if(pendingAnim){
+    const el=document.querySelector(`[data-id="${pendingAnim.cardId}"]`);
     if(el) el.style.opacity='0';
   }
   // Run FLIP animations after DOM update
