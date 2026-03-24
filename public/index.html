@@ -798,12 +798,12 @@ function showGameOver(){
     // Between-color separator (skip first)
     if(idx>0) html+=`<div class="r-sep-color"></div>`;
 
-    // Collapsed: scores flanking color dot (same font-size as expanded)
+    // Collapsed: scores flanking color dot (match expanded total row size)
     html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
-      <div class="r-line sc-row" style="justify-content:center">
-        <span style="flex:1;text-align:left;font-weight:700" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
+      <div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:16px">
+        <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
         <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
-        <span style="flex:1;text-align:right;font-weight:700" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
+        <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
       </div>
     </div>`;
 
