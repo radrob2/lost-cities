@@ -1392,7 +1392,7 @@ function aiTurn(){
     aiFallbackTurn();
   };
 
-  worker.postMessage({gameState:snapshot, variant, simCount:200});
+  worker.postMessage({gameState:snapshot, variant, simCount:500});
 }
 
 function executeAIPhase1(p1, onDone){

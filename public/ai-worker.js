@@ -152,30 +152,43 @@ function greedyTurn(sim, player){
     const a=analysis[card.color];
     let score=0;
 
+    // Key rule: if this card is NOT the lowest playable in our sequence,
+    // playing it blocks all lower cards. Heavily penalize this.
+    const isLowest=a.playable.length>0 && card.id===a.playable[0].id;
+    const blockedCards=isLowest? 0 : a.playable.filter(c=>c.value>0 && c.value<card.value).length;
+
     if(exp.length>0){
       // Extending existing expedition
       score=20+(card.value||3);
-      if(exp.length>=6) score+=8; // chasing 8-card bonus
-
-      // Play the lowest playable card first to preserve flexibility
-      // (playing 4 before 7 lets us still play 5,6 if drawn)
-      if(a.playable.length>0 && card.id===a.playable[0].id) score+=5;
+      if(exp.length>=6) score+=8;
+      if(isLowest) score+=5;
+      // Penalty for blocking lower cards we hold
+      score-=blockedCards*15;
     } else {
       // Starting new expedition — use sequence analysis
-      if(a.projected>0 && a.count>=2){
-        // We have a guaranteed positive sequence — worth starting
-        score=8+a.projected/4;
-        // Play lowest card first
-        if(card.id===a.playable[0].id) score+=5;
-      } else if(a.projected>0){
-        score=4+a.projected/5;
-      } else if(card.value===0 && a.count>=3){
-        // Wager with decent backup
-        score=5+a.count*2;
+      // Only evaluate this card as the START of the sequence if it's the lowest
+      if(isLowest){
+        if(a.projected>0 && a.count>=2){
+          score=8+a.projected/4;
+        } else if(a.projected>0){
+          score=4+a.projected/5;
+        } else if(card.value===0 && a.count>=3){
+          score=5+a.count*2;
+        } else {
+          score=a.projected/3;
+        }
       } else {
-        score=a.projected/3; // likely negative
+        // Playing a non-lowest card to start = blocks lower cards
+        // Compute projected score for just this card and those above it
+        const aboveCards=a.playable.filter(c=>c.value>=card.value || c.value===0);
+        const aboveSum=aboveCards.filter(c=>c.value>0).reduce((s,c)=>s+c.value,0);
+        const aboveWagers=aboveCards.filter(c=>c.value===0).length;
+        const aboveProj=(aboveSum-20)*(1+aboveWagers);
+        score=aboveProj>0? 2+aboveProj/5 : aboveProj/2;
+        // Extra penalty for wasting the blocked cards
+        const blockedSum=a.playable.filter(c=>c.value>0 && c.value<card.value).reduce((s,c)=>s+c.value,0);
+        score-=blockedSum/2;
       }
-      // Fewer cards in deck = less time to build, penalize new starts
       if(sim.deck.length<15) score-=8;
       if(sim.deck.length<8) score-=8;
     }
@@ -190,9 +203,17 @@ function greedyTurn(sim, player){
     let val=card.value||1;
     if(exp.length>0) val+=30; // keep cards for active expeditions
     if(exp.length>0 && canPlay(card,exp)) val+=20;
-    // Don't feed opponent
+    // Don't feed opponent — check if they could actually play this card
     const oppExp=sim.expeditions[other][card.color];
-    if(oppExp.length>0) val+=10;
+    if(oppExp.length>0){
+      val+=10;
+      if(canPlay(card,oppExp)){
+        val+=15; // opponent can play this immediately — very dangerous
+        // Extra penalty for wagered expeditions
+        const oppWagers=oppExp.filter(x=>x.value===0).length;
+        if(oppWagers>0) val+=oppWagers*8; // multiplied gain for opponent
+      }
+    }
     if(val<discScore){discScore=val; discIdx=i;}
   }
 
@@ -227,10 +248,24 @@ function greedyTurn(sim, player){
       if(pile.length===0) continue;
       const top=pile[pile.length-1];
       const exp=sim.expeditions[player][c];
+      const oppExp=sim.expeditions[other][c];
+
       if(canPlay(top,exp)){
         let s=top.value||2;
         if(exp.length>0) s+=12;
+        // Bonus: deny opponent a useful card (draw it before they can)
+        if(oppExp.length>0 && canPlay(top,oppExp)){
+          s+=8;
+          const oppWagers=oppExp.filter(x=>x.value===0).length;
+          if(oppWagers>0) s+=oppWagers*4;
+        }
         if(s>bestDS){bestDS=s; bestDC=c;}
+      } else if(oppExp.length>0 && canPlay(top,oppExp)){
+        // Can't play it ourselves, but drawing it denies opponent
+        // Only worth it if opponent would gain significantly
+        const oppWagers=oppExp.filter(x=>x.value===0).length;
+        let s=(top.value||2)+oppWagers*5;
+        if(s>bestDS && s>8){bestDS=s; bestDC=c;} // high threshold — only deny high-value cards
       }
     }
     if(bestDC && bestDS>6){
@@ -358,22 +393,23 @@ function evaluate(gs, variant, simCount){
     }
   }
 
-  // Run simulations
+  // Run simulations with shared deals (same random deal for all action pairs)
+  // This dramatically reduces variance when comparing actions.
+  const minSims=Math.min(simCount, 80); // minimum before early stopping
+  let simsRan=0;
   for(let s=0;s<simCount;s++){
-    // Sample a deal: randomly distribute unknown cards to opponent hand + deck
+    simsRan++;
     const shuffled=shuffle([...pool]);
     const oppHand=shuffled.slice(0, oppHandSize);
     const deck=shuffled.slice(oppHandSize);
 
     for(const pair of pairs){
-      // Create simulation state
       const sim=createSim(gs, oppHand, deck, variant);
 
       // Apply phase 1
       const p1=pair.p1;
-      // Find card in sim hand by matching id
       const cardIdx=sim.hands.player2.findIndex(c=>c.id===p1.card.id);
-      if(cardIdx===-1) continue; // shouldn't happen
+      if(cardIdx===-1) continue;
       const playedCard=sim.hands.player2.splice(cardIdx,1)[0];
 
       if(p1.type==='play'){
@@ -402,7 +438,6 @@ function evaluate(gs, variant, simCount){
         if(sim.singlePile.length>0) sim.hands.player2.push(sim.singlePile.pop());
       }
 
-      // Rollout from opponent's turn
       if(gameOver){
         const s1=scoreExpeditions(sim.expeditions.player1);
         const s2=scoreExpeditions(sim.expeditions.player2);
@@ -410,6 +445,21 @@ function evaluate(gs, variant, simCount){
       } else {
         pair.wins+=rollout(sim,'player1');
       }
+    }
+
+    // Early stopping: if one action is dominating after enough samples,
+    // don't waste time on more simulations
+    if(s>=minSims && s%20===0){
+      let best1=0, best2=0;
+      for(const p of pairs){
+        if(p.wins>best1){best2=best1; best1=p.wins;}
+        else if(p.wins>best2) best2=p.wins;
+      }
+      const n=s+1;
+      // If leader is ahead by >4 standard deviations, stop early
+      const gap=(best1-best2)/n;
+      const se=Math.sqrt(0.25/n); // worst-case stderr for proportion
+      if(gap>4*se) break;
     }
   }
 
@@ -419,11 +469,12 @@ function evaluate(gs, variant, simCount){
     if(pairs[i].wins>best.wins) best=pairs[i];
   }
 
-  return {phase1: best.p1, phase2: best.p2, winRate: best.wins/simCount,
+  return {phase1: best.p1, phase2: best.p2, winRate: best.wins/simsRan,
+          simsRan,
           stats: pairs.map(p=>({
             p1: p.p1.type+'_'+p.p1.color+'_'+(p.p1.card.value||'W'),
             p2: p.p2.type+(p.p2.color?'_'+p.p2.color:''),
-            wr: (p.wins/simCount*100).toFixed(1)+'%'
+            wr: (p.wins/simsRan*100).toFixed(1)+'%'
           }))};
 }
 
@@ -431,7 +482,7 @@ function evaluate(gs, variant, simCount){
 self.onmessage=function(e){
   const {gameState, variant, simCount}=e.data;
   const t0=performance.now();
-  const result=evaluate(gameState, variant, simCount||200);
+  const result=evaluate(gameState, variant, simCount||500);
   const elapsed=Math.round(performance.now()-t0);
   self.postMessage({result, elapsed});
 };
