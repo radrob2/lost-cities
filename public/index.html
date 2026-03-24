@@ -107,6 +107,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.target{border:2px solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 12px rgba(212,168,67,.25)}
 .card-col>.card.target{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
 .target-label{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 6px rgba(212,168,67,.5);z-index:1}
+@keyframes card-pop{
+  0%{transform:scale(0.8);opacity:.5}
+  50%{transform:scale(1.05)}
+  100%{transform:scale(1);opacity:1}
+}
+.card-pop{animation:card-pop .25s ease-out}
 @keyframes target-pulse{from{box-shadow:0 0 6px rgba(212,168,67,.2)}to{box-shadow:0 0 16px rgba(212,168,67,.4)}}
 .card.undoable{border:2px dashed var(--gold)!important;cursor:pointer;animation:undo-pulse .8s ease-in-out infinite alternate}
 .undo-label{position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold);white-space:nowrap;letter-spacing:1px;text-transform:uppercase;opacity:.7}
@@ -381,66 +387,22 @@ function getCards(obj, ...keys){
 function genId(){return Math.random().toString(36).substr(2,9)}
 
 // ===== ANIMATION SYSTEM =====
-// Layer 1: CSS transitions handle layout shifts (hand reflow, stack compress)
-// Layer 2: Explicit move animations for card actions (play, draw, discard)
+// No clones, no ghosts. Two mechanisms:
+// 1. CSS class "card-pop" for scale feedback on newly placed cards
+// 2. CSS transition on hand cards for reflow
 
-let _animating=false;
-const ANIM_MS=300;
-
-// Animate a floating card from one element to another, then call onDone
-function animateMove(fromEl, toEl, cardInnerHTML, onDone){
-  if(!fromEl || !toEl){ if(onDone)onDone(); return; }
-  _animating=true;
-  // Hide the source card so you don't see two copies
-  fromEl.style.visibility='hidden';
-  const from=fromEl.getBoundingClientRect();
-  const to=toEl.getBoundingClientRect();
-  const dx=to.left-from.left, dy=to.top-from.top;
-
-  const ghost=document.createElement('div');
-  ghost.innerHTML=cardInnerHTML;
-  const card=ghost.firstElementChild||ghost;
-  card.className=(card.className||'').replace(/selected|target/g,'').trim();
-  card.style.cssText=`position:fixed;left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;z-index:9999;pointer-events:none;transition:transform ${ANIM_MS}ms cubic-bezier(.2,.8,.3,1);margin:0;`;
-  document.body.appendChild(card);
-  card.offsetHeight; // force reflow
-  card.style.transform=`translate(${dx}px,${dy}px)`;
-  function done(){
-    if(card.parentNode) card.remove();
-    fromEl.style.visibility=''; // restore in case render didn't replace it
-    _animating=false;
-    if(onDone) onDone();
-  }
-  card.addEventListener('transitionend',done,{once:true});
-  setTimeout(done, ANIM_MS+100); // safety fallback
+// After commit+render, find the card in its new position and add a pop animation
+function popCard(cardId){
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-id="${cardId}"]`);
+    if(!el) return;
+    el.classList.add('card-pop');
+    el.addEventListener('animationend',()=>el.classList.remove('card-pop'),{once:true});
+  });
 }
 
-// Get the DOM element for a card by its id
-function getCardEl(cardId){ return document.querySelector(`[data-id="${cardId}"]`); }
-// Get a target element by selector within a row
-function getExpSlot(color,who){
-  const row=document.getElementById(who==='my'?'my-row':'opp-row');
-  if(!row) return null;
-  const cols=row.querySelectorAll('.card-col');
-  const idx=COLORS.indexOf(color);
-  return cols[idx]||null;
-}
-function getDiscSlot(color){
-  const row=document.getElementById('discard-row');
-  if(!row) return null;
-  const cols=row.querySelectorAll('.card-col');
-  const idx=COLORS.indexOf(color);
-  return cols[idx]||null;
-}
-function getDeckEl(){ return document.getElementById('deck-draw'); }
-
-function isAnimating(){return _animating}
-function onAnimationsDone(cb){
-  if(!_animating) return cb();
-  setTimeout(()=>onAnimationsDone(cb),50);
-}
-
-// Stubs for compatibility
+function isAnimating(){return false}
+function onAnimationsDone(cb){cb()}
 function snapAllCards(){}
 function snapCard(){}
 function flyCards(){}
@@ -781,29 +743,23 @@ async function playToExpedition(color){
   }
   vibrate(25);
   const card=selectedCard;
-  const fromEl=getCardEl(card.id);
-  const toEl=getExpSlot(color,'my');
-  const html=fromEl?fromEl.outerHTML:'';
-
-  function commit(){
-    const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
-    expedition.push(card);
-    gameState.hands[mySlot]=hand;
-    gameState.phase='draw';
-    gameState.lastDiscardedColor=null;
-    gameState.justDiscarded=false;
-    const updates={};
-    updates[`hands/${mySlot}`]=hand;
-    updates[`expeditions/${mySlot}/${color}`]=expedition;
-    updates['phase']='draw';
-    updates['lastDiscardedColor']=null;
-    updates['justDiscarded']=false;
-    lastPlayedCard={card,to:'expedition',color};
-    selectedCard=null;
-    renderGame();
-    roomRef.child('game').update(updates);
-  }
-  animateMove(fromEl, toEl, html, commit);
+  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
+  expedition.push(card);
+  gameState.hands[mySlot]=hand;
+  gameState.phase='draw';
+  gameState.lastDiscardedColor=null;
+  gameState.justDiscarded=false;
+  const updates={};
+  updates[`hands/${mySlot}`]=hand;
+  updates[`expeditions/${mySlot}/${color}`]=expedition;
+  updates['phase']='draw';
+  updates['lastDiscardedColor']=null;
+  updates['justDiscarded']=false;
+  lastPlayedCard={card,to:'expedition',color};
+  selectedCard=null;
+  renderGame();
+  popCard(card.id);
+  roomRef.child('game').update(updates);
 }
 
 async function discardTo(color){
@@ -813,28 +769,22 @@ async function discardTo(color){
   }
   vibrate(25);
   const card=selectedCard;
-  const fromEl=getCardEl(card.id);
-  const toEl=getDiscSlot(color);
-  const html=fromEl?fromEl.outerHTML:'';
-
-  function commit(){
-    const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
-    const pile=getCards(gameState,'discards',color);
-    pile.push(card);
-    gameState.hands[mySlot]=hand;
-    gameState.phase='draw';
-    gameState.lastDiscardedColor=color;
-    const updates={};
-    updates[`hands/${mySlot}`]=hand;
-    updates[`discards/${color}`]=pile;
-    updates['phase']='draw';
-    updates['lastDiscardedColor']=color;
-    lastPlayedCard={card,to:'discard',color};
-    selectedCard=null;
-    renderGame();
-    roomRef.child('game').update(updates);
-  }
-  animateMove(fromEl, toEl, html, commit);
+  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
+  const pile=getCards(gameState,'discards',color);
+  pile.push(card);
+  gameState.hands[mySlot]=hand;
+  gameState.phase='draw';
+  gameState.lastDiscardedColor=color;
+  const updates={};
+  updates[`hands/${mySlot}`]=hand;
+  updates[`discards/${color}`]=pile;
+  updates['phase']='draw';
+  updates['lastDiscardedColor']=color;
+  lastPlayedCard={card,to:'discard',color};
+  selectedCard=null;
+  renderGame();
+  popCard(card.id);
+  roomRef.child('game').update(updates);
 }
 
 async function drawFromDeck(){
@@ -843,33 +793,25 @@ async function drawFromDeck(){
   if(deck.length===0) return;
   vibrate(25);
   const card=deck.pop();
-  const fromEl=getDeckEl();
-  // We'll get the hand target after commit renders
-  const backHtml='<div class="card card-back"></div>';
-
-  function commit(){
-    const hand=getCards(gameState,'hands',mySlot);
-    hand.push(card);
-    const oppSlot=mySlot==='player1'?'player2':'player1';
-    gameState.currentTurn=oppSlot;
-    gameState.phase='play';
-    gameState.lastDiscardedColor=null;
-    gameState.justDiscarded=false;
-    const updates={};
-    updates['deck']=deck;
-    updates[`hands/${mySlot}`]=hand;
-    updates['currentTurn']=oppSlot;
-    updates['phase']='play';
-    updates['lastDiscardedColor']=null;
-    updates['justDiscarded']=false;
-    if(deck.length===0){ updates['status']='finished'; gameState.status='finished'; }
-    lastPlayedCard=null;
-    renderGame();
-    roomRef.child('game').update(updates);
-  }
-  // For deck draw: animate card back from deck toward hand area, then commit reveals it
-  const handArea=document.querySelector('.hand-cards');
-  animateMove(fromEl, handArea, backHtml, commit);
+  const hand=getCards(gameState,'hands',mySlot);
+  hand.push(card);
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  gameState.currentTurn=oppSlot;
+  gameState.phase='play';
+  gameState.lastDiscardedColor=null;
+  gameState.justDiscarded=false;
+  const updates={};
+  updates['deck']=deck;
+  updates[`hands/${mySlot}`]=hand;
+  updates['currentTurn']=oppSlot;
+  updates['phase']='play';
+  updates['lastDiscardedColor']=null;
+  updates['justDiscarded']=false;
+  if(deck.length===0){ updates['status']='finished'; gameState.status='finished'; }
+  lastPlayedCard=null;
+  renderGame();
+  popCard(card.id);
+  roomRef.child('game').update(updates);
 }
 
 // SINGLE PILE VARIANT
@@ -928,29 +870,23 @@ async function drawFromDiscard(color){
   if(pile.length===0) return;
   vibrate(25);
   const card=pile[pile.length-1];
-  const fromEl=getDiscSlot(color);
-  const handArea=document.querySelector('.hand-cards');
-  const html=fromEl?fromEl.querySelector('[data-id]')?.outerHTML||'':'';
-
-  function commit(){
-    pile.pop();
-    const hand=getCards(gameState,'hands',mySlot);
-    hand.push(card);
-    const oppSlot=mySlot==='player1'?'player2':'player1';
-    gameState.currentTurn=oppSlot;
-    gameState.phase='play';
-    gameState.lastDiscardedColor=null;
-    const updates={};
-    updates[`discards/${color}`]=pile;
-    updates[`hands/${mySlot}`]=hand;
-    updates['currentTurn']=oppSlot;
-    updates['phase']='play';
-    lastPlayedCard=null;
-    updates['lastDiscardedColor']=null;
-    renderGame();
-    roomRef.child('game').update(updates);
-  }
-  animateMove(fromEl, handArea, html, commit);
+  pile.pop();
+  const hand=getCards(gameState,'hands',mySlot);
+  hand.push(card);
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  gameState.currentTurn=oppSlot;
+  gameState.phase='play';
+  gameState.lastDiscardedColor=null;
+  const updates={};
+  updates[`discards/${color}`]=pile;
+  updates[`hands/${mySlot}`]=hand;
+  updates['currentTurn']=oppSlot;
+  updates['phase']='play';
+  lastPlayedCard=null;
+  updates['lastDiscardedColor']=null;
+  renderGame();
+  popCard(card.id);
+  roomRef.child('game').update(updates);
 }
 
 // ===== SCORING =====
@@ -1243,17 +1179,11 @@ playToExpedition=async function(color){
   if(!canPlayOnExpedition(selectedCard,expedition)){toast('Must be higher than '+expedition[expedition.length-1].value);return}
   vibrate(25);
   const card=selectedCard;
-  const fromEl=getCardEl(card.id);
-  const toEl=getExpSlot(color,'my');
-  const html=fromEl?fromEl.outerHTML:'';
-  function commit(){
-    const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
-    expedition.push(card);
-    const u={};u[`hands/${mySlot}`]=hand;u[`expeditions/${mySlot}/${color}`]=expedition;u['phase']='draw';u['lastDiscardedColor']=null;u['justDiscarded']=false;
-    lastPlayedCard={card,to:'expedition',color};
-    selectedCard=null;localUpdate(u);
-  }
-  animateMove(fromEl, toEl, html, commit);
+  const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
+  expedition.push(card);
+  const u={};u[`hands/${mySlot}`]=hand;u[`expeditions/${mySlot}/${color}`]=expedition;u['phase']='draw';u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  lastPlayedCard={card,to:'expedition',color};
+  selectedCard=null;localUpdate(u);popCard(card.id);
 };
 
 const _origDiscardTo=discardTo;
@@ -1263,17 +1193,11 @@ discardTo=async function(color){
   if(selectedCard.color!==color){toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile');return}
   vibrate(25);
   const card=selectedCard;
-  const fromEl=getCardEl(card.id);
-  const toEl=getDiscSlot(color);
-  const html=fromEl?fromEl.outerHTML:'';
-  function commit(){
-    const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
-    const pile=getCards(gameState,'discards',color);pile.push(card);
-    const u={};u[`hands/${mySlot}`]=hand;u[`discards/${color}`]=pile;u['phase']='draw';u['lastDiscardedColor']=color;
-    lastPlayedCard={card,to:'discard',color};
-    selectedCard=null;localUpdate(u);
-  }
-  animateMove(fromEl, toEl, html, commit);
+  const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
+  const pile=getCards(gameState,'discards',color);pile.push(card);
+  const u={};u[`hands/${mySlot}`]=hand;u[`discards/${color}`]=pile;u['phase']='draw';u['lastDiscardedColor']=color;
+  lastPlayedCard={card,to:'discard',color};
+  selectedCard=null;localUpdate(u);popCard(card.id);
 };
 
 const _origDrawFromDeck=drawFromDeck;
@@ -1283,17 +1207,12 @@ drawFromDeck=async function(){
   const deck=getCards(gameState,'deck');if(deck.length===0)return;
   vibrate(25);
   const card=deck.pop();
-  const fromEl=getDeckEl();
-  const handArea=document.querySelector('.hand-cards');
-  function commit(){
-    const hand=getCards(gameState,'hands',mySlot);hand.push(card);
-    const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
-    if(deck.length===0)u['status']='finished';
-    lastPlayedCard=null;
-    localUpdate(u);
-    if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
-  }
-  animateMove(fromEl, handArea, '<div class="card card-back"></div>', commit);
+  const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  if(deck.length===0)u['status']='finished';
+  lastPlayedCard=null;
+  localUpdate(u);popCard(card.id);
+  if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
 const _origDrawFromDiscard=drawFromDiscard;
@@ -1305,17 +1224,11 @@ drawFromDiscard=async function(color){
   vibrate(25);
   humanDrawHistory.push(color);
   const card=pile[pile.length-1];
-  const fromEl=getDiscSlot(color);
-  const handArea=document.querySelector('.hand-cards');
-  const html=fromEl?fromEl.querySelector('[data-id]')?.outerHTML||'':'';
-  function commit(){
-    pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
-    const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
-    lastPlayedCard=null;
-    localUpdate(u);
-    if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
-  }
-  animateMove(fromEl, handArea, html, commit);
+  pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
+  lastPlayedCard=null;
+  localUpdate(u);popCard(card.id);
+  if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
 const _origDiscardToSingle=discardToSingle;
@@ -1324,17 +1237,11 @@ discardToSingle=async function(){
   if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
   vibrate(25);
   const card=selectedCard;
-  const fromEl=getCardEl(card.id);
-  const toEl=document.getElementById('single-pile-area');
-  const html=fromEl?fromEl.outerHTML:'';
-  function commit(){
-    const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
-    const pile=getCards(gameState,'singlePile');pile.push(card);
-    const u={};u[`hands/${mySlot}`]=hand;u['singlePile']=pile;u['phase']='draw';u['justDiscarded']=true;
-    lastPlayedCard={card,to:'single',color:card.color};
-    selectedCard=null;localUpdate(u);
-  }
-  animateMove(fromEl, toEl, html, commit);
+  const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
+  const pile=getCards(gameState,'singlePile');pile.push(card);
+  const u={};u[`hands/${mySlot}`]=hand;u['singlePile']=pile;u['phase']='draw';u['justDiscarded']=true;
+  lastPlayedCard={card,to:'single',color:card.color};
+  selectedCard=null;localUpdate(u);popCard(card.id);
 };
 
 const _origDrawFromSingle=drawFromSingle;
@@ -1345,17 +1252,11 @@ drawFromSingle=async function(){
   const pile=getCards(gameState,'singlePile');if(pile.length===0)return;
   vibrate(25);
   const card=pile[pile.length-1];
-  const fromEl=document.getElementById('single-pile-area');
-  const handArea=document.querySelector('.hand-cards');
-  const html=fromEl?fromEl.querySelector('[data-id]')?.outerHTML||'':'';
-  function commit(){
-    pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
-    const u={};u['singlePile']=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['justDiscarded']=false;
-    lastPlayedCard=null;
-    localUpdate(u);
-    if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
-  }
-  animateMove(fromEl, handArea, html, commit);
+  pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const u={};u['singlePile']=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['justDiscarded']=false;
+  lastPlayedCard=null;
+  localUpdate(u);popCard(card.id);
+  if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
 // AI TURN LOGIC — Monte Carlo simulation via Web Worker
