@@ -886,13 +886,14 @@ function evaluate(gs, variant, simCount, genome){
     }
   }
 
-  // Genome rollout evaluation of the chosen discard (for comparison)
-  let genomeDiscardCost=null;
-  if(chosen.type==='discard'){
-    const sensors=buildSensors(gs, 'player2', genome, variant);
-    genomeDiscardCost=evaluateDiscard(genome, sensors, chosen.card, chosen.color).toFixed(2);
-    const oppGain=evaluateOppGain(genome, sensors, chosen.card, chosen.color).toFixed(2);
-    dangerNote+=` | Genome discard cost: ${genomeDiscardCost}, oppGain: ${oppGain}`;
+  // Genome rollout evaluation (needs sim context with deck array, so skip if raw gs)
+  if(chosen.type==='discard' && gs.deck){
+    try{
+      const sensors=buildSensors(gs, 'player2');
+      const cost=evaluateDiscard(genome, sensors, chosen.card, chosen.color).toFixed(2);
+      const oppGain=evaluateOppGain(genome, sensors, chosen.card, chosen.color).toFixed(2);
+      dangerNote+=` | Genome cost: ${cost}, oppGain: ${oppGain}`;
+    }catch(e){}
   }
 
   return {phase1: best.p1, phase2: best.p2, winRate: best.wins/simsRan,
