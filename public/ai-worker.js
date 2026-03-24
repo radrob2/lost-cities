@@ -88,13 +88,58 @@ function createSim(gs, oppHand, deck, variant){
 
 // ========== GREEDY ROLLOUT POLICY ==========
 // Used to simulate both players' future turns quickly.
-// Doesn't need to be perfect — just reasonable enough that
-// the Monte Carlo statistics reflect real game outcomes.
+// Needs to be good enough that Monte Carlo statistics reflect real outcomes.
+
+// Analyze what playable sequences a player holds for each color.
+// Returns {color: {playable: [cards in order], wagers: count, guaranteed: bool, score: number}}
+function analyzeHand(hand, expeditions){
+  const analysis={};
+  for(const c of COLORS){
+    const exp=expeditions[c]||[];
+    const topVal=exp.length>0? exp[exp.length-1].value : -1;
+    const hasNumbers=exp.some(x=>x.value>0);
+
+    // Get all cards of this color from hand, sorted
+    const colorCards=hand.filter(x=>x.color===c);
+    const wagers=colorCards.filter(x=>x.value===0);
+    const nums=colorCards.filter(x=>x.value>0).sort((a,b)=>a.value-b.value);
+
+    // Build the playable sequence: cards that can be played in ascending order
+    const playable=[];
+    let curTop=topVal;
+
+    // Wagers can only be played if expedition has no numbers yet
+    if(!hasNumbers){
+      for(const w of wagers){playable.push(w); curTop=0;}
+    }
+    // Numbers must be ascending from current top
+    for(const n of nums){
+      if(n.value>curTop){playable.push(n); curTop=n.value;}
+    }
+
+    const numSum=playable.filter(x=>x.value>0).reduce((s,x)=>s+x.value,0);
+    const existingSum=exp.filter(x=>x.value>0).reduce((s,x)=>s+x.value,0);
+    const totalWagers=(exp.filter(x=>x.value===0).length)+playable.filter(x=>x.value===0).length;
+    const totalCount=exp.length+playable.length;
+    const projected=(existingSum+numSum-20)*(1+totalWagers)+(totalCount>=8?20:0);
+
+    // "Guaranteed" = we hold a full sequence we can play without needing any draws
+    // This means the projected score is locked in if we play them all
+    analysis[c]={
+      playable, wagers:totalWagers, count:playable.length,
+      projected, guaranteed:playable.length>0,
+      started:exp.length>0
+    };
+  }
+  return analysis;
+}
 
 function greedyTurn(sim, player){
   const hand=sim.hands[player];
   if(hand.length===0) return true;
   const other=player==='player1'?'player2':'player1';
+
+  const analysis=analyzeHand(hand, sim.expeditions[player]);
 
   // --- Phase 1: Play or Discard ---
   let bestIdx=-1, bestScore=-Infinity, bestAction='discard';
@@ -104,24 +149,31 @@ function greedyTurn(sim, player){
     const exp=sim.expeditions[player][card.color];
     if(!canPlay(card,exp)) continue;
 
+    const a=analysis[card.color];
     let score=0;
-    if(exp.length>0){
-      // Extending existing expedition — almost always good
-      score=20+(card.value||3);
-      // Bonus for chasing 8-card bonus
-      if(exp.length>=6) score+=8;
-    } else {
-      // Starting new expedition — evaluate in-hand support
-      const colorCards=hand.filter(c=>c.color===card.color);
-      const numSum=colorCards.filter(c=>c.value>0).reduce((s,c)=>s+c.value,0);
-      const wagers=colorCards.filter(c=>c.value===0).length;
-      const projected=(numSum-20)*(1+wagers);
 
-      if(card.value===0){
-        // Wager: only if we have good backup
-        score=projected>0? 8+colorCards.length*2 : -5;
+    if(exp.length>0){
+      // Extending existing expedition
+      score=20+(card.value||3);
+      if(exp.length>=6) score+=8; // chasing 8-card bonus
+
+      // Play the lowest playable card first to preserve flexibility
+      // (playing 4 before 7 lets us still play 5,6 if drawn)
+      if(a.playable.length>0 && card.id===a.playable[0].id) score+=5;
+    } else {
+      // Starting new expedition — use sequence analysis
+      if(a.projected>0 && a.count>=2){
+        // We have a guaranteed positive sequence — worth starting
+        score=8+a.projected/4;
+        // Play lowest card first
+        if(card.id===a.playable[0].id) score+=5;
+      } else if(a.projected>0){
+        score=4+a.projected/5;
+      } else if(card.value===0 && a.count>=3){
+        // Wager with decent backup
+        score=5+a.count*2;
       } else {
-        score=projected>0? 6+projected/5 : projected/3;
+        score=a.projected/3; // likely negative
       }
       // Fewer cards in deck = less time to build, penalize new starts
       if(sim.deck.length<15) score-=8;
