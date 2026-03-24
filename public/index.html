@@ -889,6 +889,10 @@ async function drawFromDeck(){
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
+  gameState.currentTurn=oppSlot;
+  gameState.phase='play';
+  gameState.lastDiscardedColor=null;
+  gameState.justDiscarded=false;
   const updates={};
   updates['deck']=deck;
   updates[`hands/${mySlot}`]=hand;
@@ -896,7 +900,7 @@ async function drawFromDeck(){
   updates['phase']='play';
   updates['lastDiscardedColor']=null;
   updates['justDiscarded']=false;
-  if(deck.length===0) updates['status']='finished';
+  if(deck.length===0){ updates['status']='finished'; gameState.status='finished'; }
   lastPlayedCard=null;
   // Render immediately so animation starts before any async callback
   renderGame();
@@ -911,6 +915,7 @@ async function discardToSingle(){
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'singlePile');
   pile.push(selectedCard);
+  gameState.singlePile=pile;
   gameState.hands[mySlot]=hand;
   gameState.phase='draw';
   gameState.justDiscarded=true;
@@ -937,6 +942,9 @@ async function drawFromSingle(){
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
+  gameState.currentTurn=oppSlot;
+  gameState.phase='play';
+  gameState.justDiscarded=false;
   const updates={};
   updates['singlePile']=pile;
   updates[`hands/${mySlot}`]=hand;
@@ -960,6 +968,9 @@ async function drawFromDiscard(color){
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
+  gameState.currentTurn=oppSlot;
+  gameState.phase='play';
+  gameState.lastDiscardedColor=null;
   const updates={};
   updates[`discards/${color}`]=pile;
   updates[`hands/${mySlot}`]=hand;
