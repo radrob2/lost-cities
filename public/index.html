@@ -14,7 +14,7 @@
   --bg:#120c07;--parchment:#f0e0c0;--parchment-dark:#b8a888;
   --gold:#d4a843;--gold-bright:#f0c850;
   --card-w:48px;--card-h:78px;
-  --anim-dur:4s;--anim-ease:cubic-bezier(.2,.8,.3,1);
+  --anim-dur:2s;--anim-ease:cubic-bezier(.2,.8,.3,1);
 }
 html,body{height:100%;overflow:hidden;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment)}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -469,13 +469,14 @@ function animateCard(cardId, fromRect, clone, flip){
     // Only listen for the transform end on inner (the flip), not left/top bubbling
     inner.addEventListener('transitionend',e=>{if(e.target===inner)done();},{once:true});
   } else {
-    // Non-flip: use translate-based animation
+    // Non-flip: use left/top transition (same approach as flip container)
     clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-    clone.style.cssText=`position:fixed;left:${toRect.left}px;top:${toRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform var(--anim-dur) var(--anim-ease);margin:0;transform:translate(${fromRect.left-toRect.left}px,${fromRect.top-toRect.top}px);`;
+    clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};margin:0;`;
     wrapper=clone;
     document.body.appendChild(clone);
     clone.offsetHeight;
-    clone.style.transform='translate(0,0)';
+    clone.style.left=toRect.left+'px';
+    clone.style.top=toRect.top+'px';
     clone.addEventListener('transitionend',e=>{if(e.target===clone)done();},{once:true});
   }
   setTimeout(done,durMs+200);
