@@ -550,7 +550,7 @@ function renderBoard(){
     return `<div class="card-col"><div class="expedition-stack" style="height:${stackH}">${inner}</div></div>`;
   }).join('');
 
-  // Discard row (classic)
+  // Discard row (classic) — show stacked cards with jitter
   if(variant==='classic'){
     discardRow.innerHTML=COLORS.map(c=>{
       const pile=getCards(gameState,'discards',c);
@@ -567,7 +567,17 @@ function renderBoard(){
       }
       const extra=canDraw?'target':(canDiscard?'target':'');
       const handler=inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`;
-      return `<div class="card-col"><div class="card-slot" onclick="${handler}">${cardHTML(topCard,extra)}${canDraw?'<span class="target-label">Draw</span>':''}${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+      // Show up to 3 under-cards with jitter to convey stack depth
+      const showCount=Math.min(pile.length,4); // top + up to 3 beneath
+      let stackHTML='';
+      for(let i=pile.length-showCount;i<pile.length-1;i++){
+        const card=pile[i];
+        stackHTML+=`<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
+      }
+      // Top card (interactive)
+      stackHTML+=`<div style="position:relative;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
+      const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
+      return `<div class="card-col"><div class="card-slot" onclick="${handler}" style="position:relative">${stackHTML}${labels}</div></div>`;
     }).join('');
   }
 
@@ -800,7 +810,7 @@ function showGameOver(){
 
     // Collapsed: scores flanking color dot (match expanded total row size)
     html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
-      <div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:16px">
+      <div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:18px">
         <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
         <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
         <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
