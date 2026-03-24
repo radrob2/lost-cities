@@ -387,10 +387,12 @@ let animationQueue=[];
 let animationDoneCallbacks=[];
 
 function snapAllCards(){
-  cardSnapshots={};
+  // Merge with existing snapshots — don't overwrite individually-snapped cards
   document.querySelectorAll('[data-id]').forEach(el=>{
     const id=el.getAttribute('data-id');
-    cardSnapshots[id]={rect:el.getBoundingClientRect()};
+    if(!cardSnapshots[id]){
+      cardSnapshots[id]={rect:el.getBoundingClientRect()};
+    }
   });
 }
 function snapCard(cardId){
