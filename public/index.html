@@ -424,7 +424,7 @@ function animateCard(cardId, fromRect, clone, flip){
   if(!target) return;
   const toRect=target.getBoundingClientRect();
   const dx=fromRect.left-toRect.left, dy=fromRect.top-toRect.top;
-  if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
+  if(Math.abs(dx)<2 && Math.abs(dy)<2) return;
   target.style.visibility='hidden';
   animatingCards[cardId]=true;
   let finished=false;
@@ -585,7 +585,6 @@ async function startGame(){
   const gRef=roomRef.child('game');
   const l=gRef.on('value',snap=>{
     const data=snap.val(); if(!data)return;
-    console.log('Firebase on:value fired, isAnimating=',isAnimating(),'animatingCards=',JSON.stringify(animatingCards),'queueLen=',animationQueue.length);
     if(isAnimating()){
       animationQueue.push(data);
     } else {
@@ -611,7 +610,8 @@ function cardHTML(card, extra=''){
   const isWager = card.value===0;
   const valText = isWager ? '&#x1F91D;' : card.value;
   const corner = isWager ? '&#x1F91D;' : card.value;
-  return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}">
+  const hiding = (animatingCards[card.id] || (pendingAnim && pendingAnim.cardId===card.id)) ? 'visibility:hidden;' : '';
+  return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}" style="${hiding}">
     <div class="card-corner">${corner}</div>
     <div class="card-value">${valText}</div>
   </div>`;
