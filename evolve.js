@@ -1,10 +1,48 @@
 #!/usr/bin/env node
-// Evolutionary tournament to optimize AI greedy rollout policy weights
-// Usage: node evolve.js [generations] [populationSize]
+/**
+ * Evolutionary AI Tuner for Lost Cities
+ *
+ * Extracts ~15 tunable constants from the greedy rollout policy,
+ * encodes them as a "genome", and uses tournament selection +
+ * crossover + mutation to find optimal values.
+ *
+ * Usage: node evolve.js [--generations 100] [--population 50] [--games 200] [--variant classic]
+ */
 
 const COLORS = ['red','green','blue','white','yellow'];
 
-// ===== GAME ENGINE (standalone copy for speed) =====
+// ==================== GENOME DEFINITION ====================
+// Each gene: { name, default, min, max, description }
+const GENE_DEFS = [
+  // Phase 1: Play decision
+  { name: 'playThreshold',     default: 0,  min: -30, max: 30,  desc: 'Min delta to play instead of discard' },
+  { name: 'wagerFallbackVal',  default: 3,  min: 0,   max: 8,   desc: 'Floor value for wager cards in discard cost' },
+
+  // Phase 1: Discard cost — opponent gain weights
+  { name: 'oppGainCardWeight', default: 1,  min: 0,   max: 3,   desc: 'Multiplier on card value for opp gain' },
+  { name: 'oppGainWagerMult',  default: 1,  min: 0,   max: 4,   desc: 'Extra per opp wager when discarding useful card' },
+
+  // Phase 2: Draw from discard (classic)
+  { name: 'drawBaseVal',       default: 2,  min: 0,   max: 6,   desc: 'Base value of wager when drawn' },
+  { name: 'drawExpBonus',      default: 12, min: 0,   max: 25,  desc: 'Bonus if we already have expedition started' },
+  { name: 'drawDenyBonus',     default: 8,  min: 0,   max: 20,  desc: 'Bonus for denying opp a useful card' },
+  { name: 'drawDenyWagerMult', default: 4,  min: 0,   max: 10,  desc: 'Extra per opp wager when denying' },
+  { name: 'drawThreshold',     default: 6,  min: 0,   max: 15,  desc: 'Min score to draw from discard' },
+
+  // Phase 2: Deny-only draw (cant play it ourselves)
+  { name: 'denyOnlyWagerMult', default: 5,  min: 0,   max: 12,  desc: 'Wager multiplier for deny-only draws' },
+  { name: 'denyOnlyThreshold', default: 8,  min: 2,   max: 20,  desc: 'Min score for deny-only draws' },
+
+  // Phase 2: Single pile draw
+  { name: 'singleDrawBase',    default: 2,  min: 0,   max: 6,   desc: 'Base value for single pile wager draw' },
+  { name: 'singleDrawExpBonus',default: 12, min: 0,   max: 25,  desc: 'Bonus if expedition started (single)' },
+  { name: 'singleDrawThresh',  default: 6,  min: 0,   max: 15,  desc: 'Min score to draw from single pile' },
+
+  // Sequence cost scaling
+  { name: 'seqCostDivisor',    default: 1,  min: 0.3, max: 2,   desc: '1=divide by count, <1=value each card more, >1=value less' },
+];
+
+// ==================== GAME ENGINE (self-contained) ====================
 
 function allCards(){
   const cards=[];
@@ -18,103 +56,77 @@ function allCards(){
 function shuffle(arr){
   for(let i=arr.length-1;i>0;i--){
     const j=Math.floor(Math.random()*(i+1));
-    const t=arr[i]; arr[i]=arr[j]; arr[j]=t;
+    [arr[i],arr[j]]=[arr[j],arr[i]];
   }
   return arr;
 }
 
-function canPlay(card, exp){
+function canPlayCard(card, exp){
   if(exp.length===0) return true;
   const top=exp[exp.length-1];
   if(card.value===0) return top.value===0;
-  return card.value>top.value;
+  return card.value > top.value;
 }
 
 function scoreColor(cards){
-  const n=cards.length;
-  if(n===0) return 0;
+  if(cards.length===0) return 0;
   let wagers=0, sum=0;
-  for(let i=0;i<n;i++){
-    const v=cards[i].value;
-    if(v===0) wagers++; else sum+=v;
-  }
-  return (sum-20)*(1+wagers)+(n>=8?20:0);
+  for(const c of cards){ if(c.value===0) wagers++; else sum+=c.value; }
+  return (sum-20)*(1+wagers)+(cards.length>=8?20:0);
 }
 
-function scoreExpeditions(exps){
-  let total=0;
-  for(const c of COLORS) total+=scoreColor(exps[c]||[]);
-  return total;
+function scoreAll(exps){
+  let t=0;
+  for(const c of COLORS) t+=scoreColor(exps[c]||[]);
+  return t;
 }
 
-// ===== DEFAULT WEIGHTS =====
-
-const DEFAULT_WEIGHTS = {
-  // Play decision
-  playThreshold: 0,        // min delta to play vs discard
-
-  // Discard cost
-  discardValueFloor: 1.0,   // multiplier on card.value as floor
-  wagerFloorValue: 3,       // floor value for wagers
-  oppGainWeight: 1.0,       // weight on opponent gain from discard
-
-  // Draw from discard (classic)
-  drawBaseWagerValue: 2,    // base value when drawing a wager
-  drawExistingBonus: 12,    // bonus for drawing into existing expedition
-  denyBonus: 8,             // bonus for denying opponent
-  denyWagerBonus: 4,        // per-wager deny bonus
-  drawThreshold: 6,         // min score to draw from discard
-  denyThreshold: 8,         // min score for deny-only draws
-  denyWagerWeight: 5,       // weight on opponent wagers for deny
-
-  // Draw from single pile
-  singleDrawExistingBonus: 12,
-  singleDrawThreshold: 6,
-};
-
-// ===== PARAMETERIZED GREEDY POLICY =====
+// ==================== PARAMETERIZED GREEDY POLICY ====================
 
 function analyzeHand(hand, expeditions){
   const analysis={};
   const byColor={};
   for(const c of COLORS) byColor[c]=[];
-  for(let i=0;i<hand.length;i++) byColor[hand[i].color].push(hand[i]);
+  for(const card of hand) byColor[card.color].push(card);
 
   for(const c of COLORS){
-    const exp=expeditions[c];
-    const expLen=exp?exp.length:0;
-    const topVal=expLen>0? exp[expLen-1].value : -1;
+    const exp=expeditions[c]||[];
+    const topVal=exp.length>0? exp[exp.length-1].value : -1;
     const colorCards=byColor[c];
+
     if(colorCards.length===0){
-      analysis[c]={playable:[], count:0, projected:expLen>0?scoreColor(exp):0};
+      analysis[c]={playable:[], count:0, projected:exp.length>0?scoreColor(exp):0};
       continue;
     }
+
     let hasNumbers=false;
-    if(expLen>0) for(let i=0;i<expLen;i++) if(exp[i].value>0){hasNumbers=true;break;}
+    for(const e of exp) if(e.value>0){hasNumbers=true;break;}
+
     const sorted=colorCards.slice().sort((a,b)=>a.value-b.value);
     const playable=[];
     let curTop=topVal;
-    for(let i=0;i<sorted.length;i++){
-      const card=sorted[i];
+    for(const card of sorted){
       if(card.value===0){
         if(!hasNumbers){playable.push(card); curTop=0;}
       } else if(card.value>curTop){
         playable.push(card); curTop=card.value;
       }
     }
-    const futureExp=expLen>0?exp.concat(playable):playable;
-    const projected=scoreColor(futureExp);
-    analysis[c]={playable, count:playable.length, projected};
+
+    analysis[c]={playable, count:playable.length, projected:scoreColor(exp.concat(playable))};
   }
   return analysis;
 }
 
-function greedyTurn(sim, player, w){
+function greedyTurnWithGenome(sim, player, genome){
   const hand=sim.hands[player];
   if(hand.length===0) return true;
   const other=player==='player1'?'player2':'player1';
+  const g=genome;
+
   const analysis=analyzeHand(hand, sim.expeditions[player]);
 
+  // Phase 1: play or discard
   let bestIdx=-1, bestDelta=-Infinity, bestAction='discard';
 
   for(const c of COLORS){
@@ -123,17 +135,18 @@ function greedyTurn(sim, player, w){
     const nextCard=a.playable[0];
     const idx=hand.indexOf(nextCard);
     if(idx===-1) continue;
-    const exp=sim.expeditions[player][c];
-    const curScore=exp.length===0? 0 : scoreColor(exp);
+
+    const exp=sim.expeditions[player][c]||[];
+    const curScore=exp.length===0?0:scoreColor(exp);
     const turnsLeft=Math.ceil(sim.deck.length/2);
     const canPlayCount=Math.min(a.count, turnsLeft);
-    const toPlay=a.playable.slice(0, canPlayCount);
-    const futureExp=[...exp, ...toPlay];
-    const futureScore=scoreColor(futureExp);
-    const delta=futureScore-curScore;
+    const futureExp=[...exp, ...a.playable.slice(0,canPlayCount)];
+    const delta=scoreColor(futureExp)-curScore;
+
     if(delta>bestDelta){bestDelta=delta; bestIdx=idx; bestAction='play';}
   }
 
+  // Find best discard
   let discIdx=0, discCost=Infinity;
   for(let i=0;i<hand.length;i++){
     const card=hand[i];
@@ -142,28 +155,26 @@ function greedyTurn(sim, player, w){
     let cost=0;
 
     if(a.count>0){
-      let inSequence=false;
-      for(let j=0;j<a.playable.length;j++){
-        if(a.playable[j].id===card.id){inSequence=true;break;}
-      }
-      if(inSequence){
-        cost=a.projected - scoreColor(sim.expeditions[player][c]);
-        if(a.count>1) cost=cost/a.count;
-        cost=Math.max(cost, (card.value||w.wagerFloorValue) * w.discardValueFloor);
+      let inSeq=false;
+      for(const p of a.playable) if(p.id===card.id){inSeq=true;break;}
+      if(inSeq){
+        cost=a.projected - scoreColor(sim.expeditions[player][c]||[]);
+        if(a.count>1) cost=cost * g.seqCostDivisor / a.count;
+        cost=Math.max(cost, card.value || g.wagerFallbackVal);
       }
     }
 
-    const oppExp=sim.expeditions[other][c];
-    if(oppExp&&oppExp.length>0 && canPlay(card, oppExp)){
+    const oppExp=sim.expeditions[other][c]||[];
+    if(oppExp.length>0 && canPlayCard(card, oppExp)){
       let oppWagers=0;
-      for(let j=0;j<oppExp.length;j++) if(oppExp[j].value===0) oppWagers++;
-      cost+=(card.value||0)*(1+oppWagers) * w.oppGainWeight;
+      for(const e of oppExp) if(e.value===0) oppWagers++;
+      cost += (card.value||0) * g.oppGainCardWeight * (1 + oppWagers * g.oppGainWagerMult);
     }
 
     if(cost<discCost){discCost=cost; discIdx=i;}
   }
 
-  if(bestDelta<=w.playThreshold){
+  if(bestDelta <= g.playThreshold){
     bestIdx=discIdx; bestAction='discard';
   }
 
@@ -171,56 +182,56 @@ function greedyTurn(sim, player, w){
   let discardedColor=null, justDiscarded=false;
 
   if(bestAction==='play'){
-    sim.expeditions[player][card.color].push(card);
+    (sim.expeditions[player][card.color]=sim.expeditions[player][card.color]||[]).push(card);
   } else {
     if(sim.variant==='single'){
       sim.singlePile.push(card);
       justDiscarded=true;
     } else {
-      sim.discards[card.color].push(card);
+      (sim.discards[card.color]=sim.discards[card.color]||[]).push(card);
       discardedColor=card.color;
     }
   }
 
-  // Phase 2: Draw
+  // Phase 2: draw
   let drew=false;
 
   if(sim.variant==='classic'){
     let bestDC=null, bestDS=-1;
     for(const c of COLORS){
       if(c===discardedColor) continue;
-      const pile=sim.discards[c];
+      const pile=sim.discards[c]||[];
       if(pile.length===0) continue;
       const top=pile[pile.length-1];
-      const exp=sim.expeditions[player][c];
-      const oppExp=sim.expeditions[other][c];
+      const exp=sim.expeditions[player][c]||[];
+      const oppExp=sim.expeditions[other][c]||[];
 
-      if(canPlay(top,exp)){
-        let s=top.value||w.drawBaseWagerValue;
-        if(exp.length>0) s+=w.drawExistingBonus;
-        if(oppExp.length>0 && canPlay(top,oppExp)){
-          s+=w.denyBonus;
-          let ow=0; for(let j=0;j<oppExp.length;j++) if(oppExp[j].value===0) ow++;
-          if(ow>0) s+=ow*w.denyWagerBonus;
+      if(canPlayCard(top,exp)){
+        let s=(top.value||g.drawBaseVal);
+        if(exp.length>0) s+=g.drawExpBonus;
+        if(oppExp.length>0 && canPlayCard(top,oppExp)){
+          s+=g.drawDenyBonus;
+          const ow=oppExp.filter(x=>x.value===0).length;
+          if(ow>0) s+=ow*g.drawDenyWagerMult;
         }
         if(s>bestDS){bestDS=s; bestDC=c;}
-      } else if(oppExp.length>0 && canPlay(top,oppExp)){
-        let ow=0; for(let j=0;j<oppExp.length;j++) if(oppExp[j].value===0) ow++;
-        let s=(top.value||w.drawBaseWagerValue)+ow*w.denyWagerWeight;
-        if(s>bestDS && s>w.denyThreshold){bestDS=s; bestDC=c;}
+      } else if(oppExp.length>0 && canPlayCard(top,oppExp)){
+        const ow=oppExp.filter(x=>x.value===0).length;
+        let s=(top.value||g.drawBaseVal)+ow*g.denyOnlyWagerMult;
+        if(s>bestDS && s>g.denyOnlyThreshold){bestDS=s; bestDC=c;}
       }
     }
-    if(bestDC && bestDS>w.drawThreshold){
+    if(bestDC && bestDS>g.drawThreshold){
       hand.push(sim.discards[bestDC].pop());
       drew=true;
     }
   } else if(!justDiscarded && sim.singlePile.length>0){
     const top=sim.singlePile[sim.singlePile.length-1];
-    const exp=sim.expeditions[player][top.color];
-    if(canPlay(top,exp)){
-      let s=top.value||w.drawBaseWagerValue;
-      if(exp.length>0) s+=w.singleDrawExistingBonus;
-      if(s>w.singleDrawThreshold){
+    const exp=sim.expeditions[player][top.color]||[];
+    if(canPlayCard(top,exp)){
+      let s=(top.value||g.singleDrawBase);
+      if(exp.length>0) s+=g.singleDrawExpBonus;
+      if(s>g.singleDrawThresh){
         hand.push(sim.singlePile.pop());
         drew=true;
       }
@@ -236,206 +247,239 @@ function greedyTurn(sim, player, w){
   return false;
 }
 
-// ===== GAME SIMULATION =====
+// ==================== GAME SIMULATION ====================
 
-function createGame(variant){
+function createGameState(variant){
   const deck=shuffle(allCards());
-  const hand1=deck.splice(0,8);
-  const hand2=deck.splice(0,8);
-  const exps={}, discard={};
-  COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
+  const h1=deck.splice(0,8);
+  const h2=deck.splice(0,8);
+  const exps1={}, exps2={}, discs={};
+  for(const c of COLORS){exps1[c]=[]; exps2[c]=[]; discs[c]=[];}
   return {
-    hands:{player1:hand1, player2:hand2},
-    expeditions:{player1:{...exps}, player2:Object.fromEntries(COLORS.map(c=>[c,[]]))},
-    discards:variant==='classic'?Object.fromEntries(COLORS.map(c=>[c,[]])):null,
-    singlePile:variant==='single'?[]:null,
-    deck, variant
+    hands:{player1:h1, player2:h2},
+    expeditions:{player1:exps1, player2:exps2},
+    discards:discs,
+    singlePile:[],
+    deck,
+    variant
   };
 }
 
-function playGame(w1, w2, variant){
-  const sim=createGame(variant);
+function deepCopy(gs){
+  const s={
+    hands:{
+      player1:gs.hands.player1.map(c=>({...c})),
+      player2:gs.hands.player2.map(c=>({...c}))
+    },
+    expeditions:{player1:{},player2:{}},
+    deck:gs.deck.map(c=>({...c})),
+    variant:gs.variant
+  };
+  for(const p of ['player1','player2'])
+    for(const c of COLORS)
+      s.expeditions[p][c]=(gs.expeditions[p][c]||[]).map(x=>({...x}));
+  if(gs.variant==='classic'){
+    s.discards={};
+    for(const c of COLORS) s.discards[c]=(gs.discards[c]||[]).map(x=>({...x}));
+  } else {
+    s.singlePile=(gs.singlePile||[]).map(x=>({...x}));
+  }
+  return s;
+}
+
+// Play a full game: genome1 controls player1, genome2 controls player2
+// Returns: 1 if genome1 wins, 0 if genome2 wins, 0.5 for tie
+function playGame(genome1, genome2, variant){
+  const gs=createGameState(variant);
   let turn='player1';
   let safety=80;
   while(safety-->0){
-    const w=turn==='player1'?w1:w2;
-    if(greedyTurn(sim, turn, w)) break;
+    const g=turn==='player1'?genome1:genome2;
+    if(greedyTurnWithGenome(gs, turn, g)) break;
     turn=turn==='player1'?'player2':'player1';
   }
-  const s1=scoreExpeditions(sim.expeditions.player1);
-  const s2=scoreExpeditions(sim.expeditions.player2);
-  return {s1, s2};
+  const s1=scoreAll(gs.expeditions.player1);
+  const s2=scoreAll(gs.expeditions.player2);
+  return s1>s2?1:(s1===s2?0.5:0);
 }
 
-// ===== EVOLUTION =====
+// ==================== EVOLUTION ====================
 
-function randomWeight(base, range){
-  return base + (Math.random()*2-1)*range;
+function createGenome(){
+  const g={};
+  for(const def of GENE_DEFS) g[def.name]=def.default;
+  return g;
 }
 
-function randomWeights(){
-  const w={};
-  w.playThreshold = randomWeight(0, 15);
-  w.discardValueFloor = randomWeight(1.0, 0.8);
-  w.wagerFloorValue = randomWeight(3, 3);
-  w.oppGainWeight = randomWeight(1.0, 0.8);
-  w.drawBaseWagerValue = randomWeight(2, 2);
-  w.drawExistingBonus = randomWeight(12, 10);
-  w.denyBonus = randomWeight(8, 8);
-  w.denyWagerBonus = randomWeight(4, 4);
-  w.drawThreshold = randomWeight(6, 5);
-  w.denyThreshold = randomWeight(8, 6);
-  w.denyWagerWeight = randomWeight(5, 4);
-  w.singleDrawExistingBonus = randomWeight(12, 10);
-  w.singleDrawThreshold = randomWeight(6, 5);
-  return w;
+function randomGenome(){
+  const g={};
+  for(const def of GENE_DEFS){
+    g[def.name]=def.min + Math.random()*(def.max-def.min);
+  }
+  return g;
 }
 
-function mutate(w, rate=0.3){
-  const m={...w};
-  for(const key of Object.keys(m)){
+function mutate(genome, rate=0.3, strength=0.2){
+  const g={...genome};
+  for(const def of GENE_DEFS){
     if(Math.random()<rate){
-      const magnitude=Math.abs(m[key])*0.3 + 0.5;
-      m[key]+=(Math.random()*2-1)*magnitude;
+      const range=def.max-def.min;
+      const delta=(Math.random()*2-1)*range*strength;
+      g[def.name]=Math.max(def.min, Math.min(def.max, g[def.name]+delta));
     }
   }
-  return m;
+  return g;
 }
 
 function crossover(a, b){
   const child={};
-  for(const key of Object.keys(a)){
-    child[key]=Math.random()<0.5?a[key]:b[key];
+  for(const def of GENE_DEFS){
+    // Blend crossover with slight randomness
+    const t=Math.random();
+    child[def.name]=a[def.name]*t + b[def.name]*(1-t);
   }
   return child;
 }
 
-function roundRobin(population, gamesPerPair, variant){
+function tournament(population, gamesPerMatch, variant){
   const n=population.length;
   const scores=new Array(n).fill(0);
+  let matchesPlayed=0;
+  const totalMatches=n*(n-1)/2;
 
   for(let i=0;i<n;i++){
     for(let j=i+1;j<n;j++){
-      let winsI=0, winsJ=0;
-      for(let g=0;g<gamesPerPair;g++){
+      matchesPlayed++;
+      let w1=0, w2=0;
+      for(let g=0;g<gamesPerMatch;g++){
         // Alternate who goes first
-        const first=g%2===0;
-        const w1=first?population[i]:population[j];
-        const w2=first?population[j]:population[i];
-        const {s1,s2}=playGame(w1, w2, variant);
-        if(first){
-          if(s1>s2) winsI++; else if(s2>s1) winsJ++;
-        } else {
-          if(s2>s1) winsI++; else if(s1>s2) winsJ++;
-        }
+        const r1=playGame(population[i], population[j], variant);
+        w1+=r1; w2+=(1-r1);
+        const r2=playGame(population[j], population[i], variant);
+        w2+=r2; w1+=(1-r2);
       }
-      scores[i]+=winsI;
-      scores[j]+=winsJ;
+      scores[i]+=w1;
+      scores[j]+=w2;
     }
   }
   return scores;
 }
 
-function evolve(generations=50, popSize=24, gamesPerPair=40, variant='classic'){
-  console.log(`\nEvolving ${variant} variant: ${generations} generations, ${popSize} population, ${gamesPerPair} games/pair`);
-  console.log('='.repeat(70));
+function formatGenome(g){
+  const entries=[];
+  for(const def of GENE_DEFS){
+    const v=g[def.name];
+    entries.push(`  ${def.name}: ${typeof v==='number'?v.toFixed(3):v}`);
+  }
+  return '{\n'+entries.join(',\n')+'\n}';
+}
 
-  // Initialize population: include default weights + random
-  let population=[{...DEFAULT_WEIGHTS}];
-  for(let i=1;i<popSize;i++) population.push(randomWeights());
+// ==================== MAIN ====================
 
-  let bestEver=null, bestEverScore=-Infinity;
+function parseArgs(){
+  const args={generations:100, population:40, games:100, variant:'classic', elites:8};
+  for(let i=2;i<process.argv.length;i++){
+    const a=process.argv[i];
+    if(a==='--generations'||a==='-g') args.generations=parseInt(process.argv[++i]);
+    else if(a==='--population'||a==='-p') args.population=parseInt(process.argv[++i]);
+    else if(a==='--games') args.games=parseInt(process.argv[++i]);
+    else if(a==='--variant'||a==='-v') args.variant=process.argv[++i];
+    else if(a==='--elites'||a==='-e') args.elites=parseInt(process.argv[++i]);
+  }
+  return args;
+}
+
+function main(){
+  const args=parseArgs();
+  const {generations, population: popSize, games, variant, elites}=args;
+
+  console.log('╔══════════════════════════════════════════════╗');
+  console.log('║   Lost Cities AI — Evolutionary Tuner       ║');
+  console.log('╠══════════════════════════════════════════════╣');
+  console.log(`║ Population: ${String(popSize).padEnd(5)} Generations: ${String(generations).padEnd(10)}║`);
+  console.log(`║ Games/match: ${String(games).padEnd(4)} Elites: ${String(elites).padEnd(15)}║`);
+  console.log(`║ Variant: ${variant.padEnd(35)}║`);
+  console.log(`║ Genes: ${String(GENE_DEFS.length).padEnd(37)}║`);
+  console.log('╚══════════════════════════════════════════════╝');
+  console.log('');
+
+  // Initialize population: default genome + random genomes
+  let pop=[createGenome()];
+  for(let i=1;i<popSize;i++) pop.push(randomGenome());
+
+  let allTimeBest=null, allTimeBestScore=-Infinity;
 
   for(let gen=0;gen<generations;gen++){
     const t0=Date.now();
-    const scores=roundRobin(population, gamesPerPair, variant);
+
+    // Tournament
+    const scores=tournament(pop, games, variant);
 
     // Find best
+    const maxGames=games*2*(popSize-1); // each individual plays this many total games
     let bestIdx=0;
-    for(let i=1;i<scores.length;i++) if(scores[i]>scores[bestIdx]) bestIdx=i;
+    for(let i=1;i<popSize;i++) if(scores[i]>scores[bestIdx]) bestIdx=i;
 
-    const maxScore=scores[bestIdx];
-    const totalGames=(popSize-1)*gamesPerPair;
-    const winRate=(maxScore/totalGames*100).toFixed(1);
+    const bestWinRate=(scores[bestIdx]/maxGames*100).toFixed(1);
+    const avgWinRate=(scores.reduce((a,b)=>a+b,0)/popSize/maxGames*100).toFixed(1);
+
+    if(scores[bestIdx]>allTimeBestScore){
+      allTimeBestScore=scores[bestIdx];
+      allTimeBest={...pop[bestIdx]};
+    }
+
     const elapsed=((Date.now()-t0)/1000).toFixed(1);
+    console.log(`Gen ${String(gen+1).padStart(3)}/${generations} | Best: ${bestWinRate}% | Avg: ${avgWinRate}% | ${elapsed}s`);
 
-    if(maxScore>bestEverScore){
-      bestEverScore=maxScore;
-      bestEver={...population[bestIdx]};
-    }
+    // Sort by score descending
+    const indexed=scores.map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
 
-    // Sort population by score
-    const ranked=population.map((w,i)=>({w,s:scores[i]})).sort((a,b)=>b.s-a.s);
+    // Select elites
+    const newPop=[];
+    for(let i=0;i<elites;i++) newPop.push({...pop[indexed[i].i]});
 
-    console.log(`Gen ${String(gen+1).padStart(3)}: best ${winRate}% (${maxScore}/${totalGames}) | elapsed ${elapsed}s`);
-
-    // Selection: keep top 25%
-    const keepN=Math.max(4, Math.floor(popSize*0.25));
-    const survivors=ranked.slice(0, keepN).map(r=>r.w);
-
-    // New population: survivors + children + mutations + a few random
-    const newPop=[...survivors];
-
-    // Children via crossover
-    while(newPop.length<popSize*0.6){
-      const a=survivors[Math.floor(Math.random()*survivors.length)];
-      const b=survivors[Math.floor(Math.random()*survivors.length)];
-      newPop.push(mutate(crossover(a, b), 0.3));
-    }
-
-    // Mutations of survivors
-    while(newPop.length<popSize*0.85){
-      const parent=survivors[Math.floor(Math.random()*survivors.length)];
-      newPop.push(mutate(parent, 0.5));
-    }
-
-    // Fresh random blood
+    // Fill rest with offspring of elites
     while(newPop.length<popSize){
-      newPop.push(randomWeights());
+      const p1=newPop[Math.floor(Math.random()*elites)];
+      const p2=newPop[Math.floor(Math.random()*elites)];
+      let child=crossover(p1, p2);
+
+      // Adaptive mutation: stronger early, weaker late
+      const progress=gen/generations;
+      const mutRate=0.4*(1-progress*0.5);
+      const mutStrength=0.3*(1-progress*0.6);
+      child=mutate(child, mutRate, mutStrength);
+      newPop.push(child);
     }
 
-    population=newPop;
+    pop=newPop;
   }
 
-  return bestEver;
-}
+  // Final evaluation: pit best genome against default
+  console.log('\n══════════════════════════════════════════════');
+  console.log('FINAL: Best evolved genome vs Default');
+  console.log('══════════════════════════════════════════════');
 
-// ===== MAIN =====
-
-const generations=parseInt(process.argv[2])||50;
-const popSize=parseInt(process.argv[3])||24;
-const gamesPerPair=parseInt(process.argv[4])||40;
-
-// Run for both variants
-const classicBest=evolve(generations, popSize, gamesPerPair, 'classic');
-const singleBest=evolve(generations, popSize, gamesPerPair, 'single');
-
-// Validate against default weights
-console.log('\n\nValidation: evolved vs default (1000 games each side)');
-console.log('='.repeat(70));
-
-for(const [label, best, variant] of [['Classic', classicBest, 'classic'], ['Single', singleBest, 'single']]){
-  let evolvedWins=0, defaultWins=0;
-  for(let g=0;g<2000;g++){
-    const first=g%2===0;
-    const w1=first?best:DEFAULT_WEIGHTS;
-    const w2=first?DEFAULT_WEIGHTS:best;
-    const {s1,s2}=playGame(w1, w2, variant);
-    if(first){
-      if(s1>s2) evolvedWins++; else if(s2>s1) defaultWins++;
-    } else {
-      if(s2>s1) evolvedWins++; else if(s1>s2) defaultWins++;
-    }
+  const defaultG=createGenome();
+  let evoWins=0, defWins=0, ties=0;
+  const finalGames=2000;
+  for(let i=0;i<finalGames;i++){
+    const r1=playGame(allTimeBest, defaultG, variant);
+    if(r1===1) evoWins++; else if(r1===0) defWins++; else ties++;
+    const r2=playGame(defaultG, allTimeBest, variant);
+    if(r2===0) evoWins++; else if(r2===1) defWins++; else ties++;
   }
-  console.log(`${label}: evolved ${evolvedWins} wins, default ${defaultWins} wins (${(evolvedWins/(evolvedWins+defaultWins)*100).toFixed(1)}%)`);
+
+  console.log(`Evolved: ${evoWins} wins (${(evoWins/(finalGames*2)*100).toFixed(1)}%)`);
+  console.log(`Default: ${defWins} wins (${(defWins/(finalGames*2)*100).toFixed(1)}%)`);
+  console.log(`Ties:    ${ties}`);
+  console.log('');
+  console.log('Best genome:');
+  console.log(formatGenome(allTimeBest));
+
+  // Output as JSON for easy copy-paste into ai-worker.js
+  console.log('\n// Paste this into ai-worker.js as the AI constants:');
+  console.log('const EVOLVED = ' + JSON.stringify(allTimeBest, null, 2) + ';');
 }
 
-console.log('\n\nBest weights (classic):');
-console.log(JSON.stringify(classicBest, null, 2));
-console.log('\nBest weights (single):');
-console.log(JSON.stringify(singleBest, null, 2));
-
-// Output in format ready to paste into ai-worker.js
-console.log('\n\n// Paste into ai-worker.js:');
-console.log('const W_CLASSIC = '+JSON.stringify(Object.fromEntries(Object.entries(classicBest).map(([k,v])=>[k,Math.round(v*100)/100])))+';');
-console.log('const W_SINGLE = '+JSON.stringify(Object.fromEntries(Object.entries(singleBest).map(([k,v])=>[k,Math.round(v*100)/100])))+';');
+main();

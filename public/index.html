@@ -189,6 +189,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <button class="variant-btn active" id="vbtn-classic" onclick="setVariant('classic')">Classic (5 piles)</button>
     <button class="variant-btn" id="vbtn-single" onclick="setVariant('single')">Single pile</button>
   </div>
+  <div style="margin-bottom:12px;text-align:center">
+    <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--parchment-dark);margin-bottom:6px;opacity:.7">AI Personality</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+      <button class="variant-btn" id="pbtn-explorer" onclick="setPersonality('explorer')">&#x1F5E1;&#xFE0F; Explorer</button>
+      <button class="variant-btn active" id="pbtn-scholar" onclick="setPersonality('scholar')">&#x1F6E1;&#xFE0F; Scholar</button>
+      <button class="variant-btn" id="pbtn-collector" onclick="setPersonality('collector')">&#x1F3DB;&#xFE0F; Collector</button>
+      <button class="variant-btn" id="pbtn-spy" onclick="setPersonality('spy')">&#x1F575;&#xFE0F; Spy</button>
+      <button class="variant-btn" id="pbtn-gambler" onclick="setPersonality('gambler')">&#x23F1;&#xFE0F; Gambler</button>
+    </div>
+  </div>
   <button class="btn" onclick="startAIGame()">Play vs AI</button>
   <button class="btn" onclick="createRoom()">Create Room</button>
   <button class="btn" onclick="showJoin()">Join Room</button>
@@ -336,6 +346,8 @@ let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
 let selectedCard=null, listeners=[];
 let variant='classic'; // 'classic' or 'single'
 let isAIGame=false;
+let aiPersonality='scholar'; // default AI personality
+const AI_PERSONALITIES={explorer:{name:'Explorer',emoji:'\u{1F5E1}\uFE0F'},scholar:{name:'Scholar',emoji:'\u{1F6E1}\uFE0F'},collector:{name:'Collector',emoji:'\u{1F3DB}\uFE0F'},spy:{name:'Spy',emoji:'\u{1F575}\uFE0F'},gambler:{name:'Gambler',emoji:'\u23F1\uFE0F'}};
 let lastPlayedCard=null; // {card, from:'expedition'|'discard'|'single', color} for undo
 let pendingAnim=null; // {cardId, fromRect} for fly animation
 
@@ -343,6 +355,13 @@ function setVariant(v){
   variant=v;
   document.getElementById('vbtn-classic').className='variant-btn'+(v==='classic'?' active':'');
   document.getElementById('vbtn-single').className='variant-btn'+(v==='single'?' active':'');
+}
+
+function setPersonality(p){
+  aiPersonality=p;
+  for(const k of Object.keys(AI_PERSONALITIES)){
+    document.getElementById('pbtn-'+k).className='variant-btn'+(k===p?' active':'');
+  }
 }
 
 // Firebase strips empty arrays — this safely gets nested arrays
@@ -1256,7 +1275,8 @@ function startAIGame(){
     singlePile:[],currentTurn:'player1',phase:'play',
     lastDiscardedColor:null,justDiscarded:false,status:'playing'
   };
-  document.getElementById('opponent-name').textContent='AI Explorer';
+  const pers=AI_PERSONALITIES[aiPersonality]||AI_PERSONALITIES.scholar;
+  document.getElementById('opponent-name').textContent='AI '+pers.emoji+' '+pers.name;
   showScreen('game-screen');
   renderGame();
 }
@@ -1407,7 +1427,7 @@ function aiTurn(){
     aiFallbackTurn();
   };
 
-  worker.postMessage({gameState:snapshot, variant, simCount:500});
+  worker.postMessage({gameState:snapshot, variant, simCount:500, personality:aiPersonality});
 }
 
 function executeAIPhase1(p1, onDone){
