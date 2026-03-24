@@ -60,7 +60,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card-row{display:flex;justify-content:center;align-items:center;gap:6px;padding:0 8px}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center;width:calc(20% - 6px);min-width:calc(var(--card-w) + 10px);max-width:calc(var(--card-w) + 10px)}
 .expedition-stack{position:relative;width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);overflow:visible}
-.expedition-stack .card{position:absolute;left:5px;top:5px}
+.expedition-stack .card{position:absolute;left:5px;top:3px}
 .card.empty-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
 .card-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);display:flex;align-items:center;justify-content:center;position:relative}
 .middle-row{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0}
@@ -546,7 +546,7 @@ function renderBoard(){
       return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
     }
     const stackH=`calc(var(--card-h) + ${(cards.length-1)*stackOffset+10}px)`;
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*stackOffset+5}px;left:5px;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
+    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*stackOffset+3}px;left:5px;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col"><div class="expedition-stack" style="height:${stackH}">${inner}</div></div>`;
   }).join('');
 
@@ -586,9 +586,9 @@ function renderBoard(){
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${i*stackOffset+5}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      return `<div style="position:absolute;top:${i*stackOffset+3}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*stackOffset+5}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
+    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*stackOffset+3}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     let html=`<div class="card-col" onclick="playToExpedition('${c}')"><div class="expedition-stack" style="height:${stackH}">${inner}</div>`;
     return html+`</div>`;
   }).join('');
