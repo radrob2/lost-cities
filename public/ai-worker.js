@@ -475,6 +475,10 @@ function createSim(gs, oppHand, deck, variant){
 
 // Rollout using genome-driven policy for BOTH players
 function rollout(sim, startingPlayer, genome){
+  // If deck is small enough, use minimax for perfect endgame play
+  if(sim.deck.length<=6){
+    return endgameSolve(sim, startingPlayer);
+  }
   let turn=startingPlayer;
   let safety=80;
   while(safety-->0){
@@ -484,6 +488,229 @@ function rollout(sim, startingPlayer, genome){
   const s1=scoreAll(sim.expeditions.player1);
   const s2=scoreAll(sim.expeditions.player2);
   return s2>s1? 1 : (s2===s1? 0.5 : 0);
+}
+
+// ========== ENDGAME SOLVER (Shallow Minimax with Alpha-Beta) ==========
+// When deck ≤ 6, use minimax with alpha-beta pruning for 2 plies (my turn + opponent turn)
+// then evaluate leaf nodes with score differential. Much stronger than greedy rollout
+// for endgame decisions because it considers opponent's best response.
+
+const ENDGAME_MAX_DEPTH=2; // 2 plies = I play, opponent plays, then evaluate
+
+function endgameSolve(sim, startingPlayer){
+  const result=minimax(sim, startingPlayer, 0, -Infinity, Infinity);
+  return result>0?1:(result===0?0.5:0);
+}
+
+function minimax(sim, player, depth, alpha, beta){
+  // Terminal: game over or depth limit reached — evaluate position
+  if(sim.deck.length===0 || depth>=ENDGAME_MAX_DEPTH){
+    const s1=scoreAll(sim.expeditions.player1);
+    const s2=scoreAll(sim.expeditions.player2);
+    return s2-s1;
+  }
+
+  const hand=sim.hands[player];
+  if(hand.length===0){
+    const s1=scoreAll(sim.expeditions.player1);
+    const s2=scoreAll(sim.expeditions.player2);
+    return s2-s1;
+  }
+
+  const other=player==='player1'?'player2':'player1';
+  const isMaximizing=(player==='player2');
+
+  // Generate moves — limit branching by only considering top moves
+  const moves=generateAllMoves(sim, player);
+  if(moves.length===0){
+    const s1=scoreAll(sim.expeditions.player1);
+    const s2=scoreAll(sim.expeditions.player2);
+    return s2-s1;
+  }
+
+  // Move ordering: score each move quickly to search best first (improves pruning)
+  for(const move of moves){
+    const card=sim.hands[player][move.playIdx];
+    move.heuristic=0;
+    if(move.playType==='play'){
+      move.heuristic=card.value||3; // playing is usually better
+      const exp=sim.expeditions[player][card.color]||[];
+      if(exp.length>0) move.heuristic+=5; // extending expedition is great
+    } else {
+      move.heuristic=-(card.value||1); // discarding high cards is bad
+    }
+    if(move.drawType==='discard') move.heuristic+=2; // known card > unknown
+  }
+  moves.sort((a,b)=>isMaximizing?(b.heuristic-a.heuristic):(a.heuristic-b.heuristic));
+
+  // Cap moves to prevent explosion (top 15 most promising)
+  const cappedMoves=moves.slice(0, 15);
+
+  let bestVal=isMaximizing?-Infinity:Infinity;
+
+  for(const move of cappedMoves){
+    const undo=applyMove(sim, player, move);
+    const gameOver=(sim.deck.length===0);
+    let val;
+    if(gameOver){
+      const s1=scoreAll(sim.expeditions.player1);
+      const s2=scoreAll(sim.expeditions.player2);
+      val=s2-s1;
+    } else {
+      val=minimax(sim, other, depth+1, alpha, beta);
+    }
+    undoMove(sim, player, move, undo);
+
+    if(isMaximizing){
+      if(val>bestVal) bestVal=val;
+      if(val>alpha) alpha=val;
+    } else {
+      if(val<bestVal) bestVal=val;
+      if(val<beta) beta=val;
+    }
+    if(beta<=alpha) break;
+  }
+
+  return bestVal;
+}
+
+function generateAllMoves(sim, player){
+  const hand=sim.hands[player];
+  const moves=[];
+  const variant=sim.variant;
+  const seen=new Set();
+
+  for(let i=0;i<hand.length;i++){
+    const card=hand[i];
+    const c=card.color;
+    const exp=sim.expeditions[player][c]||[];
+
+    // Play actions
+    if(canPlayCard(card, exp)){
+      const pkey='P'+c+card.value;
+      if(!seen.has(pkey)){
+        seen.add(pkey);
+        // Draw from deck
+        if(sim.deck.length>0) moves.push({playIdx:i, playType:'play', drawType:'deck'});
+        // Draw from discard piles
+        if(variant==='classic'){
+          for(const dc of COLORS){
+            const pile=sim.discards[dc]||[];
+            if(pile.length>0) moves.push({playIdx:i, playType:'play', drawType:'discard', drawColor:dc});
+          }
+        } else if(sim.singlePile && sim.singlePile.length>0){
+          moves.push({playIdx:i, playType:'play', drawType:'single'});
+        }
+      }
+    }
+
+    // Discard actions
+    const dkey='D'+c+card.value;
+    if(!seen.has(dkey)){
+      seen.add(dkey);
+      // Draw from deck
+      if(sim.deck.length>0) moves.push({playIdx:i, playType:'discard', drawType:'deck'});
+      // Draw from discard (can't draw from same color you just discarded)
+      if(variant==='classic'){
+        for(const dc of COLORS){
+          if(dc===c) continue; // can't draw from color you just discarded
+          const pile=sim.discards[dc]||[];
+          if(pile.length>0) moves.push({playIdx:i, playType:'discard', drawType:'discard', drawColor:dc});
+        }
+        // Also: after discarding, the discarded card is on top — opponent could draw it
+        // but we can't draw our own discard. Already handled by dc===c check.
+      } else {
+        // Single pile: can't draw if you just discarded
+        // Draw from deck only after discarding to single pile
+        // (already added deck draw above)
+      }
+    }
+  }
+
+  // If no moves generated (shouldn't happen), add a fallback
+  if(moves.length===0 && hand.length>0){
+    moves.push({playIdx:0, playType:'discard', drawType:'deck'});
+  }
+
+  return moves;
+}
+
+function applyMove(sim, player, move){
+  const hand=sim.hands[player];
+  const card=hand[move.playIdx];
+  const undo={card, playIdx:move.playIdx, playType:move.playType, drawType:move.drawType};
+
+  // Remove card from hand
+  hand.splice(move.playIdx, 1);
+
+  // Phase 1: play or discard
+  if(move.playType==='play'){
+    const exp=(sim.expeditions[player][card.color]=sim.expeditions[player][card.color]||[]);
+    exp.push(card);
+    undo.playColor=card.color;
+  } else {
+    if(sim.variant==='single'){
+      sim.singlePile.push(card);
+      undo.discardedToSingle=true;
+    } else {
+      const pile=(sim.discards[card.color]=sim.discards[card.color]||[]);
+      pile.push(card);
+      undo.discardColor=card.color;
+    }
+  }
+
+  // Phase 2: draw
+  undo.drawnCard=null;
+  if(move.drawType==='deck'){
+    if(sim.deck.length>0){
+      const drawn=sim.deck.pop();
+      hand.push(drawn);
+      undo.drawnCard=drawn;
+      undo.drawnFrom='deck';
+    }
+  } else if(move.drawType==='discard'){
+    const pile=sim.discards[move.drawColor];
+    if(pile && pile.length>0){
+      const drawn=pile.pop();
+      hand.push(drawn);
+      undo.drawnCard=drawn;
+      undo.drawnFrom='discard';
+      undo.drawColor=move.drawColor;
+    }
+  } else if(move.drawType==='single'){
+    if(sim.singlePile && sim.singlePile.length>0){
+      const drawn=sim.singlePile.pop();
+      hand.push(drawn);
+      undo.drawnCard=drawn;
+      undo.drawnFrom='single';
+    }
+  }
+
+  return undo;
+}
+
+function undoMove(sim, player, move, undo){
+  const hand=sim.hands[player];
+
+  // Undo draw (remove drawn card from hand, put back where it came from)
+  if(undo.drawnCard){
+    const idx=hand.findIndex(c=>c.id===undo.drawnCard.id);
+    if(idx>=0) hand.splice(idx,1);
+    if(undo.drawnFrom==='deck') sim.deck.push(undo.drawnCard);
+    else if(undo.drawnFrom==='discard') sim.discards[undo.drawColor].push(undo.drawnCard);
+    else if(undo.drawnFrom==='single') sim.singlePile.push(undo.drawnCard);
+  }
+
+  // Undo play/discard
+  if(undo.playType==='play'){
+    sim.expeditions[player][undo.playColor].pop();
+  } else {
+    if(undo.discardedToSingle) sim.singlePile.pop();
+    else sim.discards[undo.discardColor].pop();
+  }
+
+  // Put card back in hand at original position
+  hand.splice(undo.playIdx, 0, undo.card);
 }
 
 // ========== ACTION ENUMERATION ==========
