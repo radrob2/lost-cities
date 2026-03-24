@@ -1332,230 +1332,159 @@ drawFromSingle=async function(){
   if(gameState.status!=='finished') onAnimationsDone(()=>setTimeout(aiTurn,300));
 };
 
-// AI TURN LOGIC
+// AI TURN LOGIC — Monte Carlo simulation via Web Worker
+let aiWorker=null;
+function getAIWorker(){
+  if(!aiWorker){
+    aiWorker=new Worker('ai-worker.js');
+  }
+  return aiWorker;
+}
+
 function aiTurn(){
   if(gameState.status==='finished'||gameState.currentTurn!=='player2')return;
   const hand=getCards(gameState,'hands','player2');
   if(hand.length===0)return;
 
-  const deckLeft=getCards(gameState,'deck').length;
-  const totalCards=60; // 5 colors * 12 cards each
-  const gameProgress=1-(deckLeft/totalCards); // 0=start, 1=end
-  const isEarly=gameProgress<0.3, isMid=gameProgress>=0.3&&gameProgress<0.65, isLate=gameProgress>=0.65;
+  // Show thinking indicator
+  const oppNameEl=document.getElementById('opponent-name');
+  const origName=oppNameEl.textContent;
+  oppNameEl.textContent='AI thinking...';
 
-  // Helper: estimate the value of an expedition (current + potential)
-  function expValue(color,player){
-    const exp=getCards(gameState,'expeditions',player,color);
-    if(exp.length===0)return{score:0,invested:false,wagers:0,sum:0,count:0};
-    const wagers=exp.filter(x=>x.value===0).length;
-    const nums=exp.filter(x=>x.value>0);
-    const sum=nums.reduce((s,v)=>s+v.value,0);
-    const score=(sum-20)*(1+wagers)+(exp.length>=8?20:0);
-    return{score,invested:true,wagers,sum,count:exp.length,topValue:exp.length?exp[exp.length-1].value:0};
-  }
+  // Build a clean state snapshot for the worker
+  const snapshot={
+    hands:{
+      player1:[], // AI doesn't know opponent's hand
+      player2:hand.map(c=>({color:c.color,value:c.value,id:c.id}))
+    },
+    expeditions:{player1:{},player2:{}},
+    discards:{},
+    singlePile:(gameState.singlePile||[]).map(c=>({color:c.color,value:c.value,id:c.id})),
+    deckSize:getCards(gameState,'deck').length
+  };
+  for(const p of ['player1','player2'])
+    for(const c of COLORS)
+      snapshot.expeditions[p][c]=getCards(gameState,'expeditions',p,c).map(x=>({color:x.color,value:x.value,id:x.id}));
+  for(const c of COLORS)
+    snapshot.discards[c]=getCards(gameState,'discards',c).map(x=>({color:x.color,value:x.value,id:x.id}));
 
-  // Helper: count how many playable cards we hold for a color
-  function cardsForColor(color){
-    return hand.filter(c=>c.color===color);
-  }
-
-  // Helper: estimate future value of committing to a color
-  function expeditionPotential(color){
-    const exp=getCards(gameState,'expeditions','player2',color);
-    const myCards=cardsForColor(color).filter(c=>canPlayOnExpedition(c,exp));
-    const wagers=exp.filter(x=>x.value===0).length;
-    const currentNums=exp.filter(x=>x.value>0);
-    // Simulate playing all playable cards
-    const allNums=[...currentNums.map(c=>c.value),...myCards.filter(c=>c.value>0).map(c=>c.value)].sort((a,b)=>a-b);
-    const allWagers=wagers+myCards.filter(c=>c.value===0).length;
-    const totalCount=exp.length+myCards.length;
-    const sum=allNums.reduce((s,v)=>s+v,0);
-    const projected=(sum-20)*(1+allWagers)+(totalCount>=8?20:0);
-    return{projected,cardCount:myCards.length,totalCount};
-  }
-
-  // PLAY PHASE
-  let bestPlay=null,bestScore=-9999;
-
-  for(const card of hand){
-    const exp=getCards(gameState,'expeditions','player2',card.color);
-    const ev=expValue(card.color,'player2');
-
-    if(canPlayOnExpedition(card,exp)){
-      let score=0;
-      const pot=expeditionPotential(card.color);
-
-      if(ev.invested){
-        // Already committed to this color — strongly prefer continuing
-        score+=25;
-        score+=card.value||3; // higher cards add more points
-        // Extra bonus if we have more cards to play after this
-        score+=pot.cardCount*3;
-      } else {
-        // Starting a new expedition — evaluate carefully
-        if(card.value===0){
-          // Wager on empty expedition
-          if(isEarly){
-            // Good if we have cards to back it up
-            score+=pot.projected>0?15:2;
-            score+=pot.cardCount*4; // more backup cards = better
-          } else if(isMid){
-            score+=pot.projected>5?10:-5;
-          } else {
-            score-=10; // late game wager is risky
-          }
-        } else {
-          // Number card starting new expedition
-          const potential=pot.projected;
-          if(potential>0)score+=10+potential/3;
-          else if(isEarly&&pot.cardCount>=2)score+=5; // early game with backup
-          else score+=potential/3; // likely negative, will push score down
-
-          // Penalize starting expeditions late
-          if(isLate)score-=15;
-          if(isMid&&pot.cardCount<2)score-=8;
-        }
-      }
-
-      if(score>bestScore){bestScore=score;bestPlay={action:'play',card,color:card.color}}
+  const worker=getAIWorker();
+  worker.onmessage=function(e){
+    oppNameEl.textContent=origName;
+    const {result,elapsed}=e.data;
+    if(!result){
+      // Fallback: discard first card, draw from deck
+      aiFallbackTurn();
+      return;
     }
-  }
+    console.log(`AI: ${result.phase1.type} ${result.phase1.color} ${result.phase1.card.value||'W'} → draw ${result.phase2.type}${result.phase2.color?' '+result.phase2.color:''} (${(result.winRate*100).toFixed(0)}% win, ${elapsed}ms)`);
 
-  // Evaluate discarding — always find the best discard candidate
-  let worstCard=null,worstScore=9999;
-  for(const card of hand){
-    const ev=expValue(card.color,'player2');
-    const oppEv=expValue(card.color,'player1');
-    let score=0;
+    // Execute phase 1
+    executeAIPhase1(result.phase1, function(){
+      // Execute phase 2 after animation
+      executeAIPhase2(result.phase2);
+    });
+  };
 
-    // How useful is this card to US?
-    if(ev.invested){
-      // We're building this color — very costly to discard
-      const exp=getCards(gameState,'expeditions','player2',card.color);
-      if(canPlayOnExpedition(card,exp)){
-        score+=40; // playable on our expedition, terrible to discard
-      } else {
-        score+=5; // can't play it anyway, less costly
-      }
-    } else {
-      // We haven't started this color
-      const pot=expeditionPotential(card.color);
-      if(isEarly&&pot.cardCount>=3&&pot.projected>0)score+=15; // promising hand, keep
-      else if(card.value===0)score+=isEarly?8:1; // wagers less valuable as game goes on
-      else score+=card.value/2; // higher cards slightly harder to discard
-    }
+  worker.onerror=function(err){
+    console.error('AI worker error:',err);
+    oppNameEl.textContent=origName;
+    aiFallbackTurn();
+  };
 
-    // How useful is this card to the OPPONENT?
-    if(oppEv.invested){
-      // Opponent is building this color — they might pick it up!
-      score-=12; // AVOID discarding cards opponent wants
-      if(card.value>oppEv.topValue)score-=5; // they can definitely play this
-    } else {
-      // Opponent hasn't started this color — safer to discard
-      score-=3;
-    }
+  worker.postMessage({gameState:snapshot, variant, simCount:200});
+}
 
-    // In classic mode, discarding creates a pickup opportunity for opponent
-    if(variant==='classic'&&oppEv.invested)score-=5;
+function executeAIPhase1(p1, onDone){
+  const hand=getCards(gameState,'hands','player2');
+  const card=hand.find(c=>c.id===p1.card.id);
+  if(!card){aiFallbackTurn();return;}
 
-    if(score<worstScore){worstScore=score;worstCard=card}
-  }
-  // Discard if best play is bad (below threshold) or no playable card found
-  if(worstCard&&(!bestPlay||bestScore<5)){
-    bestPlay={action:'discard',card:worstCard,color:worstCard.color};
-  }
-
-  if(!bestPlay){bestPlay={action:'discard',card:hand[0],color:hand[0].color}}
-
-  // Execute play phase
   const u={};
-  const newHand=hand.filter(c=>c.id!==bestPlay.card.id);
+  const newHand=hand.filter(c=>c.id!==card.id);
   u['hands/player2']=newHand;
 
-  if(bestPlay.action==='play'){
-    const exp=getCards(gameState,'expeditions','player2',bestPlay.color);
-    exp.push(bestPlay.card);
-    u[`expeditions/player2/${bestPlay.color}`]=exp;
+  if(p1.type==='play'){
+    const exp=getCards(gameState,'expeditions','player2',card.color);
+    exp.push(card);
+    u[`expeditions/player2/${card.color}`]=exp;
     u['lastDiscardedColor']=null;u['justDiscarded']=false;
   } else {
     if(variant==='single'){
-      const pile=getCards(gameState,'singlePile');pile.push(bestPlay.card);
+      const pile=getCards(gameState,'singlePile');pile.push(card);
       u['singlePile']=pile;u['justDiscarded']=true;
     } else {
-      const pile=getCards(gameState,'discards',bestPlay.color);pile.push(bestPlay.card);
-      u[`discards/${bestPlay.color}`]=pile;u['lastDiscardedColor']=bestPlay.color;
+      const pile=getCards(gameState,'discards',card.color);pile.push(card);
+      u[`discards/${card.color}`]=pile;u['lastDiscardedColor']=card.color;
     }
   }
   u['phase']='draw';
   localUpdate(u);
+  onAnimationsDone(()=>onDone());
+}
 
-  // DRAW PHASE
-  onAnimationsDone(()=>{
-    if(gameState.status==='finished')return;
-    const u2={};
+function executeAIPhase2(p2){
+  if(gameState.status==='finished')return;
+  const u2={};
+  const aiHand=getCards(gameState,'hands','player2');
 
-    let bestDraw=null,bestDrawScore=-1;
-    if(variant==='classic'){
-      for(const c of COLORS){
-        if(c===gameState.lastDiscardedColor)continue;
-        const pile=getCards(gameState,'discards',c);
-        if(pile.length===0)continue;
-        const top=pile[pile.length-1];
-        const exp=getCards(gameState,'expeditions','player2',c);
-        const ev=expValue(c,'player2');
-
-        if(canPlayOnExpedition(top,exp)){
-          let score=top.value||2;
-          if(ev.invested){
-            score+=15; // great, fits our expedition
-            if(ev.count>=6)score+=5; // chasing the 8-card bonus
-          }
-          // Even if we haven't started, a high card from discard could be worth grabbing
-          if(!ev.invested&&top.value>=6){
-            const pot=expeditionPotential(c);
-            if(pot.cardCount>=2&&pot.projected>0)score+=8;
-          }
-          // Don't pick up cards that don't fit our strategy late game
-          if(isLate&&!ev.invested)score-=10;
-          if(score>bestDrawScore){bestDrawScore=score;bestDraw={color:c,card:top}}
-        }
-      }
-    } else if(!gameState.justDiscarded){
-      const pile=getCards(gameState,'singlePile');
-      if(pile.length>0){
-        const top=pile[pile.length-1];
-        const exp=getCards(gameState,'expeditions','player2',top.color);
-        const ev=expValue(top.color,'player2');
-        if(canPlayOnExpedition(top,exp)){
-          let score=top.value||2;
-          if(ev.invested)score+=15;
-          if(isLate&&!ev.invested)score-=10;
-          if(score>bestDrawScore){bestDrawScore=score;bestDraw={single:true,card:top}}
-        }
-      }
-    }
-
-    const aiHand=getCards(gameState,'hands','player2');
-    if(bestDraw&&bestDrawScore>6){
-      if(bestDraw.single){
-        const pile=getCards(gameState,'singlePile');pile.pop();
-        u2['singlePile']=pile;
-      } else {
-        const pile=getCards(gameState,'discards',bestDraw.color);pile.pop();
-        u2[`discards/${bestDraw.color}`]=pile;
-      }
-      aiHand.push(bestDraw.card);
+  if(p2.type==='discard'&&variant==='classic'){
+    const pile=getCards(gameState,'discards',p2.color);
+    if(pile.length>0){
+      const card=pile.pop();aiHand.push(card);
+      u2[`discards/${p2.color}`]=pile;
     } else {
-      const deck=getCards(gameState,'deck');
-      if(deck.length===0){u2['status']='finished';localUpdate(u2);return}
-      const card=deck.pop();aiHand.push(card);
-      u2['deck']=deck;
-      if(deck.length===0)u2['status']='finished';
+      // Pile empty (opponent took it) — fall back to deck
+      return drawAIFromDeck(u2,aiHand);
     }
+  } else if(p2.type==='single'){
+    const pile=getCards(gameState,'singlePile');
+    if(pile.length>0){
+      const card=pile.pop();aiHand.push(card);
+      u2['singlePile']=pile;
+    } else {
+      return drawAIFromDeck(u2,aiHand);
+    }
+  } else {
+    return drawAIFromDeck(u2,aiHand);
+  }
 
-    u2['hands/player2']=aiHand;
-    u2['currentTurn']='player1';u2['phase']='play';u2['lastDiscardedColor']=null;u2['justDiscarded']=false;
-    localUpdate(u2);
+  u2['hands/player2']=aiHand;
+  u2['currentTurn']='player1';u2['phase']='play';u2['lastDiscardedColor']=null;u2['justDiscarded']=false;
+  localUpdate(u2);
+}
+
+function drawAIFromDeck(u2,aiHand){
+  const deck=getCards(gameState,'deck');
+  if(deck.length===0){u2['status']='finished';localUpdate(u2);return;}
+  const card=deck.pop();aiHand.push(card);
+  u2['deck']=deck;
+  if(deck.length===0)u2['status']='finished';
+  u2['hands/player2']=aiHand;
+  u2['currentTurn']='player1';u2['phase']='play';u2['lastDiscardedColor']=null;u2['justDiscarded']=false;
+  localUpdate(u2);
+}
+
+// Simple fallback if worker fails
+function aiFallbackTurn(){
+  const hand=getCards(gameState,'hands','player2');
+  if(hand.length===0)return;
+  // Discard first card, draw from deck
+  const card=hand[0];
+  const u={};
+  u['hands/player2']=hand.filter(c=>c.id!==card.id);
+  if(variant==='single'){
+    const pile=getCards(gameState,'singlePile');pile.push(card);
+    u['singlePile']=pile;u['justDiscarded']=true;
+  } else {
+    const pile=getCards(gameState,'discards',card.color);pile.push(card);
+    u[`discards/${card.color}`]=pile;u['lastDiscardedColor']=card.color;
+  }
+  u['phase']='draw';
+  localUpdate(u);
+  onAnimationsDone(()=>{
+    const u2={};const aiHand=getCards(gameState,'hands','player2');
+    drawAIFromDeck(u2,aiHand);
   });
 }
 
@@ -1569,6 +1498,7 @@ playAgain=async function(){
 const _origLeaveGame=leaveGame;
 leaveGame=function(){
   if(!isAIGame)return _origLeaveGame();
+  if(aiWorker){aiWorker.terminate();aiWorker=null;}
   isAIGame=false;gameState=null;selectedCard=null;
   showScreen('lobby-screen');
 };
