@@ -886,15 +886,7 @@ function evaluate(gs, variant, simCount, genome){
     }
   }
 
-  // Genome rollout evaluation (needs sim context with deck array, so skip if raw gs)
-  if(chosen.type==='discard' && gs.deck){
-    try{
-      const sensors=buildSensors(gs, 'player2');
-      const cost=evaluateDiscard(genome, sensors, chosen.card, chosen.color).toFixed(2);
-      const oppGain=evaluateOppGain(genome, sensors, chosen.card, chosen.color).toFixed(2);
-      dangerNote+=` | Genome cost: ${cost}, oppGain: ${oppGain}`;
-    }catch(e){}
-  }
+  // Note: can't call buildSensors here (no deck array in raw gs)
 
   return {phase1: best.p1, phase2: best.p2, winRate: best.wins/simsRan,
           simsRan,
