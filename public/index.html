@@ -387,19 +387,62 @@ function getCards(obj, ...keys){
 function genId(){return Math.random().toString(36).substr(2,9)}
 
 // ===== ANIMATION SYSTEM =====
-// No clones, no ghosts. Two mechanisms:
-// 1. CSS class "card-pop" for scale feedback on newly placed cards
-// 2. CSS transition on hand cards for reflow
+// True FLIP on actual elements. No clones ever.
+// 1. Grab card's position BEFORE state change
+// 2. Commit state + render (card appears in new spot)
+// 3. Set transform to snap it back to old position visually
+// 4. Transition transform to none (slides to real position)
 
-// After commit+render, find the card in its new position and add a pop animation
-function popCard(cardId){
+const ANIM_MS=300;
+
+// Call BEFORE commit: returns {id, rect} for the card
+function grabPos(cardId){
+  const el=document.querySelector(`[data-id="${cardId}"]`);
+  if(!el) return null;
+  return {id:cardId, rect:el.getBoundingClientRect()};
+}
+
+// Call AFTER commit+render: slides card from old position to new
+function slideFrom(saved){
+  if(!saved) return;
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`[data-id="${saved.id}"]`);
+    if(!el) return;
+    const to=el.getBoundingClientRect();
+    const dx=saved.rect.left-to.left;
+    const dy=saved.rect.top-to.top;
+    if(Math.abs(dx)<3 && Math.abs(dy)<3) return;
+    el.style.transition='none';
+    el.style.transform=`translate(${dx}px,${dy}px)`;
+    el.offsetHeight;
+    el.style.transition=`transform ${ANIM_MS}ms cubic-bezier(.2,.8,.3,1)`;
+    el.style.transform='';
+    el.addEventListener('transitionend',()=>{el.style.transition='';},{once:true});
+  });
+}
+
+// For deck draws: card doesn't exist yet, so we grab the deck's position
+// and slide the new card from there
+function slideFromEl(sourceEl, cardId){
+  if(!sourceEl) return;
+  const rect=sourceEl.getBoundingClientRect();
   requestAnimationFrame(()=>{
     const el=document.querySelector(`[data-id="${cardId}"]`);
     if(!el) return;
-    el.classList.add('card-pop');
-    el.addEventListener('animationend',()=>el.classList.remove('card-pop'),{once:true});
+    const to=el.getBoundingClientRect();
+    const dx=rect.left-to.left;
+    const dy=rect.top-to.top;
+    el.style.transition='none';
+    el.style.transform=`translate(${dx}px,${dy}px)`;
+    el.offsetHeight;
+    el.style.transition=`transform ${ANIM_MS}ms cubic-bezier(.2,.8,.3,1)`;
+    el.style.transform='';
+    el.addEventListener('transitionend',()=>{el.style.transition='';},{once:true});
   });
 }
+
+// Legacy popCard fallback
+function popCard(cardId){ slideFrom({id:cardId, rect:{left:0,top:0}}); }
 
 function isAnimating(){return false}
 function onAnimationsDone(cb){cb()}
@@ -743,6 +786,7 @@ async function playToExpedition(color){
   }
   vibrate(25);
   const card=selectedCard;
+  const saved=grabPos(card.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
   expedition.push(card);
   gameState.hands[mySlot]=hand;
@@ -758,7 +802,7 @@ async function playToExpedition(color){
   lastPlayedCard={card,to:'expedition',color};
   selectedCard=null;
   renderGame();
-  popCard(card.id);
+  slideFrom(saved);
   roomRef.child('game').update(updates);
 }
 
@@ -769,6 +813,7 @@ async function discardTo(color){
   }
   vibrate(25);
   const card=selectedCard;
+  const saved=grabPos(card.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
   const pile=getCards(gameState,'discards',color);
   pile.push(card);
@@ -783,7 +828,7 @@ async function discardTo(color){
   lastPlayedCard={card,to:'discard',color};
   selectedCard=null;
   renderGame();
-  popCard(card.id);
+  slideFrom(saved);
   roomRef.child('game').update(updates);
 }
 
@@ -792,6 +837,7 @@ async function drawFromDeck(){
   const deck=getCards(gameState,'deck');
   if(deck.length===0) return;
   vibrate(25);
+  const deckEl=document.getElementById('deck-draw');
   const card=deck.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
@@ -810,7 +856,7 @@ async function drawFromDeck(){
   if(deck.length===0){ updates['status']='finished'; gameState.status='finished'; }
   lastPlayedCard=null;
   renderGame();
-  popCard(card.id);
+  slideFromEl(deckEl, card.id);
   roomRef.child('game').update(updates);
 }
 
@@ -818,10 +864,11 @@ async function drawFromDeck(){
 async function discardToSingle(){
   if(!selectedCard || gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
   vibrate(25);
-  snapCard(selectedCard.id);
-  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
+  const card=selectedCard;
+  const saved=grabPos(card.id);
+  const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
   const pile=getCards(gameState,'singlePile');
-  pile.push(selectedCard);
+  pile.push(card);
   gameState.singlePile=pile;
   gameState.hands[mySlot]=hand;
   gameState.phase='draw';
@@ -831,9 +878,10 @@ async function discardToSingle(){
   updates['singlePile']=pile;
   updates['phase']='draw';
   updates['justDiscarded']=true;
-  lastPlayedCard={card:selectedCard,to:'single',color:selectedCard.color};
+  lastPlayedCard={card,to:'single',color:card.color};
   selectedCard=null;
   renderGame();
+  slideFrom(saved);
   roomRef.child('game').update(updates);
 }
 
@@ -844,7 +892,7 @@ async function drawFromSingle(){
   if(pile.length===0) return;
   vibrate(25);
   const card=pile[pile.length-1];
-  snapCard(card.id);
+  const saved=grabPos(card.id);
   pile.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
@@ -860,6 +908,7 @@ async function drawFromSingle(){
   updates['justDiscarded']=false;
   lastPlayedCard=null;
   renderGame();
+  slideFrom(saved);
   roomRef.child('game').update(updates);
 }
 
@@ -870,6 +919,7 @@ async function drawFromDiscard(color){
   if(pile.length===0) return;
   vibrate(25);
   const card=pile[pile.length-1];
+  const saved=grabPos(card.id);
   pile.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
@@ -885,7 +935,7 @@ async function drawFromDiscard(color){
   lastPlayedCard=null;
   updates['lastDiscardedColor']=null;
   renderGame();
-  popCard(card.id);
+  slideFrom(saved);
   roomRef.child('game').update(updates);
 }
 
@@ -1179,11 +1229,12 @@ playToExpedition=async function(color){
   if(!canPlayOnExpedition(selectedCard,expedition)){toast('Must be higher than '+expedition[expedition.length-1].value);return}
   vibrate(25);
   const card=selectedCard;
+  const saved=grabPos(card.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
   expedition.push(card);
   const u={};u[`hands/${mySlot}`]=hand;u[`expeditions/${mySlot}/${color}`]=expedition;u['phase']='draw';u['lastDiscardedColor']=null;u['justDiscarded']=false;
   lastPlayedCard={card,to:'expedition',color};
-  selectedCard=null;localUpdate(u);popCard(card.id);
+  selectedCard=null;localUpdate(u);slideFrom(saved);
 };
 
 const _origDiscardTo=discardTo;
@@ -1193,11 +1244,12 @@ discardTo=async function(color){
   if(selectedCard.color!==color){toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile');return}
   vibrate(25);
   const card=selectedCard;
+  const saved=grabPos(card.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
   const pile=getCards(gameState,'discards',color);pile.push(card);
   const u={};u[`hands/${mySlot}`]=hand;u[`discards/${color}`]=pile;u['phase']='draw';u['lastDiscardedColor']=color;
   lastPlayedCard={card,to:'discard',color};
-  selectedCard=null;localUpdate(u);popCard(card.id);
+  selectedCard=null;localUpdate(u);slideFrom(saved);
 };
 
 const _origDrawFromDeck=drawFromDeck;
@@ -1206,12 +1258,13 @@ drawFromDeck=async function(){
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
   const deck=getCards(gameState,'deck');if(deck.length===0)return;
   vibrate(25);
+  const deckEl=document.getElementById('deck-draw');
   const card=deck.pop();
   const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
   if(deck.length===0)u['status']='finished';
   lastPlayedCard=null;
-  localUpdate(u);popCard(card.id);
+  localUpdate(u);slideFromEl(deckEl, card.id);
   if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
@@ -1224,10 +1277,11 @@ drawFromDiscard=async function(color){
   vibrate(25);
   humanDrawHistory.push(color);
   const card=pile[pile.length-1];
+  const saved=grabPos(card.id);
   pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
   lastPlayedCard=null;
-  localUpdate(u);popCard(card.id);
+  localUpdate(u);slideFrom(saved);
   if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
@@ -1237,11 +1291,12 @@ discardToSingle=async function(){
   if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
   vibrate(25);
   const card=selectedCard;
+  const saved=grabPos(card.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
   const pile=getCards(gameState,'singlePile');pile.push(card);
   const u={};u[`hands/${mySlot}`]=hand;u['singlePile']=pile;u['phase']='draw';u['justDiscarded']=true;
   lastPlayedCard={card,to:'single',color:card.color};
-  selectedCard=null;localUpdate(u);popCard(card.id);
+  selectedCard=null;localUpdate(u);slideFrom(saved);
 };
 
 const _origDrawFromSingle=drawFromSingle;
@@ -1252,10 +1307,11 @@ drawFromSingle=async function(){
   const pile=getCards(gameState,'singlePile');if(pile.length===0)return;
   vibrate(25);
   const card=pile[pile.length-1];
+  const saved=grabPos(card.id);
   pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u['singlePile']=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['justDiscarded']=false;
   lastPlayedCard=null;
-  localUpdate(u);popCard(card.id);
+  localUpdate(u);slideFrom(saved);
   if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
