@@ -800,7 +800,7 @@ function showGameOver(){
 
     // Collapsed: scores flanking color dot (same font-size as expanded)
     html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
-      <div class="r-line sc-row" style="justify-content:center;font-size:11px">
+      <div class="r-line sc-row" style="justify-content:center">
         <span style="flex:1;text-align:left;font-weight:700" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
         <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
         <span style="flex:1;text-align:right;font-weight:700" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
@@ -810,9 +810,9 @@ function showGameOver(){
     // Expanded header: cards flanking color dot (same row height as collapsed)
     html+=`<div id="sc-exp-${idx}" style="display:none;cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
       <div class="r-line sc-row" style="justify-content:center">
-        <span style="flex:1;text-align:left;font-size:11px;opacity:.6">${mCards}</span>
+        <span style="flex:1;text-align:left;opacity:.6">${mCards}</span>
         <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▲</span></span>
-        <span style="flex:1;text-align:right;font-size:11px;opacity:.6">${oCards}</span>
+        <span style="flex:1;text-align:right;opacity:.6">${oCards}</span>
       </div>
     </div>`;
 
