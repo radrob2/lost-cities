@@ -148,6 +148,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .r-pos{color:var(--gold-bright)}
 .r-neg{color:#e07060}
 .r-muted{opacity:.5}
+.r-color-total{font-weight:900;font-size:18px}
 @media(min-width:420px){:root{--card-w:56px;--card-h:91px}}
 @media(min-width:500px){:root{--card-w:64px;--card-h:104px}}
 </style>
@@ -858,7 +859,7 @@ function showGameOver(){
 
     // Collapsed: scores flanking color dot (match expanded total row size)
     html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
-      <div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:18px">
+      <div class="r-line sc-row r-color-total" style="justify-content:center">
         <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
         <span style="min-width:100px;text-align:center;padding:0 6px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
         <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
@@ -891,7 +892,7 @@ function showGameOver(){
       html+=row(m.bonus?'<span class="sc-sign">+</span>20':dash,'8+ cards',o.bonus?'<span class="sc-sign">+</span>20':dash,m.bonus?'r-pos':'',o.bonus?'r-pos':'');
     }
 
-    html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-size:16px;padding-top:2px">
+    html+=`<div class="r-line sc-row r-color-total" style="justify-content:center;padding-top:2px">
       <span style="flex:1;text-align:left" ${m.count?winStyle(m.score,mWinC):'class="r-muted"'}>${m.count?fmt(m.score):dash}</span>
       <span style="min-width:100px;text-align:center;padding:0 6px"></span>
       <span style="flex:1;text-align:right" ${o.count?winStyle(o.score,oWinC):'class="r-muted"'}>${o.count?fmt(o.score):dash}</span></div>`;
