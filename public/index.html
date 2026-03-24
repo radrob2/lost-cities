@@ -356,7 +356,7 @@ let isAIGame=false;
 let aiPersonality='scholar'; // default AI personality
 const AI_PERSONALITIES={explorer:{name:'Explorer',emoji:'\u{1F5E1}\uFE0F'},scholar:{name:'Scholar',emoji:'\u{1F6E1}\uFE0F'},collector:{name:'Collector',emoji:'\u{1F3DB}\uFE0F'},spy:{name:'Spy',emoji:'\u{1F575}\uFE0F'},gambler:{name:'Gambler',emoji:'\u23F1\uFE0F'}};
 let lastPlayedCard=null; // {card, from:'expedition'|'discard'|'single', color} for undo
-let pendingAnim=null; // {cardId, fromRect} for fly animation
+// pendingAnim removed — simplified animation system
 
 function setVariant(v){
   variant=v;
@@ -380,171 +380,48 @@ function getCards(obj, ...keys){
 
 function genId(){return Math.random().toString(36).substr(2,9)}
 
-// FLIP animation system: snapshot all card positions before render,
-// then animate any cards that moved to a new position.
-let cardSnapshots={}; // {cardId: {rect, clone}}
-let animatingCards={}; // {cardId: true} — cards with in-flight animations
-let animationQueue=[]; // queued gameState updates waiting for animations to finish
-let animationDoneCallbacks=[]; // called when all animations complete
+// Simplified animation system: just track positions for basic moves
+let cardSnapshots={};
+let animatingCards={};
+let animationQueue=[];
+let animationDoneCallbacks=[];
 
 function snapAllCards(){
   cardSnapshots={};
   document.querySelectorAll('[data-id]').forEach(el=>{
     const id=el.getAttribute('data-id');
-    cardSnapshots[id]={rect:el.getBoundingClientRect(), clone:el.cloneNode(true)};
+    cardSnapshots[id]={rect:el.getBoundingClientRect()};
   });
 }
-
-// For explicit snap of a single card (keeps backward compat)
 function snapCard(cardId){
   const el=document.querySelector(`[data-id="${cardId}"]`);
   if(!el) return;
-  pendingAnim={cardId, fromRect:el.getBoundingClientRect(), el:el.cloneNode(true)};
+  cardSnapshots[cardId]={rect:el.getBoundingClientRect()};
 }
 
+// Simple FLIP: animate cards that moved using transforms on the actual elements
 function flyCards(){
-  const animated=new Set();
-  // Animate individually-snapped card (player actions)
-  if(pendingAnim){
-    const {cardId, fromRect, el:clone, flip}=pendingAnim;
-    pendingAnim=null;
-    animateCard(cardId, fromRect, clone, flip);
-    animated.add(cardId);
-  }
-  // Animate all cards that moved (catches opponent actions + hand reflow)
-  const allCards=document.querySelectorAll('[data-id]');
-  allCards.forEach(target=>{
-    const id=target.getAttribute('data-id');
-    if(animated.has(id) || animatingCards[id]) return;
+  document.querySelectorAll('[data-id]').forEach(el=>{
+    const id=el.getAttribute('data-id');
     const snap=cardSnapshots[id];
-    if(snap){
-      // Card existed before — animate if it moved
-      const toRect=target.getBoundingClientRect();
-      const dx=snap.rect.left-toRect.left, dy=snap.rect.top-toRect.top;
-      if(Math.abs(dx)>=8 || Math.abs(dy)>=8){
-        animateCard(id, snap.rect, snap.clone);
-      }
-    } else {
-      // New card (wasn't visible before) — fly from a logical origin
-      // Check if it's in opponent expeditions or discards (opponent played it)
-      const oppRow=document.getElementById('opp-row');
-      const discardRow=document.getElementById('discard-row');
-      const handArea=document.querySelector('.hand-cards');
-      let originEl=null;
-      let shouldFlip=false;
-      if(oppRow && oppRow.contains(target)){
-        // Opponent played to expedition — fly from opponent hand indicator
-        originEl=document.querySelector('#opp-row');
-        shouldFlip=true;
-      } else if(discardRow && discardRow.contains(target)){
-        // Card appeared in discard — fly from opponent hand area if it's their turn effect
-        originEl=document.querySelector('#opp-row');
-        shouldFlip=true;
-      } else if(handArea && handArea.contains(target)){
-        // Card appeared in my hand — fly from deck
-        originEl=document.getElementById('deck-draw');
-        shouldFlip=true;
-      }
-      if(originEl){
-        const origRect=originEl.getBoundingClientRect();
-        const targetRect=target.getBoundingClientRect();
-        // Use center of origin element as the start point, with card dimensions
-        const fromRect={
-          left:origRect.left+(origRect.width-targetRect.width)/2,
-          top:origRect.top+(origRect.height-targetRect.height)/2,
-          width:targetRect.width,
-          height:targetRect.height
-        };
-        const clone=target.cloneNode(true);
-        animateCard(id, fromRect, clone, shouldFlip);
-      }
-    }
+    if(!snap) return;
+    const to=el.getBoundingClientRect();
+    const dx=snap.rect.left-to.left, dy=snap.rect.top-to.top;
+    if(Math.abs(dx)<4 && Math.abs(dy)<4) return;
+    // Start at old position (no transition)
+    el.style.transition='none';
+    el.style.transform=`translate(${dx}px,${dy}px)`;
+    el.offsetHeight; // force reflow
+    // Animate to new position
+    el.style.transition='transform 0.25s ease';
+    el.style.transform='';
+    el.addEventListener('transitionend',()=>{el.style.transition='';el.style.transform='';},{once:true});
   });
   cardSnapshots={};
 }
-
-function animateCard(cardId, fromRect, clone, flip){
-  const target=document.querySelector(`[data-id="${cardId}"]`);
-  if(!target) return;
-  const toRect=target.getBoundingClientRect();
-  const dx=fromRect.left-toRect.left, dy=fromRect.top-toRect.top;
-  if(Math.abs(dx)<2 && Math.abs(dy)<2) return;
-  target.style.visibility='hidden';
-  animatingCards[cardId]=true;
-  let finished=false;
-  function done(){
-    if(finished) return;
-    finished=true;
-    if(wrapper.parentNode) wrapper.remove();
-    delete animatingCards[cardId];
-    const el=document.querySelector(`[data-id="${cardId}"]`);
-    if(el) el.style.visibility='';
-    checkAnimationQueue();
-  }
-  const styles=getComputedStyle(document.documentElement);
-  const DUR=styles.getPropertyValue('--anim-dur').trim();
-  const EASE=styles.getPropertyValue('--anim-ease').trim();
-  const durMs=parseFloat(DUR)*1000;
-  let wrapper;
-  if(flip){
-    // Build a 3D flip container: front=card-back, back=face card
-    const faceClone=target.cloneNode(true);
-    faceClone.className=faceClone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-    faceClone.style.cssText='width:100%;height:100%;margin:0;';
-    wrapper=document.createElement('div');
-    wrapper.className='flip-container';
-    wrapper.style.cssText=`left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};`;
-    const inner=document.createElement('div');
-    inner.className='flip-inner';
-    const backSide=document.createElement('div');
-    backSide.className='flip-front';
-    backSide.innerHTML='<div class="card card-back" style="width:100%;height:100%;margin:0"></div>';
-    const faceSide=document.createElement('div');
-    faceSide.className='flip-back';
-    faceSide.appendChild(faceClone);
-    inner.appendChild(backSide);
-    inner.appendChild(faceSide);
-    wrapper.appendChild(inner);
-    document.body.appendChild(wrapper);
-    wrapper.offsetHeight;
-    wrapper.style.left=toRect.left+'px';
-    wrapper.style.top=toRect.top+'px';
-    inner.style.transform='rotateY(180deg)';
-    // Only listen for the transform end on inner (the flip), not left/top bubbling
-    inner.addEventListener('transitionend',e=>{if(e.target===inner)done();},{once:true});
-  } else {
-    // Non-flip: use left/top transition (same approach as flip container)
-    clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-    clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};margin:0;`;
-    wrapper=clone;
-    document.body.appendChild(clone);
-    clone.offsetHeight;
-    clone.style.left=toRect.left+'px';
-    clone.style.top=toRect.top+'px';
-    clone.addEventListener('transitionend',e=>{if(e.target===clone)done();},{once:true});
-  }
-  setTimeout(done,durMs+200);
-}
-function isAnimating(){return Object.keys(animatingCards).length>0}
-function onAnimationsDone(cb){
-  if(!isAnimating()) return cb();
-  animationDoneCallbacks.push(cb);
-}
-function checkAnimationQueue(){
-  if(isAnimating()) return;
-  // Fire all waiting callbacks
-  const cbs=animationDoneCallbacks.splice(0);
-  cbs.forEach(cb=>cb());
-  // Process next queued state update (one at a time so each gets animated)
-  if(animationQueue.length>0){
-    const data=animationQueue.shift();
-    gameState=data;
-    renderGame();
-    if(data.status==='finished') showGameOver();
-    // If no animation started (e.g. duplicate state), process next immediately
-    if(!isAnimating() && animationQueue.length>0) checkAnimationQueue();
-  }
-}
+function isAnimating(){return false} // Animations are non-blocking now
+function onAnimationsDone(cb){cb()} // Always immediate
+function checkAnimationQueue(){}
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function vibrate(ms=15){try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
@@ -654,7 +531,7 @@ function cardHTML(card, extra=''){
   const isWager = card.value===0;
   const valText = isWager ? '&#x1F91D;' : card.value;
   const corner = isWager ? '&#x1F91D;' : card.value;
-  const hiding = (animatingCards[card.id] || (pendingAnim && pendingAnim.cardId===card.id)) ? 'visibility:hidden;' : '';
+  const hiding = '';
   return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}" style="${hiding}">
     <div class="card-corner">${corner}</div>
     <div class="card-value">${valText}</div>
@@ -938,7 +815,8 @@ async function drawFromDeck(){
   const card=deck.pop();
   // Snap the deck position — card will fly from deck to hand
   const deckEl=document.getElementById('deck-draw');
-  if(deckEl) pendingAnim={cardId:card.id, fromRect:deckEl.getBoundingClientRect(), el:Object.assign(document.createElement('div'),{className:'card card-back',style:''}), flip:true};
+  // Card draw — position snapped above for simple FLIP animation
+  if(deckEl) cardSnapshots[card.id]={rect:deckEl.getBoundingClientRect()};
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
@@ -1352,7 +1230,8 @@ drawFromDeck=async function(){
   vibrate(25);
   const card=deck.pop();
   const deckEl=document.getElementById('deck-draw');
-  if(deckEl) pendingAnim={cardId:card.id, fromRect:deckEl.getBoundingClientRect(), el:Object.assign(document.createElement('div'),{className:'card card-back',style:''}), flip:true};
+  // Card draw — position snapped above for simple FLIP animation
+  if(deckEl) cardSnapshots[card.id]={rect:deckEl.getBoundingClientRect()};
   const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
   if(deck.length===0)u['status']='finished';
