@@ -855,6 +855,38 @@ function evaluate(gs, variant, simCount, genome){
     }
   }
 
+  // POST-MC CORRECTION: Penalize discards to opponent's active expeditions.
+  // MC underestimates this danger because random opponent hands often ignore the discard.
+  // Real opponents WILL pick up high cards in their active colors.
+  for(const pair of pairs){
+    if(pair.p1.type==='discard'){
+      const color=pair.p1.color;
+      const oppExp=gs.expeditions.player1[color]||[];
+      if(oppExp.length>0){
+        const cardVal=pair.p1.card.value||3; // wagers count as 3
+        const oppWagers=oppExp.filter(c=>c.value===0).length;
+        const oppCards=oppExp.length;
+        const canPlay=oppExp.length===0 || (pair.p1.card.value||0)>=(oppExp[oppExp.length-1].value||0);
+
+        // Base penalty: scales with card value and opponent's investment
+        let penalty=cardVal * 0.02; // Each point of card value = 2% win rate penalty
+
+        // Opponent has wagers = they're committed, penalty is much worse
+        penalty *= (1 + oppWagers * 0.5);
+
+        // More cards = more committed = higher penalty
+        penalty *= (1 + oppCards * 0.1);
+
+        // If opponent can legally play this card immediately, extra danger
+        if(canPlay) penalty *= 1.5;
+
+        // Apply as fraction of total sims (so it shifts win rate)
+        pair.wins -= penalty * simsRan;
+        if(pair.wins<0) pair.wins=0;
+      }
+    }
+  }
+
   let best=pairs[0];
   for(let i=1;i<pairs.length;i++){
     if(pairs[i].wins>best.wins) best=pairs[i];
