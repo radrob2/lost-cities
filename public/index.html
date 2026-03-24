@@ -816,6 +816,10 @@ async function playToExpedition(color){
   snapCard(selectedCard.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   expedition.push(selectedCard);
+  gameState.hands[mySlot]=hand;
+  gameState.phase='draw';
+  gameState.lastDiscardedColor=null;
+  gameState.justDiscarded=false;
   const updates={};
   updates[`hands/${mySlot}`]=hand;
   updates[`expeditions/${mySlot}/${color}`]=expedition;
@@ -839,6 +843,9 @@ async function discardTo(color){
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'discards',color);
   pile.push(selectedCard);
+  gameState.hands[mySlot]=hand;
+  gameState.phase='draw';
+  gameState.lastDiscardedColor=color;
   const updates={};
   updates[`hands/${mySlot}`]=hand;
   updates[`discards/${color}`]=pile;
@@ -885,6 +892,9 @@ async function discardToSingle(){
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'singlePile');
   pile.push(selectedCard);
+  gameState.hands[mySlot]=hand;
+  gameState.phase='draw';
+  gameState.justDiscarded=true;
   const updates={};
   updates[`hands/${mySlot}`]=hand;
   updates['singlePile']=pile;
