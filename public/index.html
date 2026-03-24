@@ -312,6 +312,7 @@ let selectedCard=null, listeners=[];
 let variant='classic'; // 'classic' or 'single'
 let isAIGame=false;
 let lastPlayedCard=null; // {card, from:'expedition'|'discard'|'single', color} for undo
+let pendingAnim=null; // {cardId, fromRect} for fly animation
 
 function setVariant(v){
   variant=v;
@@ -327,6 +328,42 @@ function getCards(obj, ...keys){
 }
 
 function genId(){return Math.random().toString(36).substr(2,9)}
+
+// Card fly animation: snapshot source position before action
+function snapCard(cardId){
+  const el=document.querySelector(`[data-id="${cardId}"]`);
+  if(!el) return;
+  pendingAnim={cardId, fromRect:el.getBoundingClientRect(), el:el.cloneNode(true)};
+}
+
+// After re-render, animate a clone from old position to new position
+function flyCard(){
+  if(!pendingAnim) return;
+  const {cardId, fromRect, el:clone}=pendingAnim;
+  pendingAnim=null;
+  // Find card in its new location
+  const target=document.querySelector(`[data-id="${cardId}"]`);
+  if(!target) return;
+  const toRect=target.getBoundingClientRect();
+  // Skip if barely moved
+  const dx=fromRect.left-toRect.left, dy=fromRect.top-toRect.top;
+  if(Math.abs(dx)<5 && Math.abs(dy)<5) return;
+  // Hide the real card during animation
+  target.style.opacity='0';
+  // Style the clone as a fixed overlay
+  clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
+  clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${fromRect.width}px;height:${fromRect.height}px;z-index:9999;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;margin:0;`;
+  document.body.appendChild(clone);
+  // Force reflow then animate
+  clone.offsetHeight;
+  clone.style.transform=`translate(${toRect.left-fromRect.left}px,${toRect.top-fromRect.top}px)`;
+  clone.addEventListener('transitionend',()=>{
+    clone.remove();
+    target.style.opacity='';
+  },{once:true});
+  // Fallback cleanup
+  setTimeout(()=>{clone.remove();target.style.opacity='';},400);
+}
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function vibrate(ms=15){try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
@@ -473,6 +510,8 @@ function renderGame(){
 
   renderHand();
   renderBoard();
+  // Run fly animation after DOM update
+  requestAnimationFrame(flyCard);
 }
 
 function renderHand(){
@@ -567,10 +606,9 @@ function renderBoard(){
       }
       const extra=canDraw?'target':(canDiscard?'target':'');
       const handler=inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`;
-      // Show up to 3 under-cards with jitter to convey stack depth
-      const showCount=Math.min(pile.length,4); // top + up to 3 beneath
+      // Show all cards in pile with jitter to convey stack depth
       let stackHTML='';
-      for(let i=pile.length-showCount;i<pile.length-1;i++){
+      for(let i=0;i<pile.length-1;i++){
         const card=pile[i];
         stackHTML+=`<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
       }
@@ -630,6 +668,7 @@ async function playToExpedition(color){
     toast('Must be higher than '+expedition[expedition.length-1].value); return;
   }
   vibrate(25);
+  snapCard(selectedCard.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   expedition.push(selectedCard);
   const updates={};
@@ -649,6 +688,7 @@ async function discardTo(color){
     toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile'); return;
   }
   vibrate(25);
+  snapCard(selectedCard.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'discards',color);
   pile.push(selectedCard);
@@ -668,6 +708,9 @@ async function drawFromDeck(){
   if(deck.length===0) return;
   vibrate(25);
   const card=deck.pop();
+  // Snap the deck position — card will fly from deck to hand
+  const deckEl=document.getElementById('deck-draw');
+  if(deckEl) pendingAnim={cardId:card.id, fromRect:deckEl.getBoundingClientRect(), el:Object.assign(document.createElement('div'),{className:'card card-back',style:''})};
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
@@ -687,6 +730,7 @@ async function drawFromDeck(){
 async function discardToSingle(){
   if(!selectedCard || gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
   vibrate(25);
+  snapCard(selectedCard.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'singlePile');
   pile.push(selectedCard);
@@ -706,7 +750,9 @@ async function drawFromSingle(){
   const pile=getCards(gameState,'singlePile');
   if(pile.length===0) return;
   vibrate(25);
-  const card=pile.pop();
+  const card=pile[pile.length-1];
+  snapCard(card.id);
+  pile.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
@@ -726,7 +772,9 @@ async function drawFromDiscard(color){
   const pile=getCards(gameState,'discards',color);
   if(pile.length===0) return;
   vibrate(25);
-  const card=pile.pop();
+  const card=pile[pile.length-1];
+  snapCard(card.id);
+  pile.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
@@ -1027,7 +1075,7 @@ playToExpedition=async function(color){
   if(selectedCard.color!==color)return;
   const expedition=getCards(gameState,'expeditions',mySlot,color);
   if(!canPlayOnExpedition(selectedCard,expedition)){toast('Must be higher than '+expedition[expedition.length-1].value);return}
-  vibrate(25);
+  vibrate(25);snapCard(selectedCard.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==selectedCard.id);
   expedition.push(selectedCard);
   const u={};u[`hands/${mySlot}`]=hand;u[`expeditions/${mySlot}/${color}`]=expedition;u['phase']='draw';u['lastDiscardedColor']=null;u['justDiscarded']=false;
@@ -1040,7 +1088,7 @@ discardTo=async function(color){
   if(!isAIGame)return _origDiscardTo(color);
   if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
   if(selectedCard.color!==color){toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile');return}
-  vibrate(25);
+  vibrate(25);snapCard(selectedCard.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'discards',color);pile.push(selectedCard);
   const u={};u[`hands/${mySlot}`]=hand;u[`discards/${color}`]=pile;u['phase']='draw';u['lastDiscardedColor']=color;
@@ -1054,7 +1102,10 @@ drawFromDeck=async function(){
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
   const deck=getCards(gameState,'deck');if(deck.length===0)return;
   vibrate(25);
-  const card=deck.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const card=deck.pop();
+  const deckEl=document.getElementById('deck-draw');
+  if(deckEl) pendingAnim={cardId:card.id, fromRect:deckEl.getBoundingClientRect(), el:Object.assign(document.createElement('div'),{className:'card card-back',style:''})};
+  const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
   if(deck.length===0)u['status']='finished';
   lastPlayedCard=null;
@@ -1069,7 +1120,7 @@ drawFromDiscard=async function(color){
   if(color===gameState.lastDiscardedColor){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'discards',color);if(pile.length===0)return;
   vibrate(25);
-  const card=pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const card=pile[pile.length-1];snapCard(card.id);pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
   lastPlayedCard=null;
   localUpdate(u);
@@ -1080,7 +1131,7 @@ const _origDiscardToSingle=discardToSingle;
 discardToSingle=async function(){
   if(!isAIGame)return _origDiscardToSingle();
   if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
-  vibrate(25);
+  vibrate(25);snapCard(selectedCard.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==selectedCard.id);
   const pile=getCards(gameState,'singlePile');pile.push(selectedCard);
   const u={};u[`hands/${mySlot}`]=hand;u['singlePile']=pile;u['phase']='draw';u['justDiscarded']=true;
@@ -1095,7 +1146,7 @@ drawFromSingle=async function(){
   if(gameState.justDiscarded){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'singlePile');if(pile.length===0)return;
   vibrate(25);
-  const card=pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
+  const card=pile[pile.length-1];snapCard(card.id);pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u['singlePile']=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['justDiscarded']=false;
   lastPlayedCard=null;
   localUpdate(u);
