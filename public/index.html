@@ -756,7 +756,7 @@ function showGameOver(){
   const w=document.getElementById('winner-text');
   w.textContent=my.total>opp.total?'Victory!':my.total<opp.total?'Defeated':'A Draw!';
   const chex={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
-  const glow='text-shadow:0 0 10px rgba(212,168,67,.4)';
+  const glow='text-shadow:0 0 6px rgba(212,168,67,.8),0 0 16px rgba(212,168,67,.5),0 0 30px rgba(212,168,67,.3)';
   const neg=v=>v<0?'r-neg':'';
   const goldPlus=v=>v>=0?'r-pos':'r-neg';
   const sign=v=>v>=0?'<span class="sc-sign">+</span>'+v:'<span class="sc-sign">−</span>'+Math.abs(v);
