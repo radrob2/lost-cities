@@ -425,7 +425,7 @@ function animateCard(cardId, fromRect, clone, flip){
   const toRect=target.getBoundingClientRect();
   const dx=fromRect.left-toRect.left, dy=fromRect.top-toRect.top;
   if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
-  target.style.opacity='0';
+  target.style.visibility='hidden';
   animatingCards[cardId]=true;
   let finished=false;
   function done(){
@@ -434,7 +434,7 @@ function animateCard(cardId, fromRect, clone, flip){
     if(wrapper.parentNode) wrapper.remove();
     delete animatingCards[cardId];
     const el=document.querySelector(`[data-id="${cardId}"]`);
-    if(el) el.style.opacity='';
+    if(el) el.style.visibility='';
     checkAnimationQueue();
   }
   const styles=getComputedStyle(document.documentElement);
@@ -449,7 +449,7 @@ function animateCard(cardId, fromRect, clone, flip){
     faceClone.style.cssText='width:100%;height:100%;margin:0;';
     wrapper=document.createElement('div');
     wrapper.className='flip-container';
-    wrapper.style.cssText=`left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};`;
+    wrapper.style.cssText=`left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};outline:3px solid lime;`;
     const inner=document.createElement('div');
     inner.className='flip-inner';
     const backSide=document.createElement('div');
@@ -471,7 +471,7 @@ function animateCard(cardId, fromRect, clone, flip){
   } else {
     // Non-flip: use left/top transition (same approach as flip container)
     clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-    clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};margin:0;`;
+    clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:left ${DUR} ${EASE},top ${DUR} ${EASE};margin:0;outline:3px solid red;`;
     wrapper=clone;
     document.body.appendChild(clone);
     clone.offsetHeight;
