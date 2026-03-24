@@ -339,6 +339,8 @@ function genId(){return Math.random().toString(36).substr(2,9)}
 // then animate any cards that moved to a new position.
 let cardSnapshots={}; // {cardId: {rect, clone}}
 let animatingCards={}; // {cardId: true} — cards with in-flight animations
+let animationQueue=[]; // queued gameState updates waiting for animations to finish
+let animationDoneCallbacks=[]; // called when all animations complete
 
 function snapAllCards(){
   cardSnapshots={};
@@ -432,6 +434,7 @@ function animateCard(cardId, fromRect, clone, flip){
     delete animatingCards[cardId];
     const el=document.querySelector(`[data-id="${cardId}"]`);
     if(el) el.style.opacity='';
+    checkAnimationQueue();
   }
   const DUR='3s';
   const EASE='cubic-bezier(.2,.8,.3,1)';
@@ -473,6 +476,25 @@ function animateCard(cardId, fromRect, clone, flip){
     clone.addEventListener('transitionend',e=>{if(e.target===clone)done();},{once:true});
   }
   setTimeout(done,3200);
+}
+function isAnimating(){return Object.keys(animatingCards).length>0}
+function onAnimationsDone(cb){
+  if(!isAnimating()) return cb();
+  animationDoneCallbacks.push(cb);
+}
+function checkAnimationQueue(){
+  if(isAnimating()) return;
+  // Fire all waiting callbacks
+  const cbs=animationDoneCallbacks.splice(0);
+  cbs.forEach(cb=>cb());
+  // Process next queued state update
+  if(animationQueue.length>0){
+    const data=animationQueue.pop(); // take latest, skip intermediate states
+    animationQueue.length=0;
+    gameState=data;
+    renderGame();
+    if(data.status==='finished') showGameOver();
+  }
 }
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
@@ -558,8 +580,13 @@ async function startGame(){
   const gRef=roomRef.child('game');
   const l=gRef.on('value',snap=>{
     const data=snap.val(); if(!data)return;
-    gameState=data; renderGame();
-    if(data.status==='finished')showGameOver();
+    if(isAnimating()){
+      // Queue the update — only latest matters
+      animationQueue=[data];
+    } else {
+      gameState=data; renderGame();
+      if(data.status==='finished')showGameOver();
+    }
   });
   listeners.push(()=>gRef.off('value',l));
   const pRef=roomRef.child('players');
