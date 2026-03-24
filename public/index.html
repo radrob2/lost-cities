@@ -1421,50 +1421,48 @@ function aiTurn(){
     }
   }
 
-  // Evaluate discarding — find the safest card to throw away
-  if(!bestPlay||bestScore<5){
-    let worstCard=null,worstScore=9999;
-    for(const card of hand){
-      const ev=expValue(card.color,'player2');
-      const oppEv=expValue(card.color,'player1');
-      let score=0;
+  // Evaluate discarding — always find the best discard candidate
+  let worstCard=null,worstScore=9999;
+  for(const card of hand){
+    const ev=expValue(card.color,'player2');
+    const oppEv=expValue(card.color,'player1');
+    let score=0;
 
-      // How useful is this card to US?
-      if(ev.invested){
-        // We're building this color — very costly to discard
-        const exp=getCards(gameState,'expeditions','player2',card.color);
-        if(canPlayOnExpedition(card,exp)){
-          score+=40; // playable on our expedition, terrible to discard
-        } else {
-          score+=5; // can't play it anyway, less costly
-        }
+    // How useful is this card to US?
+    if(ev.invested){
+      // We're building this color — very costly to discard
+      const exp=getCards(gameState,'expeditions','player2',card.color);
+      if(canPlayOnExpedition(card,exp)){
+        score+=40; // playable on our expedition, terrible to discard
       } else {
-        // We haven't started this color
-        const pot=expeditionPotential(card.color);
-        if(isEarly&&pot.cardCount>=3&&pot.projected>0)score+=15; // promising hand, keep
-        else if(card.value===0)score+=isEarly?8:1; // wagers less valuable as game goes on
-        else score+=card.value/2; // higher cards slightly harder to discard
+        score+=5; // can't play it anyway, less costly
       }
-
-      // How useful is this card to the OPPONENT?
-      if(oppEv.invested){
-        // Opponent is building this color — they might pick it up!
-        score-=12; // AVOID discarding cards opponent wants
-        if(card.value>oppEv.topValue)score-=5; // they can definitely play this
-      } else {
-        // Opponent hasn't started this color — safer to discard
-        score-=3;
-      }
-
-      // In classic mode, discarding creates a pickup opportunity for opponent
-      if(variant==='classic'&&oppEv.invested)score-=5;
-
-      if(score<worstScore){worstScore=score;worstCard=card}
+    } else {
+      // We haven't started this color
+      const pot=expeditionPotential(card.color);
+      if(isEarly&&pot.cardCount>=3&&pot.projected>0)score+=15; // promising hand, keep
+      else if(card.value===0)score+=isEarly?8:1; // wagers less valuable as game goes on
+      else score+=card.value/2; // higher cards slightly harder to discard
     }
-    // Only discard if it's better than our best play option
-    if(worstCard&&(!bestPlay||worstScore<bestScore-5)){
-      bestPlay={action:'discard',card:worstCard,color:worstCard.color};
+
+    // How useful is this card to the OPPONENT?
+    if(oppEv.invested){
+      // Opponent is building this color — they might pick it up!
+      score-=12; // AVOID discarding cards opponent wants
+      if(card.value>oppEv.topValue)score-=5; // they can definitely play this
+    } else {
+      // Opponent hasn't started this color — safer to discard
+      score-=3;
     }
+
+    // In classic mode, discarding creates a pickup opportunity for opponent
+    if(variant==='classic'&&oppEv.invested)score-=5;
+
+    if(score<worstScore){worstScore=score;worstCard=card}
+  }
+  // Discard if best play is bad (below threshold) or no playable card found
+  if(worstCard&&(!bestPlay||bestScore<5)){
+    bestPlay={action:'discard',card:worstCard,color:worstCard.color};
   }
 
   if(!bestPlay){bestPlay={action:'discard',card:hand[0],color:hand[0].color}}
