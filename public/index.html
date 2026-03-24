@@ -580,15 +580,16 @@ function renderBoard(){
       const cls=canPlay?'card target':'card empty-slot';
       return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}</div></div>`;
     }
-    const stackH=`calc(var(--card-h) + ${(cards.length-1)*stackOffset+10}px)`;
+    const nextIdx=cards.length;
+    const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*stackOffset+10}px)`;
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
       return `<div style="position:absolute;top:${i*stackOffset+5}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
+    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*stackOffset+5}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     let html=`<div class="card-col" onclick="playToExpedition('${c}')"><div class="expedition-stack" style="height:${stackH}">${inner}</div>`;
-    if(canPlay) html+=`<div class="card target" onclick="event.stopPropagation();playToExpedition('${c}')" style="margin-top:2px"><div class="card-value" style="color:var(--gold-bright);font-size:14px">+</div><span class="target-label">Play</span></div>`;
     return html+`</div>`;
   }).join('');
 }
