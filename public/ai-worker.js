@@ -22,13 +22,7 @@ function canPlay(card, exp){
 
 function scoreExpeditions(exps){
   let total=0;
-  for(const c of COLORS){
-    const cards=exps[c]||[];
-    if(cards.length===0) continue;
-    const wagers=cards.filter(x=>x.value===0).length;
-    const sum=cards.filter(x=>x.value>0).reduce((s,x)=>s+x.value,0);
-    total+=(sum-20)*(1+wagers)+(cards.length>=8?20:0);
-  }
+  for(const c of COLORS) total+=scoreColor(exps[c]||[]);
   return total;
 }
 
@@ -86,50 +80,65 @@ function createSim(gs, oppHand, deck, variant){
   return sim;
 }
 
+// Score a single color's expedition using the actual game formula
+function scoreColor(cards){
+  const n=cards.length;
+  if(n===0) return 0;
+  let wagers=0, sum=0;
+  for(let i=0;i<n;i++){
+    const v=cards[i].value;
+    if(v===0) wagers++; else sum+=v;
+  }
+  return (sum-20)*(1+wagers)+(n>=8?20:0);
+}
+
 // ========== GREEDY ROLLOUT POLICY ==========
 // Used to simulate both players' future turns quickly.
 // Needs to be good enough that Monte Carlo statistics reflect real outcomes.
 
 // Analyze what playable sequences a player holds for each color.
-// Returns {color: {playable: [cards in order], wagers: count, guaranteed: bool, score: number}}
 function analyzeHand(hand, expeditions){
   const analysis={};
+  // Pre-bucket hand cards by color to avoid repeated filtering
+  const byColor={};
+  for(const c of COLORS) byColor[c]=[];
+  for(let i=0;i<hand.length;i++) byColor[hand[i].color].push(hand[i]);
+
   for(const c of COLORS){
-    const exp=expeditions[c]||[];
-    const topVal=exp.length>0? exp[exp.length-1].value : -1;
-    const hasNumbers=exp.some(x=>x.value>0);
+    const exp=expeditions[c];
+    const expLen=exp?exp.length:0;
+    const topVal=expLen>0? exp[expLen-1].value : -1;
 
-    // Get all cards of this color from hand, sorted
-    const colorCards=hand.filter(x=>x.color===c);
-    const wagers=colorCards.filter(x=>x.value===0);
-    const nums=colorCards.filter(x=>x.value>0).sort((a,b)=>a.value-b.value);
+    const colorCards=byColor[c];
+    if(colorCards.length===0){
+      analysis[c]={playable:[], count:0, projected:expLen>0?scoreColor(exp):0};
+      continue;
+    }
 
-    // Build the playable sequence: cards that can be played in ascending order
+    // Check if expedition already has number cards
+    let hasNumbers=false;
+    if(expLen>0) for(let i=0;i<expLen;i++) if(exp[i].value>0){hasNumbers=true;break;}
+
+    // Sort: wagers first, then numbers ascending
+    const sorted=colorCards.slice().sort((a,b)=>a.value-b.value);
+
+    // Build playable sequence
     const playable=[];
     let curTop=topVal;
-
-    // Wagers can only be played if expedition has no numbers yet
-    if(!hasNumbers){
-      for(const w of wagers){playable.push(w); curTop=0;}
+    for(let i=0;i<sorted.length;i++){
+      const card=sorted[i];
+      if(card.value===0){
+        if(!hasNumbers){playable.push(card); curTop=0;}
+      } else if(card.value>curTop){
+        playable.push(card); curTop=card.value;
+      }
     }
-    // Numbers must be ascending from current top
-    for(const n of nums){
-      if(n.value>curTop){playable.push(n); curTop=n.value;}
-    }
 
-    const numSum=playable.filter(x=>x.value>0).reduce((s,x)=>s+x.value,0);
-    const existingSum=exp.filter(x=>x.value>0).reduce((s,x)=>s+x.value,0);
-    const totalWagers=(exp.filter(x=>x.value===0).length)+playable.filter(x=>x.value===0).length;
-    const totalCount=exp.length+playable.length;
-    const projected=(existingSum+numSum-20)*(1+totalWagers)+(totalCount>=8?20:0);
+    // Compute projected score if we play the full sequence
+    const futureExp=expLen>0?exp.concat(playable):playable;
+    const projected=scoreColor(futureExp);
 
-    // "Guaranteed" = we hold a full sequence we can play without needing any draws
-    // This means the projected score is locked in if we play them all
-    analysis[c]={
-      playable, wagers:totalWagers, count:playable.length,
-      projected, guaranteed:playable.length>0,
-      started:exp.length>0
-    };
+    analysis[c]={playable, count:playable.length, projected};
   }
   return analysis;
 }
@@ -141,83 +150,77 @@ function greedyTurn(sim, player){
 
   const analysis=analyzeHand(hand, sim.expeditions[player]);
 
-  // --- Phase 1: Play or Discard ---
-  let bestIdx=-1, bestScore=-Infinity, bestAction='discard';
+  // --- Phase 1: Pick best action by comparing actual projected scores ---
 
-  for(let i=0;i<hand.length;i++){
-    const card=hand[i];
-    const exp=sim.expeditions[player][card.color];
-    if(!canPlay(card,exp)) continue;
+  // For each color, compute the score delta of playing the next card in sequence
+  // vs not playing anything in that color. Only consider the lowest playable card
+  // per color — playing out of order is never correct since it blocks cards below.
+  let bestIdx=-1, bestDelta=-Infinity, bestAction='discard';
 
-    const a=analysis[card.color];
-    let score=0;
+  for(const c of COLORS){
+    const a=analysis[c];
+    if(a.count===0) continue;
+    const nextCard=a.playable[0]; // always play lowest first
+    const idx=hand.indexOf(nextCard);
+    if(idx===-1) continue;
 
-    // Key rule: if this card is NOT the lowest playable in our sequence,
-    // playing it blocks all lower cards. Heavily penalize this.
-    const isLowest=a.playable.length>0 && card.id===a.playable[0].id;
-    const blockedCards=isLowest? 0 : a.playable.filter(c=>c.value>0 && c.value<card.value).length;
+    const exp=sim.expeditions[player][c];
 
-    if(exp.length>0){
-      // Extending existing expedition
-      score=20+(card.value||3);
-      if(exp.length>=6) score+=8;
-      if(isLowest) score+=5;
-      // Penalty for blocking lower cards we hold
-      score-=blockedCards*15;
-    } else {
-      // Starting new expedition — use sequence analysis
-      // Only evaluate this card as the START of the sequence if it's the lowest
-      if(isLowest){
-        if(a.projected>0 && a.count>=2){
-          score=8+a.projected/4;
-        } else if(a.projected>0){
-          score=4+a.projected/5;
-        } else if(card.value===0 && a.count>=3){
-          score=5+a.count*2;
-        } else {
-          score=a.projected/3;
-        }
-      } else {
-        // Playing a non-lowest card to start = blocks lower cards
-        // Compute projected score for just this card and those above it
-        const aboveCards=a.playable.filter(c=>c.value>=card.value || c.value===0);
-        const aboveSum=aboveCards.filter(c=>c.value>0).reduce((s,c)=>s+c.value,0);
-        const aboveWagers=aboveCards.filter(c=>c.value===0).length;
-        const aboveProj=(aboveSum-20)*(1+aboveWagers);
-        score=aboveProj>0? 2+aboveProj/5 : aboveProj/2;
-        // Extra penalty for wasting the blocked cards
-        const blockedSum=a.playable.filter(c=>c.value>0 && c.value<card.value).reduce((s,c)=>s+c.value,0);
-        score-=blockedSum/2;
-      }
-      if(sim.deck.length<15) score-=8;
-      if(sim.deck.length<8) score-=8;
-    }
-    if(score>bestScore){bestScore=score; bestIdx=i; bestAction='play';}
+    // What's our score in this color if we do nothing (current expedition)?
+    const curScore=exp.length===0? 0 : scoreColor(exp);
+
+    // What's our projected score if we play this card (and eventually the rest of the sequence)?
+    // Estimate: we'll play as many of the sequence as we have turns for
+    const turnsLeft=Math.ceil(sim.deck.length/2); // rough: each player draws ~1/turn
+    const canPlayCount=Math.min(a.count, turnsLeft);
+    const toPlay=a.playable.slice(0, canPlayCount);
+    const futureExp=[...exp, ...toPlay];
+    const futureScore=scoreColor(futureExp);
+    const delta=futureScore-curScore;
+
+    if(delta>bestDelta){bestDelta=delta; bestIdx=idx; bestAction='play';}
   }
 
-  // Find best discard candidate
-  let discIdx=0, discScore=Infinity;
+  // Find best discard: card whose removal costs us the least and helps opponent the least
+  // Pre-cache opponent scores per color
+  let discIdx=0, discCost=Infinity;
   for(let i=0;i<hand.length;i++){
     const card=hand[i];
-    const exp=sim.expeditions[player][card.color];
-    let val=card.value||1;
-    if(exp.length>0) val+=30; // keep cards for active expeditions
-    if(exp.length>0 && canPlay(card,exp)) val+=20;
-    // Don't feed opponent — check if they could actually play this card
-    const oppExp=sim.expeditions[other][card.color];
-    if(oppExp.length>0){
-      val+=10;
-      if(canPlay(card,oppExp)){
-        val+=15; // opponent can play this immediately — very dangerous
-        // Extra penalty for wagered expeditions
-        const oppWagers=oppExp.filter(x=>x.value===0).length;
-        if(oppWagers>0) val+=oppWagers*8; // multiplied gain for opponent
+    const c=card.color;
+    const a=analysis[c];
+
+    // Cost = how much we lose + how much opponent gains
+    let cost=0;
+
+    // Our loss: is this card in our playable sequence?
+    if(a.count>0){
+      let inSequence=false;
+      for(let j=0;j<a.playable.length;j++){
+        if(a.playable[j].id===card.id){inSequence=true;break;}
+      }
+      if(inSequence){
+        // Difference between projected score with and without this card
+        cost=a.projected - scoreColor(sim.expeditions[player][c]);
+        // That's the value of the whole sequence; approximate single card's contribution
+        // by dividing by sequence length (each card matters roughly equally)
+        if(a.count>1) cost=cost/a.count;
       }
     }
-    if(val<discScore){discScore=val; discIdx=i;}
+
+    // Opponent gain: can they play this card?
+    const oppExp=sim.expeditions[other][c];
+    if(oppExp&&oppExp.length>0 && canPlay(card, oppExp)){
+      // Estimate opponent's gain: card value adjusted by their wager multiplier
+      let oppWagers=0;
+      for(let j=0;j<oppExp.length;j++) if(oppExp[j].value===0) oppWagers++;
+      cost+=(card.value||0)*(1+oppWagers);
+    }
+
+    if(cost<discCost){discCost=cost; discIdx=i;}
   }
 
-  if(bestAction!=='play' || bestScore<3){
+  // Play if the delta is positive (we gain points), otherwise discard
+  if(bestDelta<=0){
     bestIdx=discIdx; bestAction='discard';
   }
 
