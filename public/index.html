@@ -330,39 +330,90 @@ function getCards(obj, ...keys){
 
 function genId(){return Math.random().toString(36).substr(2,9)}
 
-// Card fly animation: snapshot source position before action
+// FLIP animation system: snapshot all card positions before render,
+// then animate any cards that moved to a new position.
+let cardSnapshots={}; // {cardId: {rect, clone}}
+
+function snapAllCards(){
+  cardSnapshots={};
+  document.querySelectorAll('[data-id]').forEach(el=>{
+    const id=el.getAttribute('data-id');
+    cardSnapshots[id]={rect:el.getBoundingClientRect(), clone:el.cloneNode(true)};
+  });
+}
+
+// For explicit snap of a single card (keeps backward compat)
 function snapCard(cardId){
   const el=document.querySelector(`[data-id="${cardId}"]`);
   if(!el) return;
   pendingAnim={cardId, fromRect:el.getBoundingClientRect(), el:el.cloneNode(true)};
 }
 
-// After re-render, animate a clone from old position to new position
-function flyCard(){
-  if(!pendingAnim) return;
-  const {cardId, fromRect, el:clone}=pendingAnim;
-  pendingAnim=null;
-  // Find card in its new location
+function flyCards(){
+  const animated=new Set();
+  // Animate individually-snapped card (player actions)
+  if(pendingAnim){
+    const {cardId, fromRect, el:clone}=pendingAnim;
+    pendingAnim=null;
+    animateCard(cardId, fromRect, clone);
+    animated.add(cardId);
+  }
+  // Animate all cards that moved (catches opponent actions + hand reflow)
+  const allCards=document.querySelectorAll('[data-id]');
+  allCards.forEach(target=>{
+    const id=target.getAttribute('data-id');
+    if(animated.has(id)) return;
+    const snap=cardSnapshots[id];
+    if(snap){
+      // Card existed before — animate if it moved
+      const toRect=target.getBoundingClientRect();
+      const dx=snap.rect.left-toRect.left, dy=snap.rect.top-toRect.top;
+      if(Math.abs(dx)>=8 || Math.abs(dy)>=8){
+        animateCard(id, snap.rect, snap.clone);
+      }
+    } else {
+      // New card (wasn't visible before) — fly from a logical origin
+      // Check if it's in opponent expeditions or discards (opponent played it)
+      const oppRow=document.getElementById('opp-row');
+      const discardRow=document.getElementById('discard-row');
+      const handArea=document.querySelector('.hand-cards');
+      let originEl=null;
+      if(oppRow && oppRow.contains(target)){
+        // Opponent played to expedition — fly from opponent hand indicator
+        originEl=document.querySelector('#opp-row');
+      } else if(discardRow && discardRow.contains(target)){
+        // Card appeared in discard — fly from opponent hand area if it's their turn effect
+        originEl=document.querySelector('#opp-row');
+      } else if(handArea && handArea.contains(target)){
+        // Card appeared in my hand — fly from deck
+        originEl=document.getElementById('deck-draw');
+      }
+      if(originEl){
+        const fromRect=originEl.getBoundingClientRect();
+        const clone=target.cloneNode(true);
+        animateCard(id, fromRect, clone);
+      }
+    }
+  });
+  cardSnapshots={};
+}
+
+function animateCard(cardId, fromRect, clone){
   const target=document.querySelector(`[data-id="${cardId}"]`);
   if(!target) return;
   const toRect=target.getBoundingClientRect();
-  // Skip if barely moved
   const dx=fromRect.left-toRect.left, dy=fromRect.top-toRect.top;
-  if(Math.abs(dx)<5 && Math.abs(dy)<5) return;
-  // Hide the real card during animation
+  if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
   target.style.opacity='0';
-  // Style the clone as a fixed overlay
   clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-  clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${fromRect.width}px;height:${fromRect.height}px;z-index:9999;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.3,1),opacity .3s;margin:0;`;
+  clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${fromRect.width}px;height:${fromRect.height}px;z-index:9999;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.3,1);margin:0;`;
   document.body.appendChild(clone);
-  // Force reflow then animate
   clone.offsetHeight;
   clone.style.transform=`translate(${toRect.left-fromRect.left}px,${toRect.top-fromRect.top}px)`;
   clone.addEventListener('transitionend',()=>{
     clone.remove();
     target.style.opacity='';
   },{once:true});
-  // Fallback cleanup
   setTimeout(()=>{clone.remove();target.style.opacity='';},400);
 }
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
@@ -478,6 +529,8 @@ function cardHTML(card, extra=''){
 
 function renderGame(){
   if(!gameState)return;
+  // Snapshot all card positions for FLIP animation
+  snapAllCards();
   const isMyTurn = gameState.currentTurn===mySlot;
   const inPlayPhase = gameState.phase==='play';
   const inDrawPhase = gameState.phase==='draw';
@@ -511,8 +564,8 @@ function renderGame(){
 
   renderHand();
   renderBoard();
-  // Run fly animation after DOM update
-  requestAnimationFrame(flyCard);
+  // Run FLIP animations after DOM update
+  requestAnimationFrame(flyCards);
 }
 
 function renderHand(){
