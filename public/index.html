@@ -391,6 +391,8 @@ const ANIM_MS=300;
 function animateMove(fromEl, toEl, cardInnerHTML, onDone){
   if(!fromEl || !toEl){ if(onDone)onDone(); return; }
   _animating=true;
+  // Hide the source card so you don't see two copies
+  fromEl.style.visibility='hidden';
   const from=fromEl.getBoundingClientRect();
   const to=toEl.getBoundingClientRect();
   const dx=to.left-from.left, dy=to.top-from.top;
@@ -398,12 +400,14 @@ function animateMove(fromEl, toEl, cardInnerHTML, onDone){
   const ghost=document.createElement('div');
   ghost.innerHTML=cardInnerHTML;
   const card=ghost.firstElementChild||ghost;
+  card.className=(card.className||'').replace(/selected|target/g,'').trim();
   card.style.cssText=`position:fixed;left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;z-index:9999;pointer-events:none;transition:transform ${ANIM_MS}ms cubic-bezier(.2,.8,.3,1);margin:0;`;
   document.body.appendChild(card);
   card.offsetHeight; // force reflow
   card.style.transform=`translate(${dx}px,${dy}px)`;
   function done(){
     if(card.parentNode) card.remove();
+    fromEl.style.visibility=''; // restore in case render didn't replace it
     _animating=false;
     if(onDone) onDone();
   }
