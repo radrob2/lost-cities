@@ -858,10 +858,26 @@ function evaluate(gs, variant, simCount, genome){
   // POST-MC CORRECTION: Penalize discards to opponent's active expeditions.
   // MC underestimates this danger because random opponent hands often ignore the discard.
   // Real opponents WILL pick up high cards in their active colors.
+  // Also penalize discards to colors where opponent has drawn from discard (they want that color).
+  const oppDrawnColors=new Set();
+  if(gs.oppDrawHistory){
+    for(const c of gs.oppDrawHistory) oppDrawnColors.add(c);
+  }
   for(const pair of pairs){
     if(pair.p1.type==='discard'){
       const color=pair.p1.color;
       const oppExp=gs.expeditions.player1[color]||[];
+
+      // Penalty for discarding to color opponent has drawn from discard (even no expedition yet)
+      if(oppDrawnColors.has(color) && oppExp.length===0){
+        const cardVal=pair.p1.card.value||3;
+        let penalty=cardVal * 0.015; // Lighter penalty - just a signal, not confirmed
+        const before=pair.wins;
+        pair.wins -= penalty * simsRan;
+        if(pair.wins<0) pair.wins=0;
+        console.log(`DRAW-SIGNAL PENALTY: ${cardVal} of ${color} → opp drew from ${color} discard. wins ${before.toFixed(0)}→${pair.wins.toFixed(0)}`);
+      }
+
       if(oppExp.length>0){
         const cardVal=pair.p1.card.value||3; // wagers count as 3
         const oppWagers=oppExp.filter(c=>c.value===0).length;
@@ -881,8 +897,10 @@ function evaluate(gs, variant, simCount, genome){
         if(canPlay) penalty *= 1.5;
 
         // Apply as fraction of total sims (so it shifts win rate)
+        const before=pair.wins;
         pair.wins -= penalty * simsRan;
         if(pair.wins<0) pair.wins=0;
+        console.log(`PENALTY: ${pair.p1.card.value||'W'} of ${color} → opp has ${oppCards} cards, ${oppWagers} wagers, canPlay=${canPlay}. penalty=${(penalty*100).toFixed(1)}%, wins ${before.toFixed(0)}→${pair.wins.toFixed(0)}`);
       }
     }
   }

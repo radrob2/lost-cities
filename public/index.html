@@ -1263,7 +1263,7 @@ function localUpdate(updates){
 function startAIGame(){
   const name=getName();
   if(!name){document.getElementById('lobby-error').textContent='Enter your name';return}
-  isAIGame=true; myId=genId(); mySlot='player1'; roomRef=null; roomCode=null;
+  isAIGame=true; myId=genId(); mySlot='player1'; roomRef=null; roomCode=null; humanDrawHistory=[];
   const deck=createDeck();
   const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
   const exps={},discard={};
@@ -1334,6 +1334,7 @@ drawFromDiscard=async function(color){
   if(color===gameState.lastDiscardedColor){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'discards',color);if(pile.length===0)return;
   vibrate(25);
+  humanDrawHistory.push(color); // Track that human drew from this color's discard
   const card=pile[pile.length-1];snapCard(card.id);pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u[`discards/${color}`]=pile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;
   lastPlayedCard=null;
@@ -1377,6 +1378,7 @@ function getAIWorker(){
 }
 
 let aiThinking=false;
+let humanDrawHistory=[]; // Track colors human has drawn from discard piles
 function aiTurn(){
   if(aiThinking)return;
   if(gameState.status==='finished'||gameState.currentTurn!=='player2')return;
@@ -1398,7 +1400,8 @@ function aiTurn(){
     expeditions:{player1:{},player2:{}},
     discards:{},
     singlePile:(gameState.singlePile||[]).map(c=>({color:c.color,value:c.value,id:c.id})),
-    deckSize:getCards(gameState,'deck').length
+    deckSize:getCards(gameState,'deck').length,
+    oppDrawHistory:humanDrawHistory
   };
   for(const p of ['player1','player2'])
     for(const c of COLORS)
