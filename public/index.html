@@ -64,7 +64,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
 .card-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);display:flex;align-items:center;justify-content:center;position:relative}
-.middle-row{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0}
+.middle-row{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:1.5px solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
@@ -345,6 +345,7 @@ const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',
 
 let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
 let selectedCard=null, listeners=[];
+let expandedStack=null; // {who:'my'|'opp', color:'red'} — which stack is fanned out
 let variant='classic'; // 'classic' or 'single'
 let isAIGame=false;
 let aiPersonality='scholar'; // default AI personality
@@ -711,6 +712,15 @@ function renderHand(){
   }).join('');
 }
 
+function toggleExpand(who,color){
+  if(expandedStack && expandedStack.who===who && expandedStack.color===color){
+    expandedStack=null;
+  } else {
+    expandedStack={who,color};
+  }
+  renderBoard();
+}
+
 function renderBoard(){
   const oppSlot=mySlot==='player1'?'player2':'player1';
   const isMyTurn=gameState.currentTurn===mySlot;
@@ -775,10 +785,11 @@ function renderBoard(){
     if(cards.length===0){
       return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
     }
-    const so=getStackOffset(cards.length);
+    const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
+    const so=isExp?22:getStackOffset(cards.length);
     const stackH=`calc(var(--card-h) + ${(cards.length-1)*so+10}px)`;
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    return `<div class="card-col"><div class="expedition-stack" style="height:${stackH}">${inner}</div></div>`;
+    return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};transition:height .2s ease">${inner}</div></div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -821,7 +832,8 @@ function renderBoard(){
       return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}</div></div>`;
     }
     const nextIdx=cards.length;
-    const so=getStackOffset(canPlay?nextIdx+1:cards.length);
+    const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
+    const so=isExp?22:getStackOffset(canPlay?nextIdx+1:cards.length);
     const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*so+10}px)`;
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
@@ -830,7 +842,8 @@ function renderBoard(){
       return `<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
     if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*so+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
-    let html=`<div class="card-col" onclick="playToExpedition('${c}')"><div class="expedition-stack" style="height:${stackH}">${inner}</div>`;
+    const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
+    let html=`<div class="card-col" onclick="${stackClick}"><div class="expedition-stack" style="height:${stackH};transition:height .2s ease">${inner}</div>`;
     return html+`</div>`;
   }).join('');
 }
@@ -846,6 +859,7 @@ function canPlayOnExpedition(card, expedition){
 function selectCard(cardId){
   if(gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
   vibrate();
+  expandedStack=null; // Collapse any expanded stack when selecting a card
   const hand=getCards(gameState,'hands',mySlot);
   const card=hand.find(c=>c.id===cardId);
   if(!card) return;
