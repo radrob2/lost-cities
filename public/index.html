@@ -1371,7 +1371,7 @@ drawFromSingle=async function(){
 let aiWorker=null;
 function getAIWorker(){
   if(!aiWorker){
-    aiWorker=new Worker('ai-worker.js');
+    aiWorker=new Worker('ai-worker.js?v='+Date.now());
   }
   return aiWorker;
 }
