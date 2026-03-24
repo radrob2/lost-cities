@@ -182,39 +182,56 @@ function greedyTurn(sim, player){
   }
 
   // Find best discard: card whose removal costs us the least and helps opponent the least
-  // Pre-cache opponent scores per color
   let discIdx=0, discCost=Infinity;
+  const deckLen=sim.deck.length;
+  const progress=1-deckLen/44; // 0=start, 1=end
+  // Pre-bucket hand by color for counting
+  const handByColor={};
+  for(const c of COLORS) handByColor[c]=0;
+  for(let i=0;i<hand.length;i++) handByColor[hand[i].color]++;
+
   for(let i=0;i<hand.length;i++){
     const card=hand[i];
     const c=card.color;
     const a=analysis[c];
+    const exp=sim.expeditions[player][c];
+    const expLen=exp?exp.length:0;
 
     // Cost = how much we lose + how much opponent gains
     let cost=0;
 
     // Our loss: is this card in our playable sequence?
+    let inSequence=false;
     if(a.count>0){
-      let inSequence=false;
       for(let j=0;j<a.playable.length;j++){
         if(a.playable[j].id===card.id){inSequence=true;break;}
       }
-      if(inSequence){
-        // Difference between projected score with and without this card
-        cost=a.projected - scoreColor(sim.expeditions[player][c]);
-        // That's the value of the whole sequence; approximate single card's contribution
-        // by dividing by sequence length (each card matters roughly equally)
-        if(a.count>1) cost=cost/a.count;
-        // Floor at card's face value — high cards are always costly to discard.
-        // Without this, the -20 expedition penalty makes unstarted-expedition cards
-        // appear worthless (a lone 10 scores -10, so cost = -10 = "free to discard").
-        cost=Math.max(cost, card.value||3);
-      }
+    }
+
+    if(inSequence && expLen>0){
+      // Expedition already started — card extends it, very valuable
+      let wagers=0;
+      for(let j=0;j<expLen;j++) if(exp[j].value===0) wagers++;
+      cost=(card.value||5)*(1+wagers);
+    } else if(inSequence){
+      // No expedition yet — value depends on hand concentration and game stage
+      // More cards of this color = more likely to build a profitable expedition
+      const colorCount=handByColor[c];
+      // Base value: card face value (high cards contribute more points)
+      // Scale by color concentration (3+ cards = full value, 1 card = reduced)
+      // Scale down late game (less time to build the expedition)
+      cost=(card.value||3) * Math.min(1, colorCount/2.5) * (1-progress*0.6);
+      // Absolute floor: never treat a card as free to discard
+      cost=Math.max(cost, (card.value||3)*0.3);
+    } else {
+      // Card not in playable sequence (can't be played on current expedition)
+      // Still has small value if we hold many cards of this color
+      cost=(card.value||1)*0.1;
     }
 
     // Opponent gain: can they play this card?
     const oppExp=sim.expeditions[other][c];
     if(oppExp&&oppExp.length>0 && canPlay(card, oppExp)){
-      // Estimate opponent's gain: card value adjusted by their wager multiplier
       let oppWagers=0;
       for(let j=0;j<oppExp.length;j++) if(oppExp[j].value===0) oppWagers++;
       cost+=(card.value||0)*(1+oppWagers);
