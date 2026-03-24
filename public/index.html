@@ -333,6 +333,7 @@ function genId(){return Math.random().toString(36).substr(2,9)}
 // FLIP animation system: snapshot all card positions before render,
 // then animate any cards that moved to a new position.
 let cardSnapshots={}; // {cardId: {rect, clone}}
+let animatingCards={}; // {cardId: true} — cards with in-flight animations
 
 function snapAllCards(){
   cardSnapshots={};
@@ -413,16 +414,20 @@ function animateCard(cardId, fromRect, clone){
   const dx=fromRect.left-toRect.left, dy=fromRect.top-toRect.top;
   if(Math.abs(dx)<8 && Math.abs(dy)<8) return;
   target.style.opacity='0';
+  animatingCards[cardId]=true;
   clone.className=clone.className.replace(/\bselected\b/,'').replace(/\btarget\b/,'');
-  clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform 3s cubic-bezier(.2,.8,.3,1);margin:0;`;
+  clone.style.cssText=`position:fixed;left:${fromRect.left}px;top:${fromRect.top}px;width:${toRect.width}px;height:${toRect.height}px;z-index:9999;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.3,1);margin:0;`;
   document.body.appendChild(clone);
   clone.offsetHeight;
   clone.style.transform=`translate(${toRect.left-fromRect.left}px,${toRect.top-fromRect.top}px)`;
-  clone.addEventListener('transitionend',()=>{
+  function done(){
     clone.remove();
-    target.style.opacity='';
-  },{once:true});
-  setTimeout(()=>{clone.remove();target.style.opacity='';},3500);
+    delete animatingCards[cardId];
+    const el=document.querySelector(`[data-id="${cardId}"]`);
+    if(el) el.style.opacity='';
+  }
+  clone.addEventListener('transitionend',done,{once:true});
+  setTimeout(done,400);
 }
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
@@ -572,6 +577,11 @@ function renderGame(){
 
   renderHand();
   renderBoard();
+  // Re-hide cards that are mid-animation (DOM was rebuilt by render)
+  for(const id in animatingCards){
+    const el=document.querySelector(`[data-id="${id}"]`);
+    if(el) el.style.opacity='0';
+  }
   // Run FLIP animations after DOM update
   requestAnimationFrame(flyCards);
 }
