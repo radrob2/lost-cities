@@ -585,8 +585,8 @@ async function startGame(){
   const gRef=roomRef.child('game');
   const l=gRef.on('value',snap=>{
     const data=snap.val(); if(!data)return;
+    console.log('Firebase on:value fired, isAnimating=',isAnimating(),'animatingCards=',JSON.stringify(animatingCards),'queueLen=',animationQueue.length);
     if(isAnimating()){
-      // Queue update — keep all so each gets its own animation beat
       animationQueue.push(data);
     } else {
       gameState=data; renderGame();
