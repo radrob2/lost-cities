@@ -69,7 +69,7 @@ function buildSensors(sim, player){
   const hand=sim.hands[player];
   const myExps=sim.expeditions[player];
   const oppExps=sim.expeditions[other];
-  const deckSize=sim.deck.length;
+  const deckSize=sim.deck?sim.deck.length:(sim.deckSize||0);
 
   const seen=new Set();
   for(const p of ['player1','player2'])
