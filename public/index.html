@@ -64,7 +64,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
 .card-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);display:flex;align-items:center;justify-content:center;position:relative}
-.middle-row{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0}
+.middle-row{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:1.5px solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
@@ -129,6 +129,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .deck-card{cursor:pointer;position:relative;display:inline-block}
 .deck-card .deck-num{font-size:9px;color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
 .deck-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
+.deck-landscape{width:var(--card-h)!important;height:var(--card-w)!important;min-height:0!important}
 
 /* SCORE SCREEN */
 .score-board{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:2px solid var(--gold);border-radius:12px;padding:20px;width:90%;max-width:360px}
@@ -242,7 +243,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       <div class="card-row" id="discard-row"></div>
       <div id="single-pile-area" style="display:none"></div>
       <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
-        <div class="card card-back"></div>
+        <div class="card card-back deck-landscape"></div>
         <div class="deck-num" id="deck-count-label">44 left</div>
       </div>
     </div>
@@ -760,15 +761,23 @@ function renderBoard(){
     return `rotate(${rot}deg) translate(${dx}px,${dy}px)`;
   }
 
+  // Dynamic stack offset: compress as stacks grow
+  function getStackOffset(count){
+    if(count<=3) return 18;
+    if(count<=5) return 14;
+    if(count<=7) return 10;
+    return 7; // 8+ cards: very compressed
+  }
+
   // Opponent row
-  const stackOffset=20;
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
       return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
     }
-    const stackH=`calc(var(--card-h) + ${(cards.length-1)*stackOffset+10}px)`;
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*stackOffset+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
+    const so=getStackOffset(cards.length);
+    const stackH=`calc(var(--card-h) + ${(cards.length-1)*so+10}px)`;
+    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col"><div class="expedition-stack" style="height:${stackH}">${inner}</div></div>`;
   }).join('');
 
@@ -812,14 +821,15 @@ function renderBoard(){
       return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}</div></div>`;
     }
     const nextIdx=cards.length;
-    const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*stackOffset+10}px)`;
+    const so=getStackOffset(canPlay?nextIdx+1:cards.length);
+    const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*so+10}px)`;
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${i*stackOffset+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      return `<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${i};transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*stackOffset+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
+    if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*so+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     let html=`<div class="card-col" onclick="playToExpedition('${c}')"><div class="expedition-stack" style="height:${stackH}">${inner}</div>`;
     return html+`</div>`;
   }).join('');
