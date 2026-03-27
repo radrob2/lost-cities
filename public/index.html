@@ -65,13 +65,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
 .card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
-/* Discard + deck area: portrait = deck below centered, landscape = deck as 6th col */
-#discard-deck-area{display:flex;flex-direction:column;align-items:center;width:100%;gap:var(--gap-sm)}
+/* Deck slot: centered below discards in portrait, hidden in landscape (rendered as 6th grid col) */
 #deck-slot{display:flex;flex-direction:column;align-items:center}
-@media(orientation:landscape){
-  #discard-deck-area{flex-direction:row;justify-content:center;gap:var(--gap-sm)}
-  #discard-deck-area>.card-row{flex:0 1 auto}
-}
 /* Info rows: name left, score right */
 .info-row{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 calc(var(--pad)*1.5)}
 .player-label{font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap}
@@ -375,11 +370,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     <div class="card-row" id="opp-row"></div>
 
-    <!-- Discard row (5 cols) + deck below in portrait, 6th col in landscape -->
-    <div id="discard-deck-area">
-      <div class="card-row" id="discard-row"></div>
-      <div id="deck-slot"></div>
-    </div>
+    <div class="card-row" id="discard-row"></div>
+    <div id="deck-slot"></div>
     <div id="single-pile-area" style="display:none"></div>
 
     <div class="card-row" id="my-row"></div>
@@ -1074,29 +1066,42 @@ function renderBoard(){
       return `<div class="card-col"><div class="card-slot" onclick="${handler}" style="position:relative">${stackHTML}${labels}</div></div>`;
     }).join('');
 
-    // Render deck: portrait=landscape card below discards, landscape=portrait card as 6th col
+    // Render deck
+    const isLandscapeLayout=window.innerWidth>window.innerHeight;
     const deckSlot=document.getElementById('deck-slot');
-    if(deckSlot){
-      const isLandscapeLayout=window.innerWidth>window.innerHeight;
-      const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
-      let deckInner='';
-      const deckCardClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
-      if(deckLen>0){
-        const showCount=Math.min(deckLen,10);
-        for(let i=0;i<showCount;i++){
-          const h=(i*7919+i*i*31)&0xFFFF;
-          const rot=((h%100)/100*6-3).toFixed(1);
-          const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
-          const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
-          deckInner+=`<div class="${deckCardClass}" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
-        }
+    const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
+    let deckCardsHTML='';
+    const deckCardClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
+    if(deckLen>0){
+      const showCount=Math.min(deckLen,10);
+      for(let i=0;i<showCount;i++){
+        const h=(i*7919+i*i*31)&0xFFFF;
+        const rot=((h%100)/100*6-3).toFixed(1);
+        const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
+        const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
+        deckCardsHTML+=`<div class="${deckCardClass}" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
       }
-      // Deck slot: same visual treatment as discard empty slots
-      const slotW=isLandscapeLayout?'var(--card-w)':'var(--card-h)';
-      const slotH=isLandscapeLayout?'calc(var(--card-h)*1.13)':'var(--card-w)';
+    }
+    const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:calc(var(--gap-sm)*.5);font-family:'Cinzel',serif">${deckLen} left</div>`;
+
+    if(isLandscapeLayout){
+      // Landscape: append deck as 6th column in discard grid
+      discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},1fr) auto`;
+      const slotW='var(--card-w)';
+      const slotH='calc(var(--card-h)*1.13)';
       const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH}"></div>`;
-      const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:calc(var(--gap-sm)*.5);font-family:'Cinzel',serif">${deckLen} left</div>`;
-      deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckInner:emptySlot}</div>${countLabel}`;
+      discardRow.innerHTML+=`<div class="card-col"><div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}</div>`;
+      if(deckSlot) deckSlot.style.display='none';
+    } else {
+      // Portrait: deck below discards, centered, landscape card
+      discardRow.style.gridTemplateColumns='';
+      if(deckSlot){
+        deckSlot.style.display='';
+        const slotW='var(--card-h)';
+        const slotH='var(--card-w)';
+        const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH}"></div>`;
+        deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
+      }
     }
   }
 
