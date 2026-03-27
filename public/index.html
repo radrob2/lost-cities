@@ -65,7 +65,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
 .card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
-.middle-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-sm);padding:var(--gap-sm) 0}
+.discard-deck-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-sm);padding:var(--gap-sm) 0;width:100%}
+.discard-deck-row .card-row{width:100%}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:calc(var(--card-h)*.02) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
@@ -260,8 +261,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 }
 
 /* IPAD LANDSCAPE — layout only (sizing via JS computeLayout) */
-@media(min-width:768px) and (orientation:landscape){
-  .middle-row{flex-direction:row;align-items:center}
+@media(orientation:landscape){
+  .discard-deck-row{flex-direction:row;align-items:flex-start}
 }
 
 /* HIGH CONTRAST MODE */
@@ -358,8 +359,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="board-area">
     <div class="row-label" id="opp-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Opponent</div>
     <div class="card-row" id="opp-row"></div>
-    <div class="middle-row">
-      <div class="row-label" id="discard-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Discard</div>
+    <div class="row-label" id="discard-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Discard</div>
+    <div class="discard-deck-row">
       <div class="card-row" id="discard-row"></div>
       <div id="single-pile-area" style="display:none"></div>
       <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
@@ -805,7 +806,7 @@ function renderGame(){
 
   // Render deck as stacked card-backs with jitter
   // Portrait layout: deck is landscape (wide). Landscape layout: deck is portrait (beside discards).
-  const isLandscapeLayout=window.innerWidth>window.innerHeight && window.innerWidth>=768;
+  const isLandscapeLayout=window.innerWidth>window.innerHeight;
   const deckStack=document.getElementById('deck-stack');
   if(deckStack){
     if(isLandscapeLayout){
