@@ -295,7 +295,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- GAME -->
 <div id="game-screen" class="screen">
   <div class="top-bar">
-    <div class="player-info"><span id="opponent-name">Opponent</span> <span id="opp-hand-count" style="opacity:.5;font-size:11px"></span></div>
+    <div class="player-info"><span id="opponent-name">Opponent</span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
     <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
     <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
@@ -310,6 +310,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         <div class="card card-back deck-landscape"></div>
         <div class="deck-num" id="deck-count-label">44 left</div>
       </div>
+      <div id="live-score" style="font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);opacity:.5;margin-top:2px;text-align:center;font-variant-numeric:tabular-nums"></div>
     </div>
     <div class="card-row" id="my-row"></div>
   </div>
@@ -400,6 +401,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <button class="btn" onclick="SFX.select();closeGameMenu()">Resume Game</button>
     <button class="btn" onclick="SFX.select();closeGameMenu();showTutorial()">How to Play</button>
     <button class="btn" id="cb-toggle-btn" onclick="SFX.select();toggleColorblind()">Colorblind Mode: Off</button>
+    <button class="btn" id="score-toggle-btn" onclick="SFX.select();toggleLiveScore()">Live Score: On</button>
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="SFX.select();confirmQuit()">Main Menu</button>
     <div class="save-note">Game is saved automatically</div>
   </div>
@@ -473,6 +475,7 @@ const COLOR_LABELS = {red:'Red',green:'Green',blue:'Blue',white:'White',yellow:'
 const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',yellow:'#c0a030'};
 const COLOR_SYMBOLS = {red:'\u25B2',green:'\u25CF',blue:'\u2248',white:'\u25C6',yellow:'\u2605'};
 let colorblindMode=localStorage.getItem('expedition-colorblind')==='true';
+let liveScoreEnabled=localStorage.getItem('expedition-livescore')!=='false'; // on by default
 let seriesScore={you:0,opp:0};
 let seriesFirstPlayer='player1'; // alternates each rematch
 
@@ -533,12 +536,20 @@ function showGameMenu(){
   document.getElementById('game-menu').classList.add('active');
   const btn=document.getElementById('cb-toggle-btn');
   if(btn) btn.textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
+  const sbtn=document.getElementById('score-toggle-btn');
+  if(sbtn) sbtn.textContent='Live Score: '+(liveScoreEnabled?'On':'Off');
 }
 function closeGameMenu(){document.getElementById('game-menu').classList.remove('active')}
 function toggleColorblind(){
   colorblindMode=!colorblindMode;
   localStorage.setItem('expedition-colorblind',colorblindMode);
   document.getElementById('cb-toggle-btn').textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
+  renderGame();
+}
+function toggleLiveScore(){
+  liveScoreEnabled=!liveScoreEnabled;
+  localStorage.setItem('expedition-livescore',liveScoreEnabled);
+  document.getElementById('score-toggle-btn').textContent='Live Score: '+(liveScoreEnabled?'On':'Off');
   renderGame();
 }
 function confirmQuit(){closeGameMenu();document.getElementById('quit-confirm').classList.add('active')}
@@ -588,18 +599,29 @@ function renderGame(){
     notifyTurn();
   }
 
-  // Opponent hand count (visible info in physical game)
-  const oppSlotName=mySlot==='player1'?'player2':'player1';
-  const oppHandCount=getCards(gameState,'hands',oppSlotName).length;
-  const oppCountEl=document.getElementById('opp-hand-count');
-  if(oppCountEl) oppCountEl.textContent=oppHandCount>0?`(${oppHandCount} cards)`:'';
-
   // Deck count
   const deckLen = getCards(gameState,'deck').length;
   const deckLabel=document.getElementById('deck-count-label');
   deckLabel.textContent=deckLen+' left';
   deckLabel.style.opacity=deckLen<=10?'1':'.5';
   deckLabel.style.color=deckLen<=10?'var(--gold)':'var(--parchment-dark)';
+
+  // Live score tracker (toggleable)
+  const liveScoreEl=document.getElementById('live-score');
+  if(liveScoreEl){
+    if(liveScoreEnabled && gameState.expeditions){
+      const oppSlotName=mySlot==='player1'?'player2':'player1';
+      const myS=calcScore(gameState.expeditions[mySlot]);
+      const oppS=calcScore(gameState.expeditions[oppSlotName]);
+      const diff=myS.total-oppS.total;
+      const diffStr=diff>0?`+${diff}`:diff<0?`${diff}`:'tied';
+      liveScoreEl.textContent=`${myS.total} vs ${oppS.total} (${diffStr})`;
+      liveScoreEl.style.color=diff>0?'var(--gold)':diff<0?'#e07060':'var(--parchment-dark)';
+      liveScoreEl.style.display='';
+    } else {
+      liveScoreEl.style.display='none';
+    }
+  }
 
   // Phase bar
   const pb=document.getElementById('phase-bar');
