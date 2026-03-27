@@ -85,15 +85,21 @@ async function startGame(){
 }
 
 // Session save/restore
+// Uses sessionStorage (per-tab) so multiple tabs don't conflict.
+// Falls back to localStorage for cross-tab reconnect after browser restart.
 function saveSession(){
-  localStorage.setItem('expedition-session',JSON.stringify({myId,mySlot,roomCode,variant}));
+  const data=JSON.stringify({myId,mySlot,roomCode,variant});
+  sessionStorage.setItem('expedition-session',data);
+  localStorage.setItem('expedition-session',data);
 }
 function clearSession(){
+  sessionStorage.removeItem('expedition-session');
   localStorage.removeItem('expedition-session');
 }
 
 async function tryReconnect(){
-  const raw=localStorage.getItem('expedition-session');
+  // Prefer sessionStorage (same tab refresh), fallback to localStorage (browser restart)
+  const raw=sessionStorage.getItem('expedition-session')||localStorage.getItem('expedition-session');
   if(!raw)return;
   try{
     const s=JSON.parse(raw);
@@ -107,6 +113,8 @@ async function tryReconnect(){
     roomRef=ref;
     startGame();
     toast('Reconnected');
+    // Clear localStorage so another tab doesn't also reconnect to same game
+    localStorage.removeItem('expedition-session');
   }catch(e){clearSession();console.error(e)}
 }
 
