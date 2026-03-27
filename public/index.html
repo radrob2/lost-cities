@@ -851,27 +851,29 @@ function renderGame(){
   renderHand();
   renderBoard();
 
-  // Opponent hand: full-size card-backs peeking from top (clipped ~80%)
+  // Opponent hand: same arc as player hand, flipped, clipped to show ~20% peeking from top
   const oppHandRow=document.getElementById('opp-hand-row');
   if(oppHandRow){
     const oppSlotN=mySlot==='player1'?'player2':'player1';
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
-    // Use same arc layout as player hand but inverted (upside down peeking)
-    const cardW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w'))||48;
-    const cardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'))||78;
     const containerW=oppHandRow.parentElement?.offsetWidth||375;
-    const R=Math.max(containerW*1.8,600);
-    const maxStep=Math.asin(Math.min((containerW*0.88-cardW)/(2*R),0.99))*180/Math.PI;
-    const stepDeg=oppHandLen<=1?0:Math.min(3.0,maxStep/((oppHandLen-1)/2));
-    const centerX=containerW/2;
-    oppHandRow.style.height=Math.round(cardH*0.22)+'px';
+    const arc=computeArc(oppHandLen, containerW);
+    // Mirror of player hand: arc curves downward (center lowest), clipped to show bottom tips
+    const visibleFrac=0.22;
+    const fullH=Math.ceil(arc.cardH+arc.arcDrop+arc.cardH*0.1);
+    oppHandRow.style.height=Math.round(arc.cardH*visibleFrac)+'px';
+    // Position cards on an inverted arc: center cards are lower, edge cards higher
+    // Then shift so only the bottom portion (visibleFrac) is visible
     let html='';
     for(let i=0;i<oppHandLen;i++){
-      const angleDeg=(i-(oppHandLen-1)/2)*stepDeg;
+      const angleDeg=(i-(oppHandLen-1)/2)*arc.stepDeg;
       const angleRad=angleDeg*Math.PI/180;
-      const x=centerX+R*Math.sin(angleRad)-cardW/2;
-      const y=R*(1-Math.cos(angleRad));
-      html+=`<div class="card card-back" style="position:absolute;left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;transform:rotate(${(-angleDeg).toFixed(1)}deg);transform-origin:center center"></div>`;
+      const x=arc.centerX+arc.R*Math.sin(angleRad)-arc.cardW/2;
+      // Invert Y: edge cards at y=0, center cards drop down by arcDrop
+      const y=arc.arcDrop - arc.R*(1-Math.cos(angleRad));
+      // Shift everything up so only bottom visibleFrac of tallest card shows
+      const shiftY=-(arc.cardH*(1-visibleFrac));
+      html+=`<div class="card card-back" style="position:absolute;left:${x.toFixed(1)}px;top:${(y+shiftY).toFixed(1)}px;transform:rotate(${(-angleDeg).toFixed(1)}deg);transform-origin:center center"></div>`;
     }
     oppHandRow.innerHTML=html;
   }
@@ -898,6 +900,23 @@ function renderGame(){
   }
 }
 
+// Shared arc calculation for both player and opponent hands
+function computeArc(n, containerW){
+  const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+  const cardH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+  const usableW=containerW*0.88;
+  const R=Math.max(containerW*1.8, 600);
+  const maxSpreadPx=(usableW-cardW)/2;
+  const maxHalfAngle=Math.asin(Math.min(maxSpreadPx/R, 0.99));
+  const fitStep=n<=1?0:(maxHalfAngle*180/Math.PI)/((n-1)/2);
+  const overlapStep=n<=1?0:Math.atan((cardW*0.85)/R)*180/Math.PI;
+  const stepDeg=Math.min(fitStep, overlapStep, 3.0);
+  const centerX=containerW/2;
+  const outerAngle=((n-1)/2)*stepDeg*Math.PI/180;
+  const arcDrop=R*(1-Math.cos(outerAngle));
+  return {cardW, cardH, R, stepDeg, centerX, arcDrop};
+}
+
 function renderHand(){
   const container=document.getElementById('hand-cards');
   const hand=getCards(gameState,'hands',mySlot);
@@ -906,26 +925,8 @@ function renderHand(){
     return ci!==0 ? ci : a.value-b.value;
   });
   const n=sorted.length;
-  // Arc fan: equal angular spacing, X and Y both from arc geometry
-  // Pivot point is R pixels below the center of the hand
-  const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
-  const cardH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
   const containerW=container.parentElement.offsetWidth||375;
-  // Scale arc to available width, but cap so cards always overlap
-  const usableW=containerW*0.88;
-  const R=Math.max(containerW*1.8, 600);
-  // Max step so outermost cards stay within usableW
-  const maxSpreadPx=(usableW-cardW)/2;
-  const maxHalfAngle=Math.asin(Math.min(maxSpreadPx/R, 0.99));
-  const fitStep=n<=1?0:(maxHalfAngle*180/Math.PI)/((n-1)/2);
-  // Also cap step so adjacent cards overlap by at least 15% of card width
-  // Arc distance between cards ≈ R * stepRad, projected X ≈ R*sin(stepRad) ≈ R*stepRad for small angles
-  const overlapStep=n<=1?0:Math.atan((cardW*0.85)/R)*180/Math.PI; // max step for 15% overlap
-  const stepDeg=Math.min(fitStep, overlapStep, 3.0);
-  const centerX=containerW/2;
-  // Container height: card height + arc drop at outermost card + padding
-  const outerAngle=((n-1)/2)*stepDeg*Math.PI/180;
-  const arcDrop=R*(1-Math.cos(outerAngle));
+  const {cardW, cardH, R, stepDeg, centerX, arcDrop}=computeArc(n, containerW);
   container.style.height=Math.ceil(cardH+arcDrop+cardH*0.1)+'px';
   container.innerHTML=sorted.map((c,i)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
@@ -1712,9 +1713,9 @@ function aiTurn(){
   aiThinking=true;
 
   // Show thinking indicator
-  const oppNameEl=document.getElementById('opponent-name');
-  const origName=oppNameEl.textContent;
-  oppNameEl.textContent='AI thinking...';
+  const oppNameEl=document.getElementById('opponent-name-store');
+  const origName=oppNameEl?oppNameEl.textContent:'';
+  if(oppNameEl) oppNameEl.textContent='AI thinking...';
 
   // Build a clean state snapshot for the worker
   // Seer/Oracle boss AIs get to see opponent's hand
@@ -1741,10 +1742,10 @@ function aiTurn(){
     snapshot.discards[c]=getCards(gameState,'discards',c).map(x=>({color:x.color,value:x.value,id:x.id}));
 
   const worker=getAIWorker();
-  if(!worker){aiThinking=false;oppNameEl.textContent=origName;aiFallbackTurn();return;}
+  if(!worker){aiThinking=false;if(oppNameEl)oppNameEl.textContent=origName;aiFallbackTurn();return;}
   worker.onmessage=function(e){
     aiThinking=false;
-    oppNameEl.textContent=origName;
+    if(oppNameEl)oppNameEl.textContent=origName;
     const {result,elapsed}=e.data;
     if(!result){
       aiFallbackTurn();
@@ -1774,7 +1775,7 @@ function aiTurn(){
   worker.onerror=function(err){
     console.error('AI worker error:',err);
     aiThinking=false;
-    oppNameEl.textContent=origName;
+    if(oppNameEl)oppNameEl.textContent=origName;
     aiFallbackTurn();
   };
 
