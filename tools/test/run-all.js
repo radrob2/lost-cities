@@ -4,6 +4,7 @@ const path = require('path');
 const tests = [
   'test-scoring.js',
   'test-legal-moves.js',
+  'test-edge-cases.js',
   'test-game-sim.js',
   'test-ai-playtest.js'
 ];
