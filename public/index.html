@@ -59,7 +59,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:8px 0;position:relative;z-index:10}
-.card-row{display:flex;justify-content:center;align-items:center;gap:6px;padding:0 8px;overflow:visible}
+.card-row{display:flex;justify-content:center;align-items:center;gap:6px;padding:0 12px;overflow:visible}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center;width:calc(20% - 6px);min-width:calc(var(--card-w) + 10px);max-width:calc(var(--card-w) + 10px)}
 .expedition-stack{position:relative;width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);overflow:visible}
 .expedition-stack .card{position:static}
@@ -800,17 +800,22 @@ function renderHand(){
   const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
   const cardH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
   const containerW=container.parentElement.offsetWidth||375;
-  // Scale arc to available width: use ~80% of container for the hand spread
-  const usableW=containerW*0.85;
-  // Max angular spread: find stepDeg so outermost cards fit within usableW
-  // R*sin(stepDeg*(n-1)/2 * pi/180) * 2 <= usableW - cardW
-  // Solve for stepDeg: stepDeg = asin((usableW-cardW)/(2*R)) * 360/pi / (n-1)
-  const R=Math.max(containerW*1.8, 600); // radius scales with screen
+  // Scale arc to available width, but cap so cards always overlap
+  const usableW=containerW*0.88;
+  const R=Math.max(containerW*1.8, 600);
+  // Max step so outermost cards stay within usableW
   const maxSpreadPx=(usableW-cardW)/2;
   const maxHalfAngle=Math.asin(Math.min(maxSpreadPx/R, 0.99));
-  const stepDeg=n<=1?0:Math.min(3.5, (maxHalfAngle*180/Math.PI)/((n-1)/2));
+  const fitStep=n<=1?0:(maxHalfAngle*180/Math.PI)/((n-1)/2);
+  // Also cap step so adjacent cards overlap by at least 15% of card width
+  // Arc distance between cards ≈ R * stepRad, projected X ≈ R*sin(stepRad) ≈ R*stepRad for small angles
+  const overlapStep=n<=1?0:Math.atan((cardW*0.85)/R)*180/Math.PI; // max step for 15% overlap
+  const stepDeg=Math.min(fitStep, overlapStep, 3.0);
   const centerX=containerW/2;
-  container.style.height=(cardH+12)+'px';
+  // Container height: card height + arc drop at outermost card + padding
+  const outerAngle=((n-1)/2)*stepDeg*Math.PI/180;
+  const arcDrop=R*(1-Math.cos(outerAngle));
+  container.style.height=Math.ceil(cardH+arcDrop+16)+'px';
   container.innerHTML=sorted.map((c,i)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
     // Angle: evenly spaced in degrees, centered at 0
