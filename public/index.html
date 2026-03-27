@@ -284,38 +284,41 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* IPAD LANDSCAPE */
 @media(min-width:768px) and (orientation:landscape){
-  :root{--card-w:68px;--card-h:106px}
+  :root{--card-w:56px;--card-h:88px}
   .card-row{gap:18px;padding:0 28px}
-  .board-area{padding:6px 16px;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:8px}
+  .board-area{padding:4px 16px}
   .hand-cards>div{margin-left:calc(var(--card-w) * -0.08)}
-  .hand-area{padding:8px 24px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
-  .middle-row{flex-direction:row;gap:16px;padding:6px 0}
+  .hand-area{padding:6px 24px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .middle-row{gap:4px;padding:2px 0}
 }
 
 /* HIGH CONTRAST MODE */
-.high-contrast .card{border-width:2.5px;border-style:solid}
-.high-contrast .card.color-red{border-color:#ff4444}
-.high-contrast .card.color-green{border-color:#33cc66}
-.high-contrast .card.color-blue{border-color:#4499ff}
-.high-contrast .card.color-white{border-color:#ccccdd}
-.high-contrast .card.color-yellow{border-color:#ffcc00}
-.high-contrast .card-value{color:#ffffff;text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6)}
-.high-contrast .card-corner{color:#ffffff;background:rgba(0,0,0,.55);font-size:11px;padding:2px 4px}
-.high-contrast .card.selected{box-shadow:0 8px 32px rgba(255,215,0,.85);border-color:#ffd700!important;border-width:3px}
-.high-contrast .card.empty-slot{border:2.5px dashed rgba(255,255,255,.2);background:rgba(255,255,255,.05)}
-.high-contrast .card.target{border-width:3px;box-shadow:0 0 18px rgba(255,215,0,.5)}
-.high-contrast .card.undoable{border-width:3px}
-.high-contrast .turn-indicator{font-size:12px;font-weight:900;letter-spacing:1.5px}
-.high-contrast .your-turn{background:#ffd700;color:#000}
-.high-contrast .their-turn{background:rgba(255,255,255,.12);color:rgba(255,255,255,.6)}
-.high-contrast .phase-bar{font-size:14px;font-weight:700;color:#ffffff}
-.high-contrast .phase-bar.draw-phase{color:#ffd700;font-weight:900}
-.high-contrast .top-bar .player-info{color:#e0d8c8}
-.high-contrast .toast{border:1.5px solid rgba(255,215,0,.5);color:#ffd700}
+.high-contrast .card{border-width:3px;border-style:solid}
+.high-contrast .card.color-red{border-color:#ff3333;box-shadow:0 0 6px rgba(255,50,50,.3)}
+.high-contrast .card.color-green{border-color:#22dd55;box-shadow:0 0 6px rgba(34,221,85,.3)}
+.high-contrast .card.color-blue{border-color:#3388ff;box-shadow:0 0 6px rgba(51,136,255,.3)}
+.high-contrast .card.color-white{border-color:#ddddee;box-shadow:0 0 6px rgba(221,221,238,.2)}
+.high-contrast .card.color-yellow{border-color:#ffdd00;box-shadow:0 0 6px rgba(255,221,0,.3)}
+.high-contrast .card-value{color:#ffffff;font-weight:900;font-size:26px;text-shadow:0 2px 6px rgba(0,0,0,1),0 0 10px rgba(0,0,0,.8)}
+.high-contrast .card-corner{color:#ffffff;background:rgba(0,0,0,.7);font-size:12px;padding:2px 5px;font-weight:900}
+.high-contrast .card.selected{box-shadow:0 0 20px rgba(255,215,0,1),0 0 40px rgba(255,215,0,.4);border-color:#ffd700!important;border-width:4px}
+.high-contrast .card.empty-slot{border:3px dashed rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
+.high-contrast .card.target{border-width:3px;box-shadow:0 0 24px rgba(255,215,0,.7)}
+.high-contrast .card.undoable{border-width:3px;box-shadow:0 0 12px rgba(255,100,50,.4)}
+.high-contrast .turn-indicator{font-size:13px;font-weight:900;letter-spacing:2px}
+.high-contrast .your-turn{background:#ffd700;color:#000;box-shadow:0 0 12px rgba(255,215,0,.5)}
+.high-contrast .their-turn{background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
+.high-contrast .phase-bar{font-size:15px;font-weight:700;color:#ffffff}
+.high-contrast .phase-bar.draw-phase{color:#ffd700;font-weight:900;text-shadow:0 0 8px rgba(255,215,0,.4)}
+.high-contrast .top-bar .player-info{color:#ffffff}
+.high-contrast .toast{border:2px solid rgba(255,215,0,.7);color:#ffd700}
 .high-contrast .score-table td{color:#ffffff}
-.high-contrast .target-label{font-size:7px;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.7)}
-.high-contrast .hand-area{background:rgba(0,0,0,.55)}
-.high-contrast .top-bar{background:rgba(0,0,0,.55)}
+.high-contrast .target-label{font-size:8px;color:#ffd700;font-weight:900;text-shadow:0 0 10px rgba(255,215,0,.8)}
+.high-contrast .hand-area{background:rgba(0,0,0,.6)}
+.high-contrast .top-bar{background:rgba(0,0,0,.6)}
+.high-contrast .r-line{font-size:14px}
+.high-contrast .r-pos{color:#ffdd00}
+.high-contrast .r-neg{color:#ff5555}
 </style>
 </head>
 <body>
