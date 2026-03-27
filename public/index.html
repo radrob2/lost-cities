@@ -963,7 +963,7 @@ async function playToExpedition(color){
   selectedCard=null;
   renderGame();
   slideFrom(saved);
-  roomRef.child('game').update(updates);
+  if(!isAIGame) roomRef.child('game').update(updates);
 }
 
 async function discardTo(color){
@@ -989,7 +989,7 @@ async function discardTo(color){
   selectedCard=null;
   renderGame();
   slideFrom(saved);
-  roomRef.child('game').update(updates);
+  if(!isAIGame) roomRef.child('game').update(updates);
 }
 
 async function drawFromDeck(){
@@ -1017,7 +1017,7 @@ async function drawFromDeck(){
   lastPlayedCard=null;
   renderGame();
   slideFromEl(deckEl, card.id);
-  roomRef.child('game').update(updates);
+  if(!isAIGame) roomRef.child('game').update(updates);
 }
 
 // SINGLE PILE VARIANT
@@ -1042,7 +1042,7 @@ async function discardToSingle(){
   selectedCard=null;
   renderGame();
   slideFrom(saved);
-  roomRef.child('game').update(updates);
+  if(!isAIGame) roomRef.child('game').update(updates);
 }
 
 async function drawFromSingle(){
@@ -1069,7 +1069,7 @@ async function drawFromSingle(){
   lastPlayedCard=null;
   renderGame();
   slideFrom(saved);
-  roomRef.child('game').update(updates);
+  if(!isAIGame) roomRef.child('game').update(updates);
 }
 
 async function drawFromDiscard(color){
@@ -1096,7 +1096,7 @@ async function drawFromDiscard(color){
   updates['lastDiscardedColor']=null;
   renderGame();
   slideFrom(saved);
-  roomRef.child('game').update(updates);
+  if(!isAIGame) roomRef.child('game').update(updates);
 }
 
 // ===== SCORING =====
@@ -1226,7 +1226,7 @@ function showGameOver(){
 }
 
 async function playAgain(){
-  if(mySlot==='player1'){
+  if(mySlot==='player1' && !isAIGame){
     const deck=createDeck();
     const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
     const exps={},discard={};
@@ -1238,7 +1238,7 @@ async function playAgain(){
       lastDiscardedColor:null,status:'playing'
     });
   }
-  selectedCard=null; document.getElementById('back-to-scores').style.display='none'; showScreen('game-screen');
+  selectedCard=null; document.getElementById('back-to-scores').style.display='none'; if(typeof _statsRecordedForGame!=='undefined') _statsRecordedForGame=false; showScreen('game-screen');
 }
 
 // Debug: tap title 5x to see score screen
@@ -1363,7 +1363,8 @@ function localUpdate(updates){
 function startAIGame(){
   const name=getName();
   if(!name){document.getElementById('lobby-error').textContent='Enter your name';return}
-  isAIGame=true; myId=genId(); mySlot='player1'; roomRef=null; roomCode=null; humanDrawHistory=[];
+  isAIGame=true; myId=genId(); mySlot='player1'; roomRef=null; roomCode=null; humanDrawHistory=[]; humanPlayHistory=[]; humanDiscardHistory=[];
+  if(typeof _statsRecordedForGame!=='undefined') _statsRecordedForGame=false;
   const deck=createDeck();
   const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
   const exps={},discard={};
@@ -1395,6 +1396,7 @@ playToExpedition=async function(color){
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
   expedition.push(card);
   const u={};u[`hands/${mySlot}`]=hand;u[`expeditions/${mySlot}/${color}`]=expedition;u['phase']='draw';u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  humanPlayHistory.push(color);
   lastPlayedCard={card,to:'expedition',color};
   selectedCard=null;localUpdate(u);slideFrom(saved);
 };
@@ -1410,6 +1412,7 @@ discardTo=async function(color){
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
   const pile=getCards(gameState,'discards',color);pile.push(card);
   const u={};u[`hands/${mySlot}`]=hand;u[`discards/${color}`]=pile;u['phase']='draw';u['lastDiscardedColor']=color;
+  humanDiscardHistory.push({color:card.color,value:card.value});
   lastPlayedCard={card,to:'discard',color};
   selectedCard=null;localUpdate(u);slideFrom(saved);
 };
@@ -1457,6 +1460,7 @@ discardToSingle=async function(){
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
   const pile=getCards(gameState,'singlePile');pile.push(card);
   const u={};u[`hands/${mySlot}`]=hand;u['singlePile']=pile;u['phase']='draw';u['justDiscarded']=true;
+  humanDiscardHistory.push({color:card.color,value:card.value});
   lastPlayedCard={card,to:'single',color:card.color};
   selectedCard=null;localUpdate(u);slideFrom(saved);
 };
@@ -1488,6 +1492,8 @@ function getAIWorker(){
 
 let aiThinking=false;
 let humanDrawHistory=[]; // Track colors human has drawn from discard piles
+let humanPlayHistory=[]; // Track colors human has played to expeditions
+let humanDiscardHistory=[]; // Track {color, value} human has discarded
 function aiTurn(){
   if(aiThinking)return;
   if(gameState.status==='finished'||gameState.currentTurn!=='player2')return;
@@ -1510,7 +1516,9 @@ function aiTurn(){
     discards:{},
     singlePile:(gameState.singlePile||[]).map(c=>({color:c.color,value:c.value,id:c.id})),
     deckSize:getCards(gameState,'deck').length,
-    oppDrawHistory:humanDrawHistory
+    oppDrawHistory:humanDrawHistory,
+    oppPlayHistory:humanPlayHistory,
+    oppDiscardHistory:humanDiscardHistory
   };
   for(const p of ['player1','player2'])
     for(const c of COLORS)

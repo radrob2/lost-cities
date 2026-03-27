@@ -756,6 +756,85 @@ function getPhase2Actions(gs, variant, discardedColor, justDiscarded){
   return actions;
 }
 
+// ========== GENOME-DIRECT DISCARD DANGER SCORING ==========
+// Uses evolved genome's opponent-awareness genes DIRECTLY to score discard safety.
+// This bypasses MC's blind spot: random opponent hands can't model that a real
+// opponent WILL pick up high cards discarded to their active expeditions.
+
+function computeDiscardDangerScore(gs, card, genome){
+  const color=card.color;
+  const oppExp=gs.expeditions.player1[color]||[];
+  const cardVal=card.value||3; // wagers count as 3
+  const g=genome;
+
+  let danger=0;
+
+  // Factor 1: Opponent has an active expedition in this color
+  if(oppExp.length>0){
+    // Can opponent legally play this card?
+    const oppTop=oppExp[oppExp.length-1];
+    const oppCanPlay=(card.value===0)? (oppTop.value===0) : (card.value > oppTop.value);
+
+    // Base danger from card value scaled by oppDiscardDanger gene
+    danger += cardVal * (g.oppDiscardDanger / 10);
+
+    // Opponent wager commitment — wagers multiply the danger
+    let oppWagers=0;
+    for(const e of oppExp) if(e.value===0) oppWagers++;
+    danger += oppWagers * g.oppWagerFear;
+
+    // Opponent card count — more invested = more dangerous
+    danger += oppExp.length * (g.oppColorTrackWeight / 2);
+
+    // If opponent can legally play immediately, much more dangerous
+    if(oppCanPlay) danger *= 1.5;
+
+    // Scale by overall opponent awareness gene
+    danger *= (0.5 + g.oppAwareness / 3);
+  }
+
+  // Factor 2: Opponent has drawn from this color's discard (strong interest signal)
+  const oppDrawnColors=new Set();
+  if(gs.oppDrawHistory){
+    for(const c of gs.oppDrawHistory) oppDrawnColors.add(c);
+  }
+  if(oppDrawnColors.has(color)){
+    danger += cardVal * (g.oppDrawSignalWeight / 5);
+    // Even without expedition, drawing from discard means they want this color
+    if(oppExp.length===0) danger += g.oppBlockWeight / 2;
+  }
+
+  // Factor 3: Opponent has played cards to this color (from oppPlayHistory)
+  if(gs.oppPlayHistory){
+    const playCount=gs.oppPlayHistory.filter(c=>c===color).length;
+    if(playCount>0) danger += playCount * (g.oppColorTrackWeight / 2);
+  }
+
+  // Factor 4: High card bias — high cards are intrinsically more dangerous to discard
+  if(cardVal>=7) danger += (cardVal-6) * 2;
+
+  // Factor 5: Safe discard bonus — if opponent has NO expedition and NO interest signals
+  if(oppExp.length===0 && !oppDrawnColors.has(color)){
+    danger -= g.safeDiscardBias;
+  }
+
+  return danger;
+}
+
+// Normalize danger scores to 0-1 range for blending with MC win rates
+function normalizeDiscardScores(dangerScores){
+  if(dangerScores.length===0) return [];
+  let maxDanger=-Infinity, minDanger=Infinity;
+  for(const d of dangerScores){
+    if(d>maxDanger) maxDanger=d;
+    if(d<minDanger) minDanger=d;
+  }
+  const range=maxDanger-minDanger;
+  if(range<0.001) return dangerScores.map(()=>0.5); // all equal danger
+  // Invert: lowest danger = highest safety score (1.0), highest danger = 0.0
+  return dangerScores.map(d=>1.0 - (d-minDanger)/range);
+}
+
 // ========== MONTE CARLO EVALUATION ==========
 
 function evaluate(gs, variant, simCount, genome){
@@ -855,68 +934,88 @@ function evaluate(gs, variant, simCount, genome){
     }
   }
 
-  // POST-MC CORRECTION: Penalize discards to opponent's active expeditions.
-  // MC underestimates this danger because random opponent hands often ignore the discard.
-  // Real opponents WILL pick up high cards in their active colors.
-  // Also penalize discards to colors where opponent has drawn from discard (they want that color).
-  const oppDrawnColors=new Set();
-  if(gs.oppDrawHistory){
-    for(const c of gs.oppDrawHistory) oppDrawnColors.add(c);
-  }
+  // ========== GENOME-DIRECT DISCARD SAFETY BLENDING ==========
+  // Instead of post-MC penalties, we compute a genome-driven danger score for each
+  // discard option and blend it with MC win rates.
+  // For PLAY actions: pure MC win rate (MC is good at self-play optimization)
+  // For DISCARD actions: 60% MC + 40% genome safety score
+
+  // Step 1: Compute genome danger scores for all unique discard actions
+  const discardDangerMap={}; // key: "color_value" → danger score
   for(const pair of pairs){
     if(pair.p1.type==='discard'){
-      const color=pair.p1.color;
-      const oppExp=gs.expeditions.player1[color]||[];
-
-      // Penalty for discarding to color opponent has drawn from discard (even no expedition yet)
-      if(oppDrawnColors.has(color) && oppExp.length===0){
-        const cardVal=pair.p1.card.value||3;
-        let penalty=cardVal * 0.015; // Lighter penalty - just a signal, not confirmed
-        const before=pair.wins;
-        pair.wins -= penalty * simsRan;
-        if(pair.wins<0) pair.wins=0;
-        console.log(`DRAW-SIGNAL PENALTY: ${cardVal} of ${color} → opp drew from ${color} discard. wins ${before.toFixed(0)}→${pair.wins.toFixed(0)}`);
-      }
-
-      if(oppExp.length>0){
-        const cardVal=pair.p1.card.value||3; // wagers count as 3
-        const oppWagers=oppExp.filter(c=>c.value===0).length;
-        const oppCards=oppExp.length;
-        const canPlay=oppExp.length===0 || (pair.p1.card.value||0)>=(oppExp[oppExp.length-1].value||0);
-
-        // Base penalty: scales with card value and opponent's investment
-        let penalty=cardVal * 0.02; // Each point of card value = 2% win rate penalty
-
-        // Opponent has wagers = they're committed, penalty is much worse
-        penalty *= (1 + oppWagers * 0.5);
-
-        // More cards = more committed = higher penalty
-        penalty *= (1 + oppCards * 0.1);
-
-        // If opponent can legally play this card immediately, extra danger
-        if(canPlay) penalty *= 1.5;
-
-        // Apply as fraction of total sims (so it shifts win rate)
-        const before=pair.wins;
-        pair.wins -= penalty * simsRan;
-        if(pair.wins<0) pair.wins=0;
-        console.log(`PENALTY: ${pair.p1.card.value||'W'} of ${color} → opp has ${oppCards} cards, ${oppWagers} wagers, canPlay=${canPlay}. penalty=${(penalty*100).toFixed(1)}%, wins ${before.toFixed(0)}→${pair.wins.toFixed(0)}`);
+      const key=pair.p1.color+'_'+pair.p1.card.value;
+      if(!(key in discardDangerMap)){
+        discardDangerMap[key]=computeDiscardDangerScore(gs, pair.p1.card, genome);
       }
     }
   }
 
+  // Step 2: Normalize danger scores to safety scores (0-1)
+  const discardKeys=Object.keys(discardDangerMap);
+  const discardDangers=discardKeys.map(k=>discardDangerMap[k]);
+  const discardSafety=normalizeDiscardScores(discardDangers);
+  const safetyMap={};
+  for(let i=0;i<discardKeys.length;i++) safetyMap[discardKeys[i]]=discardSafety[i];
+
+  // Step 3: Compute blended scores
+  // For plays: finalScore = mcWinRate
+  // For discards: finalScore = mcWinRate * 0.6 + genomeSafety * 0.4
+  for(const pair of pairs){
+    const mcWinRate=pair.wins/simsRan;
+    if(pair.p1.type==='discard'){
+      const key=pair.p1.color+'_'+pair.p1.card.value;
+      const safety=safetyMap[key]||0.5;
+      pair.blended=mcWinRate*0.6 + safety*0.4;
+      pair.genomeSafety=safety;
+      pair.genomeDanger=discardDangerMap[key]||0;
+    } else {
+      pair.blended=mcWinRate;
+      pair.genomeSafety=null;
+      pair.genomeDanger=null;
+    }
+  }
+
+  // Step 4: HARD VETO — Never discard a high card (7+) to opponent's active expedition
+  // unless ALL alternatives are worse. Check if a safer discard exists.
   let best=pairs[0];
   for(let i=1;i<pairs.length;i++){
-    if(pairs[i].wins>best.wins) best=pairs[i];
+    if(pairs[i].blended>best.blended) best=pairs[i];
+  }
+
+  if(best.p1.type==='discard'){
+    const cardVal=best.p1.card.value||0;
+    const oppExp=gs.expeditions.player1[best.p1.color]||[];
+    if(cardVal>=7 && oppExp.length>0){
+      // This is a dangerous discard — find a safer alternative
+      let saferAlt=null;
+      for(const pair of pairs){
+        if(pair===best) continue;
+        const altDangerous=(pair.p1.type==='discard' && (pair.p1.card.value||0)>=7 &&
+          (gs.expeditions.player1[pair.p1.color]||[]).length>0);
+        if(!altDangerous && pair.blended>best.blended*0.6){
+          // Accept any non-dangerous option that's at least 60% as good
+          if(!saferAlt || pair.blended>saferAlt.blended) saferAlt=pair;
+        }
+      }
+      if(saferAlt){
+        console.log(`VETO: Blocked discard of ${cardVal} to ${best.p1.color} (opp has ${oppExp.length} cards). Switching to ${saferAlt.p1.type}_${saferAlt.p1.color}_${saferAlt.p1.card.value||'W'}`);
+        best=saferAlt;
+      } else {
+        console.log(`FORCED: No safe alternative to discarding ${cardVal} to ${best.p1.color} — all options are dangerous`);
+      }
+    }
   }
 
   // Build diagnostic info
-  const sorted=[...pairs].sort((a,b)=>b.wins-a.wins);
+  const sorted=[...pairs].sort((a,b)=>b.blended-a.blended);
   const topN=sorted.slice(0,8).map(p=>({
     action: p.p1.type+'_'+p.p1.color+'_'+(p.p1.card.value||'W'),
     draw: p.p2.type+(p.p2.color?'_'+p.p2.color:''),
-    winRate: (p.wins/simsRan*100).toFixed(1)+'%',
-    wins: p.wins
+    mcWinRate: (p.wins/simsRan*100).toFixed(1)+'%',
+    blended: (p.blended*100).toFixed(1)+'%',
+    safety: p.genomeSafety!==null? p.genomeSafety.toFixed(2) : '-',
+    danger: p.genomeDanger!==null? p.genomeDanger.toFixed(1) : '-'
   }));
 
   // Opponent expedition info
@@ -931,14 +1030,12 @@ function evaluate(gs, variant, simCount, genome){
   let dangerNote='';
   if(chosen.type==='discard'){
     const oppExp=gs.expeditions.player1[chosen.color]||[];
-    if(oppExp.length>0){
+    if(oppExp.length>0 && (chosen.card.value||0)>=7){
       dangerNote=`WARNING: Discarding ${chosen.card.value||'W'} of ${chosen.color} — opponent has ${oppExp.length} cards in ${chosen.color}!`;
     }
   }
 
-  // Note: can't call buildSensors here (no deck array in raw gs)
-
-  return {phase1: best.p1, phase2: best.p2, winRate: best.wins/simsRan,
+  return {phase1: best.p1, phase2: best.p2, winRate: best.blended,
           simsRan,
           debug: {
             hand: gs.hands.player2.map(c=>c.color[0].toUpperCase()+(c.value||'W')).join(' '),
