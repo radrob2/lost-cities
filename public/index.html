@@ -334,9 +334,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div id="score-summary" style="display:flex;justify-content:space-around;margin-bottom:12px"></div>
     <div id="score-details"></div>
   </div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px;padding-bottom:max(20px,env(safe-area-inset-bottom))">
+  <div id="series-score" style="font-family:'Cinzel',serif;font-size:13px;color:var(--parchment-dark);text-align:center;margin-top:8px"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px;padding-bottom:max(20px,env(safe-area-inset-bottom))">
+    <button class="btn" onclick="SFX.select();rematch()">Rematch</button>
     <button class="btn" onclick="SFX.select();viewFinalBoard()">View Board</button>
-    <button class="btn" onclick="SFX.select();playAgain()">New Expedition</button>
     <button class="btn" onclick="SFX.select();leaveGame()">Leave</button>
   </div>
 </div>
@@ -469,6 +470,8 @@ const COLOR_LABELS = {red:'Red',green:'Green',blue:'Blue',white:'White',yellow:'
 const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',yellow:'#c0a030'};
 const COLOR_SYMBOLS = {red:'\u25B2',green:'\u25CF',blue:'\u2248',white:'\u25C6',yellow:'\u2605'};
 let colorblindMode=localStorage.getItem('expedition-colorblind')==='true';
+let seriesScore={you:0,opp:0};
+let seriesFirstPlayer='player1'; // alternates each rematch
 
 let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
 let selectedCard=null, listeners=[];
@@ -1175,9 +1178,15 @@ function showGameOver(){
   const opp=mySlot==='player1'?s2:s1;
   const chex={red:'#c0392b',green:'#27ae60',blue:'#2980b9',white:'#95a5a6',yellow:'#f39c12'};
   const w=document.getElementById('winner-text');
-  if(my.total>opp.total){w.textContent='Victory!';w.style.cssText='color:var(--gold-bright);';}
-  else if(my.total<opp.total){w.textContent='Defeated';w.style.cssText='color:#e07060;';}
+  if(my.total>opp.total){w.textContent='Victory!';w.style.cssText='color:var(--gold-bright);';seriesScore.you++;}
+  else if(my.total<opp.total){w.textContent='Defeated';w.style.cssText='color:#e07060;';seriesScore.opp++;}
   else{w.textContent='A Draw!';w.style.cssText='color:var(--parchment);';}
+  // Show series score
+  const seriesEl=document.getElementById('series-score');
+  if(seriesEl){
+    if(seriesScore.you+seriesScore.opp>1) seriesEl.textContent=`Series: You ${seriesScore.you} \u2014 ${seriesScore.opp} Opp`;
+    else seriesEl.textContent='';
+  }
   const neg=v=>v<0?'r-neg':'';
   const goldPlus=v=>v>=0?'r-pos':'r-neg';
   const sign=v=>v>=0?'<span class="sc-sign">+</span>'+v:'<span class="sc-sign">−</span>'+Math.abs(v);
@@ -1282,6 +1291,12 @@ function showGameOver(){
   if(myWin) SFX.win(); else SFX.gameOver();
 }
 
+function rematch(){
+  // Swap who goes first
+  seriesFirstPlayer=seriesFirstPlayer==='player1'?'player2':'player1';
+  playAgain();
+}
+
 async function playAgain(){
   if(mySlot==='player1' && !isAIGame){
     const deck=createDeck();
@@ -1291,7 +1306,7 @@ async function playAgain(){
     await roomRef.child('game').set({
       deck,hands:{player1:hand1,player2:hand2},
       expeditions:{player1:exps,player2:exps},
-      discards:discard,currentTurn:Math.random()<0.5?'player1':'player2',phase:'play',
+      discards:discard,currentTurn:seriesFirstPlayer,phase:'play',
       lastDiscardedColor:null,status:'playing'
     });
   }
@@ -1316,7 +1331,9 @@ function debugTapTitle(){
 function leaveGame(){
   listeners.forEach(fn=>fn()); listeners=[];
   roomRef=null;roomCode=null;gameState=null;selectedCard=null;
+  seriesScore={you:0,opp:0};seriesFirstPlayer='player1';
   clearSession();
+  document.title='Expedition';
   showScreen('lobby-screen');
 }
 
@@ -1430,13 +1447,15 @@ function startAIGame(){
     deck,hands:{player1:hand1,player2:hand2},
     expeditions:{player1:{...exps},player2:Object.fromEntries(COLORS.map(c=>[c,[]]))},
     discards:Object.fromEntries(COLORS.map(c=>[c,[]])),
-    singlePile:[],currentTurn:'player1',phase:'play',
+    singlePile:[],currentTurn:seriesFirstPlayer,phase:'play',
     lastDiscardedColor:null,justDiscarded:false,status:'playing'
   };
   const pers=AI_PERSONALITIES[aiPersonality]||AI_PERSONALITIES.scholar;
   document.getElementById('opponent-name').textContent='AI '+pers.emoji+' '+pers.name;
   showScreen('game-screen');
   renderGame();
+  // If AI goes first (seriesFirstPlayer is player2), trigger AI turn
+  if(seriesFirstPlayer==='player2') setTimeout(()=>aiTurn(), 500);
 }
 
 // Override Firebase writes when in AI mode
@@ -1742,6 +1761,8 @@ leaveGame=function(){
   if(!isAIGame)return _origLeaveGame();
   if(aiWorker){aiWorker.terminate();aiWorker=null;}
   isAIGame=false;gameState=null;selectedCard=null;
+  seriesScore={you:0,opp:0};seriesFirstPlayer='player1';
+  document.title='Expedition';
   showScreen('lobby-screen');
 };
 
