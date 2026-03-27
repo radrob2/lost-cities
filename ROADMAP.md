@@ -120,6 +120,17 @@
 - [ ] Optional IAP: cosmetic card packs, themes
 - [ ] No ads — pay once, play forever. Classier.
 
+### Boss AI ("The Oracle")
+- [ ] Cheating AI that sees your hand and knows the deck order
+- [ ] Perfect information = near-perfect play. Basically unbeatable.
+- [ ] Implementation: pass actual `hands.player1` and `deck` to AI worker instead of empty/hidden
+- [ ] MC goes from random sampling to exact calculation — trivial code change
+- [ ] AI knows: what you hold, what's coming next, optimal discard/block strategy
+- [ ] Unlock after beating all 5 personalities: "You've conquered the explorers. Now face The Oracle."
+- [ ] Could have multiple tiers: "The Seer" (sees your hand only), "The Oracle" (sees hand + deck)
+- [ ] Fun challenge mode, not the default — clearly labeled as cheating AI
+- [ ] Achievement/badge for anyone who beats The Oracle
+
 ---
 
 ## Platform & Cost Summary
