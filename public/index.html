@@ -377,7 +377,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- GAME -->
 <div id="game-screen" class="screen">
   <div class="top-bar">
-    <div class="player-info"><span id="opponent-name">Opponent</span></div>
+    <div class="player-info"><span id="opponent-name">Opponent</span> <span id="opp-total-score" style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums"></span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
     <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
     <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
@@ -394,7 +394,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         <div id="deck-stack" style="position:relative;width:var(--card-h);height:var(--card-w)"></div>
         <div class="deck-num" id="deck-count-label">44 left</div>
       </div>
-      <div id="live-score" style="font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);opacity:.5;margin-top:2px;text-align:center;font-variant-numeric:tabular-nums"></div>
     </div>
     <div class="row-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Your Ventures</div>
     <div class="card-row" id="my-row"></div>
@@ -404,7 +403,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div class="stack-overlay-cards" id="stack-overlay-cards" onclick="event.stopPropagation()"></div>
   </div>
 
-  <div class="phase-bar" id="phase-bar">Select a card from your hand</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+    <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums"></span>
+    <div class="phase-bar" id="phase-bar" style="flex:1">Select a card from your hand</div>
+  </div>
 
   <div class="hand-area">
     <div class="hand-cards" id="hand-cards"></div>
@@ -743,26 +745,24 @@ function renderGame(){
     deckStack.innerHTML=dhtml;
   }
 
-  // Live score tracker (toggleable)
-  const liveScoreEl=document.getElementById('live-score');
-  if(liveScoreEl){
-    if(liveScoreEnabled && gameState.expeditions){
-      const oppSlotName=mySlot==='player1'?'player2':'player1';
-      const myS=calcScore(gameState.expeditions[mySlot]);
-      const oppS=calcScore(gameState.expeditions[oppSlotName]);
-      // Hide when both are 0 (no ventures started yet)
-      if(myS.total===0 && oppS.total===0){
-        liveScoreEl.style.display='none';
-      } else {
-        const diff=myS.total-oppS.total;
-        const diffStr=diff>0?`+${diff}`:diff<0?`${diff}`:'tied';
-        liveScoreEl.textContent=`${myS.total} vs ${oppS.total} (${diffStr})`;
-        liveScoreEl.style.color=diff>0?'var(--gold)':diff<0?'#e07060':'var(--parchment-dark)';
-        liveScoreEl.style.display='';
-      }
-    } else {
-      liveScoreEl.style.display='none';
+  // Live score totals (per-stack scores rendered in renderBoard via stackScoreLabel)
+  const oppTotalEl=document.getElementById('opp-total-score');
+  const myTotalEl=document.getElementById('my-total-score');
+  if(liveScoreEnabled && gameState.expeditions){
+    const oppSlotName=mySlot==='player1'?'player2':'player1';
+    const myS=calcScore(gameState.expeditions[mySlot]);
+    const oppS=calcScore(gameState.expeditions[oppSlotName]);
+    if(oppTotalEl){
+      if(oppS.total===0) oppTotalEl.textContent='';
+      else{oppTotalEl.textContent=oppS.total;oppTotalEl.style.color=oppS.total>=0?'var(--gold-bright)':'#e07060';}
     }
+    if(myTotalEl){
+      if(myS.total===0) myTotalEl.textContent='';
+      else{myTotalEl.textContent=myS.total;myTotalEl.style.color=myS.total>=0?'var(--gold-bright)':'#e07060';}
+    }
+  } else {
+    if(oppTotalEl) oppTotalEl.textContent='';
+    if(myTotalEl) myTotalEl.textContent='';
   }
 
   // Phase bar
@@ -883,6 +883,15 @@ function renderBoard(){
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
 
+  // Per-stack score label (only when live score enabled and stack has cards)
+  function stackScoreLabel(cards){
+    if(!liveScoreEnabled||!cards||cards.length===0) return '';
+    let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}
+    const score=(s-20)*(1+w)+(cards.length>=8?20:0);
+    const cls=score>=0?'color:var(--gold-bright)':'color:#e07060';
+    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:9px;${cls};opacity:.7;margin-top:1px;font-variant-numeric:tabular-nums">${score}</div>`;
+  }
+
   // Opponent row
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
@@ -894,7 +903,7 @@ function renderBoard(){
     const so=isExp?18:baseSo;
     const stackH=`calc(var(--card-h) + ${(cards.length-1)*baseSo+10}px)`;
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div></div>`;
+    return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}</div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -949,7 +958,7 @@ function renderBoard(){
     }).join('');
     if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*baseSo+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" onclick="${stackClick}"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>`;
+    let html=`<div class="card-col" onclick="${stackClick}"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}`;
     return html+`</div>`;
   }).join('');
 }
