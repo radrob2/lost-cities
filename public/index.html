@@ -59,12 +59,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:var(--gap-md) 0;position:relative;z-index:10}
-.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),1fr);gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%}
+.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
-.expedition-stack{position:relative;width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);overflow:visible}
+.expedition-stack{position:relative;width:var(--col-w);height:calc(var(--card-h)*1.13);overflow:visible}
 .expedition-stack .card{position:static}
-.card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
-.card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
+.card.empty-slot{width:var(--col-w);height:calc(var(--card-h)*1.13)}
+.card-slot{width:var(--col-w);height:calc(var(--card-h)*1.13);display:flex;align-items:center;justify-content:center;position:relative}
 /* Deck slot: centered below discards in portrait, hidden in landscape (rendered as 6th grid col) */
 #deck-slot{display:flex;flex-direction:column;align-items:center}
 /* Info rows: name left, score right */
@@ -112,7 +112,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* EMPTY SLOTS & TARGETS */
 .card.empty-slot{background:rgba(255,255,255,.02);border:1.5px dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
 .card.target{border:2px solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 12px rgba(212,168,67,.25)}
-.card-col>.card.target{width:calc(var(--card-w) * 1.21);height:calc(var(--card-h) * 1.13)}
+.card-col>.card.target{width:var(--col-w);height:calc(var(--card-h) * 1.13)}
 .target-label{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 6px rgba(212,168,67,.5);z-index:1}
 @keyframes card-pop{
   0%{transform:scale(0.8);opacity:.5}
@@ -781,6 +781,9 @@ function computeLayout(){
   root.setProperty('--gap-sm',gapSm+'px');
   root.setProperty('--gap-md',gapMd+'px');
   root.setProperty('--pad',pad+'px');
+  // Column width: card width + proportional buffer (same for all rows)
+  const colW=Math.round(cardW + cardH*0.13);
+  root.setProperty('--col-w',colW+'px');
   return {cardW, cardH, scale, isLandscape};
 }
 
