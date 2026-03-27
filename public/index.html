@@ -65,8 +65,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
 .card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
-.discard-deck-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-md);padding:var(--gap-sm) 0;width:100%}
-.discard-deck-row .card-row{width:100%}
+.discard-deck-wrap{display:flex;align-items:flex-start;gap:var(--gap-sm);width:100%}
+.discard-deck-wrap>.card-row{flex:1}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:calc(var(--card-h)*.02) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
@@ -262,7 +262,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* IPAD LANDSCAPE — layout only (sizing via JS computeLayout) */
 @media(orientation:landscape){
-  .discard-deck-row{flex-direction:row;align-items:flex-start}
 }
 
 /* HIGH CONTRAST MODE */
@@ -356,19 +355,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 
   <div class="board-area">
-    <div class="row-label" id="opp-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Opponent</div>
+    <div id="opp-hand-row" style="display:flex;justify-content:center;gap:1px;padding:0 var(--pad)"></div>
+    <div id="opp-name-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;text-align:center"></div>
     <div class="card-row" id="opp-row"></div>
-    <div class="row-label" id="discard-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Discard</div>
-    <div class="discard-deck-row">
+    <div class="discard-deck-wrap">
       <div class="card-row" id="discard-row"></div>
-      <div id="single-pile-area" style="display:none"></div>
-      <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
-        <div id="deck-stack" style="position:relative"></div>
-        <div class="deck-num" id="deck-count-label">44 left</div>
-      </div>
+      <div id="deck-slot" style="display:flex;flex-direction:column;align-items:center"></div>
     </div>
-    <div class="row-label" id="my-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Your Ventures</div>
+    <div id="single-pile-area" style="display:none"></div>
     <div class="card-row" id="my-row"></div>
+    <div id="my-name-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;text-align:center"></div>
 
     <div style="display:flex;align-items:center;justify-content:center;gap:var(--gap-md);padding:0 var(--gap-md)">
       <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span>
@@ -799,36 +795,8 @@ function renderGame(){
     notifyTurn();
   }
 
-  // Deck count
+  // Deck count (used by discard row render)
   const deckLen = getCards(gameState,'deck').length;
-  const deckLabel=document.getElementById('deck-count-label');
-  deckLabel.textContent=deckLen+' left';
-  deckLabel.style.opacity=deckLen<=10?'1':'.5';
-  deckLabel.style.color=deckLen<=10?'var(--gold)':'var(--parchment-dark)';
-
-  // Render deck as stacked card-backs with jitter
-  // Portrait layout: deck is landscape (wide). Landscape layout: deck is portrait (beside discards).
-  const isLandscapeLayout=window.innerWidth>window.innerHeight;
-  const deckStack=document.getElementById('deck-stack');
-  if(deckStack){
-    if(isLandscapeLayout){
-      deckStack.style.width='var(--card-w)';
-      deckStack.style.height='var(--card-h)';
-    } else {
-      deckStack.style.width='var(--card-h)';
-      deckStack.style.height='var(--card-w)';
-    }
-    const deckClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
-    let dhtml='';
-    for(let i=0;i<deckLen;i++){
-      const h=(i*7919+i*i*31)&0xFFFF;
-      const rot=((h%100)/100*6-3).toFixed(1);
-      const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
-      const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
-      dhtml+=`<div class="${deckClass}" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
-    }
-    deckStack.innerHTML=dhtml;
-  }
 
   // Live score totals (per-stack scores rendered in renderBoard via stackScoreLabel)
   const oppTotalEl=document.getElementById('opp-total-score');
@@ -865,11 +833,31 @@ function renderGame(){
   }
 
   // Deck draw target highlight
-  const deckEl=document.getElementById('deck-draw');
-  deckEl.className = 'deck-card' + (isMyTurn && inDrawPhase ? ' target' : '');
+  // Deck target highlight handled in renderBoard discard row
 
   renderHand();
   renderBoard();
+
+  // Opponent hand (card-backs) for visual symmetry
+  const oppHandRow=document.getElementById('opp-hand-row');
+  if(oppHandRow){
+    const oppSlotN=mySlot==='player1'?'player2':'player1';
+    const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
+    const cardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'))||78;
+    const miniH=Math.round(cardH*0.35);
+    const miniW=Math.round(miniH*0.615);
+    let html='';
+    for(let i=0;i<oppHandLen;i++){
+      html+=`<div class="card card-back" style="width:${miniW}px;height:${miniH}px;border-radius:${Math.round(miniH*0.05)}px;font-size:${Math.round(miniH*0.4)}px"></div>`;
+    }
+    oppHandRow.innerHTML=html;
+  }
+
+  // Name labels (symmetric)
+  const oppNameLabel=document.getElementById('opp-name-label');
+  if(oppNameLabel) oppNameLabel.textContent=document.getElementById('opponent-name')?.textContent||'Opponent';
+  const myNameLabel=document.getElementById('my-name-label');
+  if(myNameLabel) myNameLabel.textContent=getName?getName().toUpperCase():'YOU';
 
   // Measure actual height — if overflowing, correct and re-render once
   const gs=document.getElementById('game-screen');
@@ -952,14 +940,12 @@ function renderBoard(){
   // Undo state
   const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
 
-  // Discard label visibility
-  const discardLabel=document.getElementById('discard-label');
+  const deckLen=getCards(gameState,'deck').length;
 
   // Single pile
   if(variant==='single'){
     singleContainer.style.display='inline-block';
     discardRow.style.display='none';
-    if(discardLabel) discardLabel.style.display='none';
     const pile=getCards(gameState,'singlePile');
     const topCard=pile.length>0?pile[pile.length-1]:null;
     const canDiscard=selectedCard && inPlayPhase && isMyTurn;
@@ -980,7 +966,6 @@ function renderBoard(){
     }
     singleContainer.innerHTML=inner;
   } else {
-    if(discardLabel) discardLabel.style.display='';
     singleContainer.style.display='none';
     discardRow.style.display='flex';
   }
@@ -1057,6 +1042,26 @@ function renderBoard(){
       const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
       return `<div class="card-col"><div class="card-slot" onclick="${handler}" style="position:relative">${stackHTML}${labels}</div></div>`;
     }).join('');
+
+    // Render deck in its own slot beside the discard grid
+    const deckSlot=document.getElementById('deck-slot');
+    if(deckSlot){
+      const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
+      let deckInner='';
+      if(deckLen>0){
+        const showCount=Math.min(deckLen,10);
+        for(let i=0;i<showCount;i++){
+          const h=(i*7919+i*i*31)&0xFFFF;
+          const rot=((h%100)/100*6-3).toFixed(1);
+          const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
+          const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
+          deckInner+=`<div class="card card-back" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
+        }
+      }
+      const emptySlot=`<div class="card empty-slot" style="border:calc(var(--card-h)*.02) dashed rgba(212,168,67,.2)"></div>`;
+      const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:1px;font-family:'Cinzel',serif">${deckLen} left</div>`;
+      deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:var(--card-w);height:calc(var(--card-h)*1.13)">${deckLen>0?deckInner:emptySlot}</div>${countLabel}`;
+    }
   }
 
   // My expedition row
@@ -1165,7 +1170,7 @@ async function drawFromDeck(){
   const deck=getCards(gameState,'deck');
   if(deck.length===0) return;
   SFX.drawCard();
-  const deckEl=document.getElementById('deck-draw');
+  const deckEl=document.getElementById('deck-col');
   const card=deck.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
@@ -1582,7 +1587,7 @@ drawFromDeck=async function(){
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
   const deck=getCards(gameState,'deck');if(deck.length===0)return;
   SFX.drawCard();
-  const deckEl=document.getElementById('deck-draw');
+  const deckEl=document.getElementById('deck-col');
   const card=deck.pop();
   const hand=getCards(gameState,'hands',mySlot);hand.push(card);
   const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
