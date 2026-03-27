@@ -391,6 +391,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div id="score-summary" style="display:flex;justify-content:space-around;margin-bottom:12px"></div>
     <div id="score-details"></div>
   </div>
+  <div id="elo-change-display" style="display:none;text-align:center;margin-top:6px"></div>
   <div id="series-score" style="font-family:'Cinzel',serif;font-size:13px;color:var(--parchment-dark);text-align:center;margin-top:8px"></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px;padding-bottom:max(20px,env(safe-area-inset-bottom))">
     <button class="btn" onclick="SFX.select();rematch()">Rematch</button>
@@ -1849,6 +1850,7 @@ function aiFallbackTurn(){
 </script>
 <script src="src/multiplayer.js"></script>
 <script src="src/stats.js"></script>
+<script src="src/elo.js"></script>
 <script src="src/achievements.js"></script>
 <script src="src/tutorial.js"></script>
 <script>
