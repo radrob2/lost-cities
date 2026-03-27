@@ -35,7 +35,16 @@ function playNoise(dur,vol=0.06){
     src.start();
   }catch(e){}
 }
-function vibrate(pattern=15){try{navigator.vibrate&&navigator.vibrate(pattern)}catch(e){}}
+// Haptics: use Capacitor native haptics on iOS/Android, fallback to navigator.vibrate
+function vibrate(pattern=15){
+  try{
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics){
+      window.Capacitor.Plugins.Haptics.impact({style:'light'});
+    } else if(navigator.vibrate){
+      navigator.vibrate(pattern);
+    }
+  }catch(e){}
+}
 
 const SFX={
   select(){playTone(800,0.06,'sine',0.08);vibrate(10)},

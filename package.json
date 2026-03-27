@@ -1,0 +1,32 @@
+{
+  "name": "lost-cities-game",
+  "version": "1.0.0",
+  "main": "ablation.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://radrob2@github.com/radrob2/lost-cities.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/radrob2/lost-cities/issues"
+  },
+  "homepage": "https://github.com/radrob2/lost-cities#readme",
+  "description": "",
+  "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/haptics": "^8.0.1",
+    "@capacitor/ios": "^8.3.0",
+    "@capacitor/status-bar": "^8.0.2",
+    "puppeteer": "^24.40.0"
+  }
+}

@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a0f0a">
-<title>Lost Cities</title>
+<title>Venture</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -238,8 +238,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- LOBBY -->
 <div id="lobby-screen" class="screen active">
   <div class="lobby-compass">&#x1F9ED;</div>
-  <div class="lobby-title" onclick="debugTapTitle()">Lost Cities</div>
-  <div class="lobby-subtitle">An Expedition for Two</div>
+  <div class="lobby-title" onclick="debugTapTitle()">Venture</div>
+  <div class="lobby-subtitle">Risk the Unknown</div>
   <input class="name-input" id="player-name" placeholder="Your name" maxlength="12" autocomplete="off">
   <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
     <button class="variant-btn active" id="vbtn-classic" onclick="SFX.select();setVariant('classic')">Classic (5 piles)</button>
@@ -273,7 +273,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- JOIN -->
 <div id="join-screen" class="screen">
   <button class="back-btn" onclick="SFX.select();showScreen('lobby-screen')">&larr;</button>
-  <div class="lobby-title" style="font-size:clamp(24px,6vw,36px)">Join Expedition</div>
+  <div class="lobby-title" style="font-size:clamp(24px,6vw,36px)">Join Venture</div>
   <input class="name-input" id="join-player-name" placeholder="Your name" maxlength="12" autocomplete="off">
   <div class="input-group">
     <label>Enter Room Code</label>
@@ -348,7 +348,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div id="stats-screen" class="screen">
   <button class="back-btn" onclick="SFX.select();showScreen('lobby-screen')">&larr;</button>
   <div class="stats-container">
-    <div class="stats-header">Expedition Log</div>
+    <div class="stats-header">Venture Log</div>
     <div id="stats-content"></div>
     <div class="stats-actions">
       <button class="btn" onclick="SFX.select();showScreen('lobby-screen')">Back</button>
@@ -361,7 +361,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="game-menu-overlay" id="reset-confirm" onclick="if(event.target===this)closeResetConfirm()">
   <div class="game-menu">
     <h2>Reset Stats?</h2>
-    <p style="color:var(--parchment-dark);font-size:14px;text-align:center;margin-bottom:12px">This will permanently erase all your expedition records.</p>
+    <p style="color:var(--parchment-dark);font-size:14px;text-align:center;margin-bottom:12px">This will permanently erase all your venture records.</p>
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="SFX.select();doResetStats()">Reset Everything</button>
     <button class="btn" onclick="SFX.select();closeResetConfirm()">Keep Records</button>
   </div>
@@ -371,24 +371,24 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="modal-overlay" id="rules-modal" onclick="if(event.target===this)closeRules()">
   <div class="modal">
     <h2>How to Play</h2>
-    <h3>Goal</h3><p>Score the most points by building expeditions (ascending card sequences).</p>
+    <h3>Goal</h3><p>Score the most points by building ventures (ascending card sequences).</p>
     <h3>Cards</h3><p>5 colors. Each has numbers 2-10 plus three wager (x2) cards that multiply your score.</p>
     <h3>Your Turn</h3>
     <ul>
-      <li><b>Step 1: Play or Discard</b> &mdash; Tap a card in your hand. Then tap the matching color expedition below to play it, or the matching color discard pile to discard it.</li>
+      <li><b>Step 1: Play or Discard</b> &mdash; Tap a card in your hand. Then tap the matching color venture below to play it, or the matching color discard pile to discard it.</li>
       <li><b>Step 2: Draw</b> &mdash; Tap the deck to draw, or tap any discard pile to take its top card.</li>
     </ul>
     <h3>Rules</h3>
     <ul>
-      <li>Cards must be played in <b>ascending order</b> on expeditions.</li>
+      <li>Cards must be played in <b>ascending order</b> on ventures.</li>
       <li>Wager (x2) cards must be played <b>before</b> any number cards.</li>
       <li>You <b>cannot</b> draw from the discard pile you just discarded to.</li>
     </ul>
     <h3>Scoring</h3>
     <ul>
-      <li>Starting an expedition costs 20 points.</li>
+      <li>Starting a venture costs 20 points.</li>
       <li>Score = (sum of numbers - 20) &times; (1 + wager count).</li>
-      <li>Bonus +20 if expedition has 8+ cards.</li>
+      <li>Bonus +20 if a venture has 8+ cards.</li>
     </ul>
     <button class="btn" onclick="SFX.select();closeRules()">Got It</button>
   </div>
@@ -424,22 +424,22 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div class="tutorial-slide active" data-slide="0">
       <div class="tutorial-icon">&#x1F9ED;</div>
       <div class="tutorial-title">The Goal</div>
-      <div class="tutorial-text">You\u2019re an explorer funding expeditions. Play cards across <b>5 colors</b> to build ascending sequences. <b>Highest score wins!</b></div>
+      <div class="tutorial-text">You\u2019re an explorer funding ventures into the unknown. Play cards across <b>5 colors</b> to build ascending sequences. <b>Highest score wins!</b></div>
     </div>
     <div class="tutorial-slide" data-slide="1">
       <div class="tutorial-icon">&#x1F0CF;</div>
       <div class="tutorial-title">Your Turn</div>
-      <div class="tutorial-text"><b>Play</b> a card to an expedition or <b>discard</b> it, then <b>draw</b> from the deck or a discard pile. Cards must go <b>ascending</b>. Wagers before numbers.</div>
+      <div class="tutorial-text"><b>Play</b> a card to a venture or <b>discard</b> it, then <b>draw</b> from the deck or a discard pile. Cards must go <b>ascending</b>. Wagers before numbers.</div>
     </div>
     <div class="tutorial-slide" data-slide="2">
       <div class="tutorial-icon">&#x2728;</div>
       <div class="tutorial-title">Scoring</div>
-      <div class="tutorial-text">Each expedition costs <b>&minus;20</b> to start. Wagers <b>multiply</b> your total. Play <b>8+ cards</b> in one color for a +20 bonus.</div>
+      <div class="tutorial-text">Each venture costs <b>&minus;20</b> to start. Wagers <b>multiply</b> your total. Play <b>8+ cards</b> in one color for a +20 bonus.</div>
     </div>
     <div class="tutorial-slide" data-slide="3">
       <div class="tutorial-icon">&#x1F4A1;</div>
       <div class="tutorial-title">Tips</div>
-      <div class="tutorial-text">Don\u2019t start too many expeditions &mdash; an empty one scores <b>&minus;20</b>. Watch what your opponent discards for clues.</div>
+      <div class="tutorial-text">Don\u2019t start too many ventures &mdash; each one costs <b>&minus;20</b>. Watch what your opponent discards for clues.</div>
     </div>
   </div>
   <div class="tutorial-dots" id="tutorial-dots">
@@ -528,7 +528,7 @@ function requestNotificationPermission(){
 }
 function notifyTurn(){
   if('Notification' in window && Notification.permission==='granted'){
-    try{new Notification('Expedition',{body:"It's your turn!",icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23d4a843"/><text x="16" y="22" text-anchor="middle" font-size="18">%E2%9C%A6</text></svg>'});}catch(e){}
+    try{new Notification('Venture',{body:"It's your turn!",icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23d4a843"/><text x="16" y="22" text-anchor="middle" font-size="18">%E2%9C%A6</text></svg>'});}catch(e){}
   }
 }
 
@@ -594,7 +594,7 @@ function renderGame(){
   if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
 
   // Title + notification for multiplayer
-  document.title=isMyTurn?'\uD83D\uDFE1 Your Turn \u2014 Expedition':'Expedition';
+  document.title=isMyTurn?'\uD83D\uDFE1 Your Turn \u2014 Venture':'Venture';
   if(isMyTurn && !wasMyTurn && !isAIGame && document.hidden){
     notifyTurn();
   }
@@ -629,7 +629,7 @@ function renderGame(){
     pb.textContent='Waiting for opponent...'; pb.className='phase-bar';
   } else if(inPlayPhase){
     pb.textContent=selectedCard
-      ? (variant==='single'?'Tap expedition to play or discard pile':'Tap a highlighted zone to play or discard')
+      ? (variant==='single'?'Tap venture to play or discard pile':'Tap a highlighted zone to play or discard')
       : 'Tap a card in your hand';
     pb.className='phase-bar';
   } else {
@@ -1083,7 +1083,7 @@ function showGameOver(){
     html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px">`;
 
     html+=row(m.count?m.sum:dash,'Card total',o.count?o.sum:dash,m.count?neg(m.sum):'',o.count?neg(o.sum):'');
-    html+=row(m.count?'<span class="sc-sign">−</span>20':dash,'Expedition cost',o.count?'<span class="sc-sign">−</span>20':dash,'r-muted','r-muted');
+    html+=row(m.count?'<span class="sc-sign">−</span>20':dash,'Venture cost',o.count?'<span class="sc-sign">−</span>20':dash,'r-muted','r-muted');
 
     const maxW=Math.max(m.wagers,o.wagers);
     const hasBonus=m.bonus||o.bonus;
@@ -1571,7 +1571,7 @@ leaveGame=function(){
   if(aiWorker){aiWorker.terminate();aiWorker=null;}
   isAIGame=false;gameState=null;selectedCard=null;
   seriesScore={you:0,opp:0};seriesFirstPlayer='player1';
-  document.title='Expedition';
+  document.title='Venture';
   showScreen('lobby-screen');
 };
 

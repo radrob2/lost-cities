@@ -3,5 +3,6 @@ node_modules/
 .cache/
 *.log
 playtest-screenshots/
-package.json
 package-lock.json
+ios/
+android/
