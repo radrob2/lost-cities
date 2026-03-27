@@ -59,7 +59,10 @@ const SFX={
 };
 function toggleSound(){
   soundEnabled=!soundEnabled;
+  const icon=soundEnabled?'\u{1F50A}':'\u{1F507}';
   const btn=document.getElementById('sound-btn');
-  if(btn) btn.innerHTML=soundEnabled?'\u{1F50A}':'\u{1F507}';
+  if(btn) btn.innerHTML=icon;
+  const lobbyBtn=document.getElementById('lobby-sound-btn');
+  if(lobbyBtn) lobbyBtn.innerHTML=icon;
   if(soundEnabled) SFX.select();
 }

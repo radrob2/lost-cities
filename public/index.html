@@ -208,6 +208,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .btn-reset{font-family:'Cinzel',serif;font-weight:700;padding:10px 24px;border:1.5px solid #c0392b;background:transparent;color:#e74c3c;font-size:13px;border-radius:8px;cursor:pointer;transition:all .2s}
 .btn-reset:active{background:rgba(192,57,43,.15)}
 
+/* ACHIEVEMENTS */
+.achievements-grid{display:flex;flex-direction:column;gap:8px}
+.achievement-badge{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1.5px solid rgba(201,168,76,.2);background:rgba(255,255,255,.03);transition:all .2s}
+.achievement-badge.unlocked{border-color:rgba(255,215,0,.5);background:rgba(255,215,0,.06)}
+.achievement-badge.locked{opacity:.45}
+.achievement-badge.locked .ach-icon{filter:grayscale(1)}
+.ach-icon{font-size:24px;flex-shrink:0;width:32px;text-align:center}
+.ach-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ach-name{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--parchment)}
+.achievement-badge.unlocked .ach-name{color:var(--gold-bright)}
+.ach-desc{font-size:12px;color:var(--parchment-dark);line-height:1.3}
+.ach-date{font-size:10px;color:rgba(212,168,67,.6);font-style:italic}
+
 @media(min-width:420px){:root{--card-w:56px;--card-h:91px}}
 @media(min-width:500px){:root{--card-w:64px;--card-h:104px}}
 
@@ -248,8 +261,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <button class="btn" onclick="SFX.select();openAIPersonalityModal()">Play vs AI</button>
   <button class="btn" onclick="SFX.select();createRoom()">Create Room</button>
   <button class="btn" onclick="SFX.select();showJoin()">Join Room</button>
+  <button class="btn" onclick="SFX.select();findOpponent()">Find Opponent</button>
   <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showTutorial()">How to Play</button>
   <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showStats()">Stats</button>
+  <button class="btn" style="border-color:rgba(201,168,76,.2);font-size:13px;padding:8px 16px;min-width:auto" id="lobby-sound-btn" onclick="toggleSound()">&#x1F50A;</button>
   <div class="error-msg" id="lobby-error"></div>
 </div>
 
@@ -273,6 +288,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="room-code-display" id="display-code"></div>
   <div class="waiting-text" id="waiting-text">Waiting for fellow explorer...</div>
   <div class="lobby-subtitle" style="margin-top:20px;font-size:12px">Share this code with your opponent</div>
+</div>
+
+<!-- MATCHMAKING SEARCH -->
+<div id="matchmaking-screen" class="screen">
+  <div class="lobby-compass">&#x1F9ED;</div>
+  <div class="lobby-title" style="font-size:clamp(24px,6vw,36px)">Find Opponent</div>
+  <div class="waiting-text" id="matchmaking-text">Searching for an opponent...</div>
+  <div class="lobby-subtitle" style="margin-top:20px;font-size:12px" id="matchmaking-timer"></div>
+  <button class="btn" style="margin-top:16px" onclick="SFX.select();cancelMatchmaking()">Cancel</button>
 </div>
 
 <!-- GAME -->
@@ -333,6 +357,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="stats-container">
     <div class="stats-header">Venture Log</div>
     <div id="stats-content"></div>
+    <div id="achievements-content"></div>
     <div class="stats-actions">
       <button class="btn" onclick="SFX.select();showScreen('lobby-screen')">Back</button>
       <button class="btn-reset" onclick="SFX.select();confirmResetStats()">Reset Stats</button>
@@ -1564,6 +1589,7 @@ function aiFallbackTurn(){
 </script>
 <script src="src/multiplayer.js"></script>
 <script src="src/stats.js"></script>
+<script src="src/achievements.js"></script>
 <script src="src/tutorial.js"></script>
 <script>
 // Override playAgain and leaveGame for AI mode (must run after multiplayer.js defines them)
