@@ -14,9 +14,9 @@
   --bg:#120c07;--parchment:#f0e0c0;--parchment-dark:#b8a888;
   --gold:#d4a843;--gold-bright:#f0c850;
   --card-w:48px;--card-h:78px;
+  --ui-scale:1;--font-base:13px;--gap-sm:4px;--gap-md:8px;--pad:8px;
   --anim-dur:0.5s;--anim-ease:cubic-bezier(.2,.8,.3,1);
 }
-@media(max-height:750px){:root{--card-h:68px;--card-w:42px}}
 html,body{height:100%;overflow:hidden;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment)}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center}
 
@@ -49,30 +49,30 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* GAME BOARD */
 #game-screen{padding:0;flex-direction:column;justify-content:space-between;background:var(--bg)}
-.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;
-  padding-top:max(8px,env(safe-area-inset-top));background:rgba(0,0,0,.4);width:100%;font-size:13px;z-index:10}
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:var(--pad) calc(var(--pad) * 1.25);
+  padding-top:max(var(--pad),env(safe-area-inset-top));background:rgba(0,0,0,.4);width:100%;font-size:var(--font-base);z-index:10}
 .top-bar .player-info{color:var(--parchment-dark)}
-.turn-indicator{font-family:'Cinzel',serif;font-weight:700;padding:5px 12px;border-radius:14px;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.turn-indicator{font-family:'Cinzel',serif;font-weight:700;padding:calc(var(--pad) * .44) calc(var(--pad) * 1.06);border-radius:14px;font-size:calc(var(--font-base) * .77);text-transform:uppercase;letter-spacing:1px}
 .your-turn{background:var(--gold);color:var(--bg)}
 .their-turn{background:rgba(255,255,255,.08);color:rgba(240,224,192,.4)}
-.menu-btn{background:none;border:none;color:rgba(240,224,192,.4);font-size:18px;cursor:pointer;padding:4px 8px}
+.menu-btn{background:none;border:none;color:rgba(240,224,192,.4);font-size:calc(var(--font-base) * 1.38);cursor:pointer;padding:var(--gap-sm) var(--gap-md)}
 
 /* BOARD LAYOUT */
-.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:8px 0;position:relative;z-index:10}
-.card-row{display:flex;justify-content:center;align-items:center;gap:6px;padding:0 12px;overflow:visible}
+.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:var(--gap-md) 0;position:relative;z-index:10}
+.card-row{display:flex;justify-content:center;align-items:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center;width:calc(20% - 6px);min-width:calc(var(--card-w) + 10px);max-width:calc(var(--card-w) + 10px)}
 .expedition-stack{position:relative;width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);overflow:visible}
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
 .card-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);display:flex;align-items:center;justify-content:center;position:relative}
-.middle-row{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0}
+.middle-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-sm);padding:var(--gap-sm) 0}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:1.5px solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
 .card:active{transform:scale(.95)}
 .card.selected{transform:translateY(-14px);box-shadow:0 8px 28px rgba(212,168,67,.7);border-color:var(--gold-bright)!important;z-index:5}
-.card-value{font-size:22px;text-shadow:0 1px 3px rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.4);line-height:1;font-weight:400;z-index:1}
-.card-corner{font-size:10px;position:absolute;top:1px;left:1px;z-index:1;font-weight:700;line-height:1;background:rgba(0,0,0,.35);border-radius:3px;padding:1px 3px;text-shadow:0 1px 2px rgba(0,0,0,.9)}
+.card-value{font-size:calc(var(--card-h) * .282);text-shadow:0 1px 3px rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.4);line-height:1;font-weight:400;z-index:1}
+.card-corner{font-size:calc(var(--card-h) * .128);position:absolute;top:1px;left:1px;z-index:1;font-weight:700;line-height:1;background:rgba(0,0,0,.35);border-radius:3px;padding:1px 3px;text-shadow:0 1px 2px rgba(0,0,0,.9)}
 .wager .card-corner{top:2px}
 /* Red — volcanic / lava landscape */
 .card.color-red{background:#9b2020;color:#ffe8e8;border-color:rgba(200,60,60,.4)}
@@ -94,7 +94,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.color-yellow{background:#c49a20;color:#fff8e0;border-color:rgba(200,160,30,.4)}
     .card.color-yellow::before{content:'';position:absolute;inset:0;border-radius:inherit;z-index:0;background:linear-gradient(180deg,#e8c44a 0%,#d4a830 30%,#b8862a 60%,#a06e22 100%)}
     .card.color-yellow::after{content:'';position:absolute;inset:0;border-radius:inherit;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 80'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f0d060'/%3E%3Cstop offset='40%25' stop-color='%23e8c040'/%3E%3Cstop offset='100%25' stop-color='%23d4a828'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='56' height='80'/%3E%3Ccircle cx='38' cy='14' r='8' fill='%23f5e088' opacity='.7'/%3E%3Ccircle cx='42' cy='16' r='4' fill='%23f0d870' opacity='.5'/%3E%3Cpath d='M0 52 Q8 40 18 46 Q26 38 34 44 Q44 36 56 42 L56 80 L0 80Z' fill='%23b07818' opacity='.6'/%3E%3Cpath d='M0 58 Q12 48 22 54 Q30 46 40 52 Q50 44 56 50 L56 80 L0 80Z' fill='%23a06a14' opacity='.7'/%3E%3Cpath d='M0 65 Q10 56 20 62 Q32 54 42 60 Q50 55 56 58 L56 80 L0 80Z' fill='%238a5a10' opacity='.8'/%3E%3Cpath d='M0 72 Q14 64 28 68 Q42 62 56 66 L56 80 L0 80Z' fill='%23704a0c' opacity='.7'/%3E%3C/svg%3E") center/cover no-repeat}
-.cb-sym{position:absolute;bottom:1px;right:2px;font-size:10px;opacity:.8;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8);line-height:1}
+.cb-sym{position:absolute;bottom:1px;right:2px;font-size:calc(var(--card-h) * .128);opacity:.8;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8);line-height:1}
 .card.card-back{background:#2a1a0e;border-color:rgba(212,168,67,.4)}
 .card.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(212,168,67,.3)}
 .card.card-back::after{content:'';position:absolute;inset:4px;border:1px solid rgba(212,168,67,.2);border-radius:4px;z-index:0}
@@ -121,20 +121,20 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 @keyframes undo-pulse{from{opacity:.7}to{opacity:1}}
 
 /* HAND */
-.hand-area{padding:6px 6px;padding-bottom:max(10px,env(safe-area-inset-bottom));
+.hand-area{padding:var(--gap-sm) var(--gap-sm);padding-bottom:max(calc(var(--gap-md) * .88),env(safe-area-inset-bottom));
   background:rgba(0,0,0,.4);width:100%}
-.hand-cards{position:relative;width:100%;overflow:visible;padding:4px 0}
+.hand-cards{position:relative;width:100%;overflow:visible;padding:var(--gap-sm) 0}
 .hand-cards .card{flex-shrink:0}
 .hand-cards>div{position:absolute;z-index:0}
 .hand-cards>div:hover{z-index:2}
 .hand-cards>div:has(.selected){z-index:5}
 
 /* PHASE BAR */
-.phase-bar{text-align:center;padding:4px 12px;font-size:12px;color:var(--parchment-dark);min-height:24px;font-family:'Crimson Text',serif;font-style:italic}
+.phase-bar{text-align:center;padding:calc(var(--pad) * .38) calc(var(--pad) * 1.06);font-size:calc(var(--font-base) * .85);color:var(--parchment-dark);min-height:calc(var(--font-base) * 1.7);font-family:'Crimson Text',serif;font-style:italic}
 .phase-bar.draw-phase{color:var(--gold-bright);font-style:normal;font-weight:600}
 
 .deck-card{cursor:pointer;position:relative;display:inline-block}
-.deck-card .deck-num{font-size:9px;color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
+.deck-card .deck-num{font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
 .deck-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
 .deck-landscape{width:var(--card-h)!important;height:var(--card-w)!important;min-height:0!important}
 .stack-overlay{display:none}
@@ -220,8 +220,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .ach-desc{font-size:12px;color:var(--parchment-dark);line-height:1.3}
 .ach-date{font-size:10px;color:rgba(212,168,67,.6);font-style:italic}
 
-@media(min-width:420px){:root{--card-w:56px;--card-h:91px}}
-@media(min-width:500px){:root{--card-w:64px;--card-h:104px}}
 
 /* ONBOARDING TUTORIAL */
 .tutorial-overlay{position:fixed;inset:0;background:rgba(6,4,2,.96);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;touch-action:pan-y}
@@ -244,26 +242,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .tutorial-nav-btn.primary{background:linear-gradient(160deg,var(--gold),#b8922a);color:var(--bg);border-color:var(--gold-bright)}
 .tutorial-nav-btn.primary:active{background:linear-gradient(160deg,#c49a30,#a08020)}
 
-/* IPAD / TABLET LAYOUT */
+/* IPAD / TABLET LAYOUT — non-game sizing (lobby, modals, etc.) */
 @media(min-width:768px){
-  :root{--card-w:72px;--card-h:112px}
-  .card-row{gap:14px;padding:0 20px}
-  .card-col{min-width:calc(var(--card-w) + 16px);max-width:calc(var(--card-w) + 16px)}
-  .expedition-stack{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
-  .card.empty-slot{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
-  .card-col>.card.target{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
-  .card-slot{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
-  .card-value{font-size:28px}
-  .card-corner{font-size:13px;top:2px;left:3px;padding:2px 4px}
-  .cb-sym{font-size:13px;bottom:2px;right:3px}
-  .hand-cards>div{margin-left:calc(var(--card-w) * -0.12)}
-  .hand-area{padding:10px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom))}
-  .top-bar{padding:12px 20px;font-size:15px}
-  .turn-indicator{font-size:12px;padding:6px 16px}
-  .phase-bar{font-size:14px;padding:6px 16px}
-  .middle-row{gap:10px;padding:8px 0}
-  .deck-card .deck-num{font-size:11px}
-  .board-area{padding:12px 0}
   .btn{font-size:18px;padding:16px 36px;min-width:240px;max-width:400px}
   .lobby-title{font-size:clamp(36px,8vw,56px)}
   .lobby-subtitle{font-size:clamp(16px,3.5vw,22px);margin-bottom:36px}
@@ -276,18 +256,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   .tutorial-slides{max-width:440px}
   .tutorial-text{max-width:400px;font-size:17px}
   .tutorial-title{font-size:clamp(26px,6vw,36px)}
-  .target-label{font-size:8px;bottom:-16px}
-  .undo-label{font-size:8px;bottom:-14px}
   .toast{font-size:14px;padding:12px 28px}
 }
 
-/* IPAD LANDSCAPE */
+/* IPAD LANDSCAPE — layout only (sizing via JS computeLayout) */
 @media(min-width:768px) and (orientation:landscape){
-  :root{--card-w:56px;--card-h:88px}
-  .card-row{gap:18px;padding:0 28px}
-  .board-area{padding:4px 16px}
-  .hand-area{padding:6px 24px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
-  .middle-row{flex-direction:row;align-items:center;gap:12px;padding:2px 0}
+  .middle-row{flex-direction:row;align-items:center}
 }
 
 /* HIGH CONTRAST MODE */
@@ -375,17 +349,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- GAME -->
 <div id="game-screen" class="screen">
   <div class="top-bar">
-    <div class="player-info"><span id="opponent-name">Opponent</span> <span id="opp-total-score" style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums"></span></div>
+    <div class="player-info"><span id="opponent-name">Opponent</span> <span id="opp-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
     <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
     <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
   </div>
 
   <div class="board-area">
-    <div class="row-label" id="opp-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Opponent</div>
+    <div class="row-label" id="opp-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Opponent</div>
     <div class="card-row" id="opp-row"></div>
     <div class="middle-row">
-      <div class="row-label" id="discard-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Discard</div>
+      <div class="row-label" id="discard-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Discard</div>
       <div class="card-row" id="discard-row"></div>
       <div id="single-pile-area" style="display:none"></div>
       <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
@@ -393,11 +367,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         <div class="deck-num" id="deck-count-label">44 left</div>
       </div>
     </div>
-    <div class="row-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Your Ventures</div>
+    <div class="row-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Your Ventures</div>
     <div class="card-row" id="my-row"></div>
 
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:0 8px">
-      <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums"></span>
+    <div style="display:flex;align-items:center;justify-content:center;gap:var(--gap-md);padding:0 var(--gap-md)">
+      <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span>
       <div class="phase-bar" id="phase-bar" style="flex:1">Select a card from your hand</div>
     </div>
 
@@ -702,41 +676,64 @@ function cardHTML(card, extra=''){
   </div>`;
 }
 
-function renderGame(){
-  if(!gameState)return;
-
-  // Dynamic card scaling: shrink cards if stacks are too tall for viewport
+function computeLayout(){
   const oppSlot=mySlot==='player1'?'player2':'player1';
   let maxOppStack=0, maxMyStack=0;
-  for(const c of COLORS){
-    maxOppStack=Math.max(maxOppStack,(gameState.expeditions[oppSlot]||{})[c]?.length||0);
-    maxMyStack=Math.max(maxMyStack,(gameState.expeditions[mySlot]||{})[c]?.length||0);
+  if(gameState && gameState.expeditions){
+    for(const c of COLORS){
+      maxOppStack=Math.max(maxOppStack,(gameState.expeditions[oppSlot]||{})[c]?.length||0);
+      maxMyStack=Math.max(maxMyStack,(gameState.expeditions[mySlot]||{})[c]?.length||0);
+    }
   }
-  // Estimate vertical space needed: topbar(40) + 2 labels(20ea) + oppStack + discardRow + deck(cardW+20) + myStack + phaseBar(28) + hand(cardH+20) + padding(20)
-  // Stack height ≈ cardH + (count-1)*offset, offset ≈ 7 for 8+ cards
   const vh=window.innerHeight;
   const vw=window.innerWidth;
   const isLandscape=vw>vh;
-  const baseH=vw>=768?(isLandscape?88:112):(vh<=750?68:78);
-  const baseW=vw>=768?(isLandscape?56:72):(vh<=750?42:48);
+  // Base card size from viewport category
+  let baseW, baseH;
+  if(vw>=768){
+    if(isLandscape){ baseW=56; baseH=88; }
+    else { baseW=72; baseH=112; }
+  } else if(vh<=750){
+    baseW=42; baseH=68;
+  } else {
+    baseW=48; baseH=78;
+  }
+  // Estimate total needed height
   const oppStackH=baseH+Math.max(0,maxOppStack-1)*7;
   const myStackH=baseH+Math.max(0,maxMyStack-1)*7;
   const discardH=baseH+10;
-  const deckH=isLandscape?0:(baseW+20); // landscape: deck beside discards, not stacked
+  const deckH=isLandscape?0:(baseW+20);
   const handH=baseH+20;
-  const chrome=40+20+20+28+20; // topbar + 2 labels + phaseBar + padding
+  const chrome=40+20+20+28+20;
   const neededH=oppStackH+discardH+deckH+myStackH+handH+chrome;
-  const scale=Math.min(1, vh/neededH);
-  if(scale<0.98){
-    const newH=Math.round(baseH*scale);
-    const newW=Math.round(baseW*scale);
-    document.documentElement.style.setProperty('--card-h',newH+'px');
-    document.documentElement.style.setProperty('--card-w',newW+'px');
-  } else {
-    // Reset to default for this viewport
-    document.documentElement.style.setProperty('--card-h',baseH+'px');
-    document.documentElement.style.setProperty('--card-w',baseW+'px');
-  }
+  // Scale if needed (min 0.6)
+  let scale=Math.min(1, vh/neededH);
+  scale=Math.max(0.6, scale);
+  const s=scale<0.98?scale:1;
+  // Derived sizing
+  const cardW=Math.round(baseW*s);
+  const cardH=Math.round(baseH*s);
+  const fontBase=Math.round(13*s*10)/10;
+  const gapSm=Math.round(4*s*10)/10;
+  const gapMd=Math.round(8*s*10)/10;
+  const pad=Math.round(8*s*10)/10;
+  // Set all CSS custom properties
+  const root=document.documentElement.style;
+  root.setProperty('--card-w',cardW+'px');
+  root.setProperty('--card-h',cardH+'px');
+  root.setProperty('--ui-scale',s);
+  root.setProperty('--font-base',fontBase+'px');
+  root.setProperty('--gap-sm',gapSm+'px');
+  root.setProperty('--gap-md',gapMd+'px');
+  root.setProperty('--pad',pad+'px');
+  return {cardW, cardH, scale:s, isLandscape};
+}
+
+function renderGame(){
+  if(!gameState)return;
+
+  // Compute and apply all layout sizing via CSS custom properties
+  computeLayout();
 
   // Animation snapshots handled by explicit animateMove calls
   const isMyTurn = gameState.currentTurn===mySlot;
@@ -943,7 +940,7 @@ function renderBoard(){
     let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}
     const score=(s-20)*(1+w)+(cards.length>=8?20:0);
     const cls=score>=0?'color:var(--gold-bright)':'color:#e07060';
-    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:9px;${cls};opacity:.7;margin-top:1px;font-variant-numeric:tabular-nums">${score}</div>`;
+    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);${cls};opacity:.7;margin-top:1px;font-variant-numeric:tabular-nums">${score}</div>`;
   }
 
   // Opponent row
