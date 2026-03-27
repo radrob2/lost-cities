@@ -475,8 +475,8 @@ function createSim(gs, oppHand, deck, variant){
 
 // Rollout using genome-driven policy for BOTH players
 function rollout(sim, startingPlayer, genome){
-  // If deck is small enough, use minimax for perfect endgame play
-  if(sim.deck.length<=6){
+  // If deck is small enough, use minimax for endgame play
+  if(sim.deck.length<=12){
     return endgameSolve(sim, startingPlayer);
   }
   let turn=startingPlayer;
@@ -490,21 +490,29 @@ function rollout(sim, startingPlayer, genome){
   return s2>s1? 1 : (s2===s1? 0.5 : 0);
 }
 
-// ========== ENDGAME SOLVER (Shallow Minimax with Alpha-Beta) ==========
-// When deck ≤ 6, use minimax with alpha-beta pruning for 2 plies (my turn + opponent turn)
-// then evaluate leaf nodes with score differential. Much stronger than greedy rollout
-// for endgame decisions because it considers opponent's best response.
+// ========== ENDGAME SOLVER (Adaptive Minimax with Alpha-Beta) ==========
+// Adaptive depth based on deck size:
+// deck <= 4: full depth (4 plies) — exact play
+// deck <= 8: 3 plies — near-exact
+// deck <= 12: 2 plies — good approximation
+// Alpha-beta pruning + move ordering keeps it fast.
 
-const ENDGAME_MAX_DEPTH=2; // 2 plies = I play, opponent plays, then evaluate
+function getEndgameDepth(deckSize){
+  if(deckSize<=4) return 4;
+  if(deckSize<=8) return 3;
+  return 2;
+}
+
 
 function endgameSolve(sim, startingPlayer){
-  const result=minimax(sim, startingPlayer, 0, -Infinity, Infinity);
+  const maxDepth=getEndgameDepth(sim.deck.length);
+  const result=minimax(sim, startingPlayer, 0, -Infinity, Infinity, maxDepth);
   return result>0?1:(result===0?0.5:0);
 }
 
-function minimax(sim, player, depth, alpha, beta){
+function minimax(sim, player, depth, alpha, beta, maxDepth){
   // Terminal: game over or depth limit reached — evaluate position
-  if(sim.deck.length===0 || depth>=ENDGAME_MAX_DEPTH){
+  if(sim.deck.length===0 || depth>=maxDepth){
     const s1=scoreAll(sim.expeditions.player1);
     const s2=scoreAll(sim.expeditions.player2);
     return s2-s1;
@@ -543,8 +551,9 @@ function minimax(sim, player, depth, alpha, beta){
   }
   moves.sort((a,b)=>isMaximizing?(b.heuristic-a.heuristic):(a.heuristic-b.heuristic));
 
-  // Cap moves to prevent explosion (top 15 most promising)
-  const cappedMoves=moves.slice(0, 15);
+  // Cap moves to prevent explosion — fewer at deeper levels
+  const moveLimit=depth<=1?15:(depth<=2?10:6);
+  const cappedMoves=moves.slice(0, moveLimit);
 
   let bestVal=isMaximizing?-Infinity:Infinity;
 
@@ -557,7 +566,7 @@ function minimax(sim, player, depth, alpha, beta){
       const s2=scoreAll(sim.expeditions.player2);
       val=s2-s1;
     } else {
-      val=minimax(sim, other, depth+1, alpha, beta);
+      val=minimax(sim, other, depth+1, alpha, beta, maxDepth);
     }
     undoMove(sim, player, move, undo);
 
