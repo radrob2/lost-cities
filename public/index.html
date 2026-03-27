@@ -286,9 +286,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   :root{--card-w:56px;--card-h:88px}
   .card-row{gap:18px;padding:0 28px}
   .board-area{padding:4px 16px}
-  .hand-cards>div{margin-left:calc(var(--card-w) * -0.08)}
   .hand-area{padding:6px 24px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
-  .middle-row{gap:4px;padding:2px 0}
+  .middle-row{flex-direction:row;align-items:center;gap:12px;padding:2px 0}
 }
 
 /* HIGH CONTRAST MODE */
@@ -705,6 +704,40 @@ function cardHTML(card, extra=''){
 
 function renderGame(){
   if(!gameState)return;
+
+  // Dynamic card scaling: shrink cards if stacks are too tall for viewport
+  const oppSlot=mySlot==='player1'?'player2':'player1';
+  let maxOppStack=0, maxMyStack=0;
+  for(const c of COLORS){
+    maxOppStack=Math.max(maxOppStack,(gameState.expeditions[oppSlot]||{})[c]?.length||0);
+    maxMyStack=Math.max(maxMyStack,(gameState.expeditions[mySlot]||{})[c]?.length||0);
+  }
+  // Estimate vertical space needed: topbar(40) + 2 labels(20ea) + oppStack + discardRow + deck(cardW+20) + myStack + phaseBar(28) + hand(cardH+20) + padding(20)
+  // Stack height ≈ cardH + (count-1)*offset, offset ≈ 7 for 8+ cards
+  const vh=window.innerHeight;
+  const vw=window.innerWidth;
+  const isLandscape=vw>vh;
+  const baseH=vw>=768?(isLandscape?88:112):(vh<=750?68:78);
+  const baseW=vw>=768?(isLandscape?56:72):(vh<=750?42:48);
+  const oppStackH=baseH+Math.max(0,maxOppStack-1)*7;
+  const myStackH=baseH+Math.max(0,maxMyStack-1)*7;
+  const discardH=baseH+10;
+  const deckH=isLandscape?0:(baseW+20); // landscape: deck beside discards, not stacked
+  const handH=baseH+20;
+  const chrome=40+20+20+28+20; // topbar + 2 labels + phaseBar + padding
+  const neededH=oppStackH+discardH+deckH+myStackH+handH+chrome;
+  const scale=Math.min(1, vh/neededH);
+  if(scale<0.98){
+    const newH=Math.round(baseH*scale);
+    const newW=Math.round(baseW*scale);
+    document.documentElement.style.setProperty('--card-h',newH+'px');
+    document.documentElement.style.setProperty('--card-w',newW+'px');
+  } else {
+    // Reset to default for this viewport
+    document.documentElement.style.setProperty('--card-h',baseH+'px');
+    document.documentElement.style.setProperty('--card-w',baseW+'px');
+  }
+
   // Animation snapshots handled by explicit animateMove calls
   const isMyTurn = gameState.currentTurn===mySlot;
   const inPlayPhase = gameState.phase==='play';
