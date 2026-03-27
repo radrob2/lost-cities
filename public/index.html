@@ -96,7 +96,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     .card.color-yellow::after{content:'';position:absolute;inset:0;border-radius:inherit;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 80'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f0d060'/%3E%3Cstop offset='40%25' stop-color='%23e8c040'/%3E%3Cstop offset='100%25' stop-color='%23d4a828'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='56' height='80'/%3E%3Ccircle cx='38' cy='14' r='8' fill='%23f5e088' opacity='.7'/%3E%3Ccircle cx='42' cy='16' r='4' fill='%23f0d870' opacity='.5'/%3E%3Cpath d='M0 52 Q8 40 18 46 Q26 38 34 44 Q44 36 56 42 L56 80 L0 80Z' fill='%23b07818' opacity='.6'/%3E%3Cpath d='M0 58 Q12 48 22 54 Q30 46 40 52 Q50 44 56 50 L56 80 L0 80Z' fill='%23a06a14' opacity='.7'/%3E%3Cpath d='M0 65 Q10 56 20 62 Q32 54 42 60 Q50 55 56 58 L56 80 L0 80Z' fill='%238a5a10' opacity='.8'/%3E%3Cpath d='M0 72 Q14 64 28 68 Q42 62 56 66 L56 80 L0 80Z' fill='%23704a0c' opacity='.7'/%3E%3C/svg%3E") center/cover no-repeat}
 .cb-sym{position:absolute;bottom:1px;right:2px;font-size:10px;opacity:.8;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8);line-height:1}
 .card.card-back{background:#2a1a0e;border-color:rgba(212,168,67,.4)}
-.card.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(212,168,67,.3);text-shadow:0 0 8px rgba(212,168,67,.15)}
+.card.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(212,168,67,.3)}
 .card.card-back::after{content:'';position:absolute;inset:4px;border:1px solid rgba(212,168,67,.2);border-radius:4px;z-index:0}
 /* Card flip animation container */
 .flip-container{perspective:600px;position:fixed;z-index:9999;pointer-events:none}
@@ -123,10 +123,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* HAND */
 .hand-area{padding:6px 6px;padding-bottom:max(10px,env(safe-area-inset-bottom));
   background:rgba(0,0,0,.4);width:100%}
-.hand-cards{display:flex;justify-content:center;gap:0;overflow-x:auto;padding:4px 0;-webkit-overflow-scrolling:touch}
+.hand-cards{position:relative;width:100%;overflow:visible;padding:4px 0}
 .hand-cards .card{flex-shrink:0}
-.hand-cards>div{margin-left:calc(var(--card-w) * -0.2);position:relative;z-index:0}
-.hand-cards>div:first-child{margin-left:0}
+.hand-cards>div{position:absolute;z-index:0}
 .hand-cards>div:hover{z-index:2}
 .hand-cards>div:has(.selected){z-index:5}
 
@@ -397,19 +396,19 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     </div>
     <div class="row-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Your Ventures</div>
     <div class="card-row" id="my-row"></div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:0 8px">
+      <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums"></span>
+      <div class="phase-bar" id="phase-bar" style="flex:1">Select a card from your hand</div>
+    </div>
+
+    <div class="hand-area">
+      <div class="hand-cards" id="hand-cards"></div>
+    </div>
   </div>
 
   <div id="stack-overlay" class="stack-overlay" onclick="expandedStack=null;document.getElementById('stack-overlay').classList.remove('active');renderBoard()">
     <div class="stack-overlay-cards" id="stack-overlay-cards" onclick="event.stopPropagation()"></div>
-  </div>
-
-  <div style="display:flex;align-items:center;justify-content:center;gap:8px">
-    <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums"></span>
-    <div class="phase-bar" id="phase-bar" style="flex:1">Select a card from your hand</div>
-  </div>
-
-  <div class="hand-area">
-    <div class="hand-cards" id="hand-cards"></div>
   </div>
   <div id="back-to-scores" style="display:none;position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:20">
     <button class="btn" onclick="SFX.select();backToScores()">Back to Scores</button>
@@ -796,15 +795,25 @@ function renderHand(){
     return ci!==0 ? ci : a.value-b.value;
   });
   const n=sorted.length;
+  // Arc fan: cards at constant radius from pivot point below hand center
+  const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+  const containerW=container.parentElement.offsetWidth||375;
+  const R=900; // arc radius — pivot point below the hand
+  const totalArc=Math.min(n*2.5, 22); // total arc degrees
+  const spacing=Math.min(cardW*0.78, (containerW-cardW)/(n-1||1)); // card spacing along x
+  const handW=spacing*(n-1)+cardW;
+  const startX=(containerW-handW)/2; // center the hand
+  container.style.height=(cardW*1.8)+'px'; // reserve space for cards
   container.innerHTML=sorted.map((c,i)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
-    // Fan curve: center cards raised, edges lowered and rotated
-    const mid=(n-1)/2;
-    const t=(i-mid)/(Math.max(mid,1)); // -1 to 1
-    const rot=(t*4).toFixed(1); // ±4 degrees at edges
-    const dy=(t*t*8).toFixed(1); // 0px center, 8px at edges (parabola down)
-    const fanStyle=sel?'':`transform:rotate(${rot}deg) translateY(${dy}px);transform-origin:center bottom`;
-    return `<div onclick="selectCard('${c.id}')" style="${fanStyle}">${cardHTML(c,sel)}</div>`;
+    // Angle on arc, centered at 0
+    const angleDeg=n<=1?0:((i-(n-1)/2)/((n-1)/2))*(totalArc/2);
+    const angleRad=angleDeg*Math.PI/180;
+    // Position: x from even spacing, y from arc geometry
+    const x=startX+i*spacing;
+    const dy=(R*(1-Math.cos(angleRad))).toFixed(1);
+    if(sel) return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(0)}px;top:0;z-index:5">${cardHTML(c,sel)}</div>`;
+    return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(0)}px;top:${dy}px;transform:rotate(${angleDeg.toFixed(1)}deg);transform-origin:center center">${cardHTML(c,sel)}</div>`;
   }).join('');
 }
 
