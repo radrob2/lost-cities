@@ -837,12 +837,16 @@ function normalizeDiscardScores(dangerScores){
 
 // ========== MONTE CARLO EVALUATION ==========
 
-function evaluate(gs, variant, simCount, genome){
+function evaluate(gs, variant, simCount, genome, knownOppHand, knownDeck){
   const pool=getUnknownPool(gs, variant);
   const deckSize=gs.deckSize;
   const oppHandSize=pool.length-deckSize;
 
-  if(oppHandSize<0 || pool.length===0){
+  // Seer: opponent hand is known; Oracle: both hand and deck are known
+  const hasKnownHand=knownOppHand&&knownOppHand.length>0;
+  const hasKnownDeck=knownDeck&&knownDeck.length>0;
+
+  if(!hasKnownHand && (oppHandSize<0 || pool.length===0)){
     return {phase1:{type:'discard',idx:0,card:gs.hands.player2[0],color:gs.hands.player2[0].color}, phase2:{type:'deck'}};
   }
 
@@ -870,13 +874,27 @@ function evaluate(gs, variant, simCount, genome){
     }
   }
 
-  const minSims=Math.min(simCount, 80);
+  // Oracle with perfect info: fewer sims needed since no randomness
+  const effectiveSimCount=hasKnownDeck?Math.min(simCount,50):(hasKnownHand?Math.min(simCount,200):simCount);
+  const minSims=Math.min(effectiveSimCount, 80);
   let simsRan=0;
-  for(let s=0;s<simCount;s++){
+  for(let s=0;s<effectiveSimCount;s++){
     simsRan++;
-    const shuffled=shuffle([...pool]);
-    const oppHand=shuffled.slice(0, oppHandSize);
-    const deck=shuffled.slice(oppHandSize);
+    let oppHand, deck;
+    if(hasKnownHand && hasKnownDeck){
+      // Oracle: perfect information — only shuffle remaining unknowns (none)
+      oppHand=knownOppHand;
+      deck=knownDeck;
+    } else if(hasKnownHand){
+      // Seer: known hand, random deck
+      const deckPool=pool.filter(c=>!knownOppHand.find(k=>k.id===c.id));
+      deck=shuffle([...deckPool]);
+      oppHand=knownOppHand;
+    } else {
+      const shuffled=shuffle([...pool]);
+      oppHand=shuffled.slice(0, oppHandSize);
+      deck=shuffled.slice(oppHandSize);
+    }
 
     for(const pair of pairs){
       const sim=createSim(gs, oppHand, deck, variant);
@@ -1331,8 +1349,13 @@ self.onmessage=function(e){
     result=heuristicEvaluate(gameState, variant);
   } else {
     const genomeSet=variant==='single'?GENOMES_SINGLE:GENOMES;
-    const genome=genomeSet[personality||'scholar']||genomeSet.scholar;
-    result=evaluate(gameState, variant, simCount||500, genome);
+    // Seer/Oracle use scholar genome for MC rollouts
+    const gKey=(personality==='seer'||personality==='oracle')?'scholar':(personality||'scholar');
+    const genome=genomeSet[gKey]||genomeSet.scholar;
+    // Pass known opponent hand for Seer/Oracle
+    const knownOppHand=(personality==='seer'||personality==='oracle')?gameState.hands.player1:null;
+    const knownDeck=(personality==='oracle')?gameState.knownDeck:null;
+    result=evaluate(gameState, variant, simCount||500, genome, knownOppHand, knownDeck);
   }
   const elapsed=Math.round(performance.now()-t0);
   self.postMessage({result, elapsed});
