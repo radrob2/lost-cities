@@ -481,7 +481,7 @@ let isAIGame=false;
 let aiPersonality='heuristic'; // default AI personality — Strategist beats all evolved genomes
 const AI_PERSONALITIES={explorer:{name:'Explorer',emoji:'\u{1F5E1}\uFE0F'},scholar:{name:'Scholar',emoji:'\u{1F6E1}\uFE0F'},collector:{name:'Collector',emoji:'\u{1F3DB}\uFE0F'},spy:{name:'Spy',emoji:'\u{1F575}\uFE0F'},gambler:{name:'Gambler',emoji:'\u23F1\uFE0F'},heuristic:{name:'Strategist',emoji:'\u{1F9E0}'},seer:{name:'The Seer',emoji:'\u{1F441}\uFE0F',boss:true,warn:'Can see your cards'},oracle:{name:'The Oracle',emoji:'\u{1F52E}',boss:true,warn:'Knows everything'}};
 let lastPlayedCard=null; // {card, from:'expedition'|'discard'|'single', color} for undo
-// pendingAnim removed — simplified animation system
+
 
 function setVariant(v){
   variant=v;
@@ -563,14 +563,8 @@ function slideFromEl(sourceEl, cardId){
   });
 }
 
-// Legacy popCard fallback
-function popCard(cardId){ slideFrom({id:cardId, rect:{left:0,top:0}}); }
-
-function isAnimating(){return false}
+// Legacy stub — still called by aiFallbackTurn
 function onAnimationsDone(cb){cb()}
-function snapAllCards(){}
-function snapCard(){}
-function flyCards(){}
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
 function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');SFX.error();setTimeout(()=>t.classList.remove('show'),2200)}
 function vibrate(pattern=15){try{navigator.vibrate&&navigator.vibrate(pattern)}catch(e){}}
@@ -733,12 +727,8 @@ async function startGame(){
   const gRef=roomRef.child('game');
   const l=gRef.on('value',snap=>{
     const data=snap.val(); if(!data)return;
-    if(isAnimating()){
-      animationQueue.push(data);
-    } else {
-      gameState=data; renderGame();
-      if(data.status==='finished')showGameOver();
-    }
+    gameState=data; renderGame();
+    if(data.status==='finished')showGameOver();
   });
   listeners.push(()=>gRef.off('value',l));
   const pRef=roomRef.child('players');
@@ -1339,14 +1329,14 @@ function leaveGame(){
 
 // Session save/restore
 function saveSession(){
-  localStorage.setItem('lc_session',JSON.stringify({myId,mySlot,roomCode,variant}));
+  localStorage.setItem('expedition-session',JSON.stringify({myId,mySlot,roomCode,variant}));
 }
 function clearSession(){
-  localStorage.removeItem('lc_session');
+  localStorage.removeItem('expedition-session');
 }
 
 async function tryReconnect(){
-  const raw=localStorage.getItem('lc_session');
+  const raw=localStorage.getItem('expedition-session');
   if(!raw)return;
   try{
     const s=JSON.parse(raw);
@@ -1368,7 +1358,7 @@ async function tryReconnect(){
 // ===== UNDO =====
 async function undoLastPlay(){
   if(!lastPlayedCard||gameState.phase!=='draw'||gameState.currentTurn!==mySlot)return;
-  vibrate(15);
+  SFX.undo();
   const {card,to,color}=lastPlayedCard;
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
@@ -1615,17 +1605,19 @@ function aiTurn(){
       aiFallbackTurn();
       return;
     }
-    // Rich decision logging
-    const d=result.debug;
-    console.group(`🤖 AI Turn (${elapsed}ms, ${result.simsRan} sims)`);
-    console.log(`Hand: ${d.hand}`);
-    console.log(`Deck: ${d.deckSize} cards left`);
-    console.log(`Opp expeditions:`, Object.keys(d.oppExps).length?d.oppExps:'(none)');
-    console.log(`CHOSE: ${d.chosen} → draw ${d.chosenDraw} (${(result.winRate*100).toFixed(1)}% win)`);
-    if(d.dangerNote) console.warn(d.dangerNote);
-    console.log('Top moves considered:');
-    console.table(d.topMoves);
-    console.groupEnd();
+    // Rich decision logging (behind DEBUG flag)
+    if(window.EXPEDITION_DEBUG){
+      const d=result.debug;
+      console.group(`AI Turn (${elapsed}ms, ${result.simsRan} sims)`);
+      console.log(`Hand: ${d.hand}`);
+      console.log(`Deck: ${d.deckSize} cards left`);
+      console.log(`Opp expeditions:`, Object.keys(d.oppExps).length?d.oppExps:'(none)');
+      console.log(`CHOSE: ${d.chosen} -> draw ${d.chosenDraw} (${(result.winRate*100).toFixed(1)}% win)`);
+      if(d.dangerNote) console.warn(d.dangerNote);
+      console.log('Top moves considered:');
+      console.table(d.topMoves);
+      console.groupEnd();
+    }
 
     // Execute phase 1
     executeAIPhase1(result.phase1, function(){
@@ -1955,7 +1947,7 @@ function showTutorial(){
 function closeTutorial(){
   SFX.select();
   document.getElementById('tutorial-overlay').classList.remove('active');
-  localStorage.setItem('onboarded','1');
+  localStorage.setItem('expedition-onboarded','1');
 }
 
 function renderTutorialSlide(){
@@ -2005,7 +1997,7 @@ function goToTutorialSlide(i){
 })();
 
 // Show tutorial on first visit
-if(!localStorage.getItem('onboarded')){
+if(!localStorage.getItem('expedition-onboarded')){
   setTimeout(showTutorial,400);
 }
 </script>

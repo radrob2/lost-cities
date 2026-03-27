@@ -1017,10 +1017,8 @@ function evaluate(gs, variant, simCount, genome, knownOppHand, knownDeck){
         }
       }
       if(saferAlt){
-        console.log(`VETO: Blocked discard of ${cardVal} to ${best.p1.color} (opp has ${oppExp.length} cards). Switching to ${saferAlt.p1.type}_${saferAlt.p1.color}_${saferAlt.p1.card.value||'W'}`);
         best=saferAlt;
       } else {
-        console.log(`FORCED: No safe alternative to discarding ${cardVal} to ${best.p1.color} — all options are dangerous`);
       }
     }
   }
