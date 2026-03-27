@@ -241,6 +241,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="top-bar">
     <div class="player-info"><span id="opponent-name">Opponent</span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
+    <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
     <button class="menu-btn" onclick="showGameMenu()">&#x2630;</button>
   </div>
 
@@ -450,8 +451,63 @@ function snapAllCards(){}
 function snapCard(){}
 function flyCards(){}
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
-function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
-function vibrate(ms=15){try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}}
+function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');SFX.error();setTimeout(()=>t.classList.remove('show'),2200)}
+function vibrate(pattern=15){try{navigator.vibrate&&navigator.vibrate(pattern)}catch(e){}}
+
+// ===== SOUND ENGINE (Web Audio API, no external files) =====
+let audioCtx=null;
+let soundEnabled=true;
+function getAudio(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq,dur,type='sine',vol=0.12,decay=true){
+  if(!soundEnabled) return;
+  try{
+    const ctx=getAudio();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.type=type;
+    osc.frequency.setValueAtTime(freq,ctx.currentTime);
+    gain.gain.setValueAtTime(vol,ctx.currentTime);
+    if(decay) gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start();osc.stop(ctx.currentTime+dur);
+  }catch(e){}
+}
+function playNoise(dur,vol=0.06){
+  if(!soundEnabled) return;
+  try{
+    const ctx=getAudio();
+    const buf=ctx.createBuffer(1,ctx.sampleRate*dur,ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,2);
+    const src=ctx.createBufferSource();
+    const gain=ctx.createGain();
+    src.buffer=buf;gain.gain.setValueAtTime(vol,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
+    src.connect(gain);gain.connect(ctx.destination);
+    src.start();
+  }catch(e){}
+}
+const SFX={
+  select(){playTone(800,0.06,'sine',0.08);vibrate(10)},
+  play(){playTone(440,0.15,'triangle',0.1);playTone(660,0.12,'sine',0.06);vibrate(25)},
+  discard(){playNoise(0.08,0.05);playTone(300,0.08,'sine',0.05);vibrate(15)},
+  drawCard(){playTone(520,0.1,'sine',0.07);setTimeout(()=>playTone(620,0.08,'sine',0.05),60);vibrate(20)},
+  yourTurn(){playTone(523,0.12,'triangle',0.08);setTimeout(()=>playTone(659,0.12,'triangle',0.08),120);setTimeout(()=>playTone(784,0.15,'triangle',0.1),240);vibrate([80,60,80,60,100])},
+  gameOver(){playTone(523,0.3,'triangle',0.1);setTimeout(()=>playTone(440,0.3,'triangle',0.1),300);setTimeout(()=>playTone(349,0.5,'triangle',0.12),600);vibrate([50,100,50,100,80])},
+  win(){playTone(523,0.15,'triangle',0.1);setTimeout(()=>playTone(659,0.15,'triangle',0.1),150);setTimeout(()=>playTone(784,0.15,'triangle',0.1),300);setTimeout(()=>playTone(1047,0.3,'triangle',0.12),450);vibrate([30,50,30,50,60])},
+  error(){playTone(200,0.15,'square',0.06);vibrate([50,30,50])},
+  undo(){playTone(500,0.08,'sine',0.06);playTone(400,0.08,'sine',0.05);vibrate(15)}
+};
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  const btn=document.getElementById('sound-btn');
+  if(btn) btn.innerHTML=soundEnabled?'&#x1F50A;':'&#x1F507;';
+  if(soundEnabled) SFX.select();
+}
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function showRules(){document.getElementById('rules-modal').classList.add('active')}
 function closeRules(){document.getElementById('rules-modal').classList.remove('active')}
@@ -574,8 +630,10 @@ function renderGame(){
 
   // Turn indicator
   const ti=document.getElementById('turn-indicator');
+  const wasMyTurn=ti.classList.contains('your-turn');
   ti.textContent=isMyTurn?'Your Turn':'Their Turn';
   ti.className='turn-indicator '+(isMyTurn?'your-turn':'their-turn');
+  if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
 
   // Deck count
   const deckLen = getCards(gameState,'deck').length;
@@ -768,7 +826,7 @@ function canPlayOnExpedition(card, expedition){
 
 function selectCard(cardId){
   if(gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
-  vibrate();
+  SFX.select();
   expandedStack=null; // Collapse any expanded stack when selecting a card
   const hand=getCards(gameState,'hands',mySlot);
   const card=hand.find(c=>c.id===cardId);
@@ -784,7 +842,7 @@ async function playToExpedition(color){
   if(!canPlayOnExpedition(selectedCard, expedition)){
     toast('Must be higher than '+expedition[expedition.length-1].value); return;
   }
-  vibrate(25);
+  SFX.play();
   const card=selectedCard;
   const saved=grabPos(card.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
@@ -811,7 +869,7 @@ async function discardTo(color){
   if(selectedCard.color!==color){
     toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile'); return;
   }
-  vibrate(25);
+  SFX.discard();
   const card=selectedCard;
   const saved=grabPos(card.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
@@ -836,7 +894,7 @@ async function drawFromDeck(){
   if(gameState.currentTurn!==mySlot || gameState.phase!=='draw') return;
   const deck=getCards(gameState,'deck');
   if(deck.length===0) return;
-  vibrate(25);
+  SFX.drawCard();
   const deckEl=document.getElementById('deck-draw');
   const card=deck.pop();
   const hand=getCards(gameState,'hands',mySlot);
@@ -863,7 +921,7 @@ async function drawFromDeck(){
 // SINGLE PILE VARIANT
 async function discardToSingle(){
   if(!selectedCard || gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
-  vibrate(25);
+  SFX.discard();
   const card=selectedCard;
   const saved=grabPos(card.id);
   const hand=(getCards(gameState,'hands',mySlot)).filter(c=>c.id!==card.id);
@@ -890,7 +948,7 @@ async function drawFromSingle(){
   if(gameState.justDiscarded){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'singlePile');
   if(pile.length===0) return;
-  vibrate(25);
+  SFX.drawCard();
   const card=pile[pile.length-1];
   const saved=grabPos(card.id);
   pile.pop();
@@ -917,7 +975,7 @@ async function drawFromDiscard(color){
   if(color===gameState.lastDiscardedColor){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'discards',color);
   if(pile.length===0) return;
-  vibrate(25);
+  SFX.drawCard();
   const card=pile[pile.length-1];
   const saved=grabPos(card.id);
   pile.pop();
@@ -1062,6 +1120,7 @@ function showGameOver(){
   document.getElementById('score-summary').innerHTML='';
   document.getElementById('score-details').innerHTML=html;
   showScreen('gameover-screen');
+  if(myWin) SFX.win(); else SFX.gameOver();
 }
 
 async function playAgain(){
@@ -1227,7 +1286,7 @@ playToExpedition=async function(color){
   if(selectedCard.color!==color)return;
   const expedition=getCards(gameState,'expeditions',mySlot,color);
   if(!canPlayOnExpedition(selectedCard,expedition)){toast('Must be higher than '+expedition[expedition.length-1].value);return}
-  vibrate(25);
+  SFX.play();
   const card=selectedCard;
   const saved=grabPos(card.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
@@ -1242,7 +1301,7 @@ discardTo=async function(color){
   if(!isAIGame)return _origDiscardTo(color);
   if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
   if(selectedCard.color!==color){toast('Discard to the '+COLOR_LABELS[selectedCard.color]+' pile');return}
-  vibrate(25);
+  SFX.discard();
   const card=selectedCard;
   const saved=grabPos(card.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
@@ -1257,7 +1316,7 @@ drawFromDeck=async function(){
   if(!isAIGame)return _origDrawFromDeck();
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
   const deck=getCards(gameState,'deck');if(deck.length===0)return;
-  vibrate(25);
+  SFX.drawCard();
   const deckEl=document.getElementById('deck-draw');
   const card=deck.pop();
   const hand=getCards(gameState,'hands',mySlot);hand.push(card);
@@ -1274,7 +1333,7 @@ drawFromDiscard=async function(color){
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
   if(color===gameState.lastDiscardedColor){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'discards',color);if(pile.length===0)return;
-  vibrate(25);
+  SFX.drawCard();
   humanDrawHistory.push(color);
   const card=pile[pile.length-1];
   const saved=grabPos(card.id);
@@ -1289,7 +1348,7 @@ const _origDiscardToSingle=discardToSingle;
 discardToSingle=async function(){
   if(!isAIGame)return _origDiscardToSingle();
   if(!selectedCard||gameState.currentTurn!==mySlot||gameState.phase!=='play')return;
-  vibrate(25);
+  SFX.discard();
   const card=selectedCard;
   const saved=grabPos(card.id);
   const hand=getCards(gameState,'hands',mySlot).filter(c=>c.id!==card.id);
@@ -1305,7 +1364,7 @@ drawFromSingle=async function(){
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
   if(gameState.justDiscarded){toast("Can't draw from pile you just discarded to");return}
   const pile=getCards(gameState,'singlePile');if(pile.length===0)return;
-  vibrate(25);
+  SFX.drawCard();
   const card=pile[pile.length-1];
   const saved=grabPos(card.id);
   pile.pop();const hand=getCards(gameState,'hands',mySlot);hand.push(card);
