@@ -60,11 +60,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:var(--gap-md) 0;position:relative;z-index:10}
 .card-row{display:flex;justify-content:center;align-items:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible}
-.card-col{display:flex;flex-direction:column;align-items:center;justify-content:center;width:calc(20% - 6px);min-width:calc(var(--card-w) + 10px);max-width:calc(var(--card-w) + 10px)}
-.expedition-stack{position:relative;width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);overflow:visible}
+.card-col{display:flex;flex-direction:column;align-items:center;justify-content:center;width:calc(20% - 6px);min-width:calc(var(--card-w) * 1.21);max-width:calc(var(--card-w) * 1.21)}
+.expedition-stack{position:relative;width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);overflow:visible}
 .expedition-stack .card{position:static}
-.card.empty-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
-.card-slot{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px);display:flex;align-items:center;justify-content:center;position:relative}
+.card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
+.card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
 .middle-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-sm);padding:var(--gap-sm) 0}
 
 /* CARDS */
@@ -107,7 +107,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* EMPTY SLOTS & TARGETS */
 .card.empty-slot{background:rgba(255,255,255,.02);border:1.5px dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
 .card.target{border:2px solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 12px rgba(212,168,67,.25)}
-.card-col>.card.target{width:calc(var(--card-w) + 10px);height:calc(var(--card-h) + 10px)}
+.card-col>.card.target{width:calc(var(--card-w) * 1.21);height:calc(var(--card-h) * 1.13)}
 .target-label{position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 6px rgba(212,168,67,.5);z-index:1}
 @keyframes card-pop{
   0%{transform:scale(0.8);opacity:.5}
@@ -688,45 +688,87 @@ function computeLayout(){
   const vh=window.innerHeight;
   const vw=window.innerWidth;
   const isLandscape=vw>vh;
-  // Base card size from viewport category
-  let baseW, baseH;
-  if(vw>=768){
-    if(isLandscape){ baseW=56; baseH=88; }
-    else { baseW=72; baseH=112; }
-  } else if(vh<=750){
-    baseW=42; baseH=68;
-  } else {
-    baseW=48; baseH=78;
+
+  // Everything is expressed as multiples of cardH (the unit).
+  // We solve for cardH directly from available viewport height.
+  //
+  // Layout (vertical, all proportional to cardH):
+  //   topBar       = 0.56 * cardH  (44px at cardH=78)
+  //   oppLabel     = 0.2  * cardH
+  //   oppStack     = 1.0  * cardH + (maxOppStack-1) * stackOff
+  //   discardLabel = 0.2  * cardH
+  //   discardRow   = 1.0  * cardH
+  //   deck         = landscape ? 0 : 0.65 * cardH  (deck is cardW tall, cardW ≈ 0.615*cardH)
+  //   deckLabel    = 0.2  * cardH
+  //   myLabel      = 0.2  * cardH
+  //   myStack      = 1.0  * cardH + (maxMyStack-1) * stackOff
+  //   phaseBar     = 0.36 * cardH
+  //   hand         = 1.0  * cardH + 0.2 * cardH (arc drop + padding)
+  //   safeArea     = 0.2  * cardH
+  //
+  // Stack offset as fraction of cardH:
+  //   count<=3: 0.23, <=5: 0.18, <=7: 0.13, 8+: 0.09
+
+  // Stack offset fractions (must match getStackOffset in renderBoard)
+  function offFrac(count){ return count<=3?0.24:count<=5?0.19:count<=7?0.14:0.10; }
+
+  // Stack height = 1 card + (n-1)*offset + 0.13 base offset + 0.15 score label
+  const oppStackFrac=1.0+Math.max(0,maxOppStack-1)*offFrac(maxOppStack)+0.13+0.15;
+  const myStackFrac=1.0+Math.max(0,maxMyStack-1)*offFrac(maxMyStack)+0.13+0.15;
+  const deckFrac=isLandscape?0:0.80;
+
+  // Every vertical element as fraction of cardH:
+  const totalFrac=
+    0.50+   // topBar (content + padding, scales with font-base)
+    0.21+   // board-area padding top+bottom (2 * gap-md)
+    0.14+   // opp label
+    oppStackFrac+
+    0.14+   // discard label
+    1.13+   // discard row (cardH + 10px base offset)
+    0.26+   // middle-row padding (2*gap-sm) + gaps (3*gap-sm)
+    deckFrac+
+    0.14+   // my ventures label
+    myStackFrac+
+    0.30+   // phase bar wrapper
+    1.50+   // hand (cardH + arc drop + hand-area padding)
+    0.00;   // no fixed safe area — absorbed into hand-area padding
+
+  // Solve: totalFrac * cardH = vh, then verify after render
+  let cardH=Math.floor(vh/totalFrac);
+  // If we've measured actual overflow from a previous render, use that to correct
+  if(computeLayout._lastOverflow && computeLayout._lastCardH){
+    const measured=computeLayout._lastOverflow;
+    const lastH=computeLayout._lastCardH;
+    // actual content was 'measured' px at cardH='lastH'. Scale down proportionally.
+    const corrected=Math.floor(lastH * (vh/measured));
+    if(corrected<cardH) cardH=corrected;
   }
-  // Estimate total needed height
-  const oppStackH=baseH+Math.max(0,maxOppStack-1)*7;
-  const myStackH=baseH+Math.max(0,maxMyStack-1)*7;
-  const discardH=baseH+10;
-  const deckH=isLandscape?0:(baseW+20);
-  const handH=baseH+20;
-  const chrome=40+20+20+28+20;
-  const neededH=oppStackH+discardH+deckH+myStackH+handH+chrome;
-  // Scale if needed (min 0.6)
-  let scale=Math.min(1, vh/neededH);
-  scale=Math.max(0.6, scale);
-  const s=scale<0.98?scale:1;
-  // Derived sizing
-  const cardW=Math.round(baseW*s);
-  const cardH=Math.round(baseH*s);
-  const fontBase=Math.round(13*s*10)/10;
-  const gapSm=Math.round(4*s*10)/10;
-  const gapMd=Math.round(8*s*10)/10;
-  const pad=Math.round(8*s*10)/10;
+
+  // Cap at max card size (don't make cards huge on big screens)
+  const maxH=vw>=768?(isLandscape?88:112):(vh<=750?68:78);
+  cardH=Math.min(cardH, maxH);
+  // Floor at minimum usable size
+  cardH=Math.max(cardH, 36);
+
+  const cardW=Math.round(cardH*0.615);
+  const scale=cardH/maxH;
+
+  // Derived sizing — all proportional
+  const fontBase=Math.round(Math.max(8, 13*scale)*10)/10;
+  const gapSm=Math.round(Math.max(2, 4*scale)*10)/10;
+  const gapMd=Math.round(Math.max(3, 8*scale)*10)/10;
+  const pad=Math.round(Math.max(4, 8*scale)*10)/10;
+
   // Set all CSS custom properties
   const root=document.documentElement.style;
   root.setProperty('--card-w',cardW+'px');
   root.setProperty('--card-h',cardH+'px');
-  root.setProperty('--ui-scale',s);
+  root.setProperty('--ui-scale',scale.toFixed(3));
   root.setProperty('--font-base',fontBase+'px');
   root.setProperty('--gap-sm',gapSm+'px');
   root.setProperty('--gap-md',gapMd+'px');
   root.setProperty('--pad',pad+'px');
-  return {cardW, cardH, scale:s, isLandscape};
+  return {cardW, cardH, scale, isLandscape};
 }
 
 function renderGame(){
@@ -814,7 +856,21 @@ function renderGame(){
 
   renderHand();
   renderBoard();
-  // Animations are triggered explicitly by action functions, not by render
+
+  // Measure actual height — if overflowing, correct and re-render once
+  const gs=document.getElementById('game-screen');
+  if(gs && gs.scrollHeight>gs.clientHeight+2 && !computeLayout._correcting){
+    computeLayout._correcting=true;
+    computeLayout._lastOverflow=gs.scrollHeight;
+    computeLayout._lastCardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+    computeLayout();
+    renderHand();
+    renderBoard();
+    computeLayout._correcting=false;
+  } else if(gs && gs.scrollHeight<=gs.clientHeight+2){
+    computeLayout._lastOverflow=null;
+    computeLayout._lastCardH=null;
+  }
 }
 
 function renderHand(){
@@ -845,7 +901,7 @@ function renderHand(){
   // Container height: card height + arc drop at outermost card + padding
   const outerAngle=((n-1)/2)*stepDeg*Math.PI/180;
   const arcDrop=R*(1-Math.cos(outerAngle));
-  container.style.height=Math.ceil(cardH+arcDrop+16)+'px';
+  container.style.height=Math.ceil(cardH+arcDrop+cardH*0.1)+'px';
   container.innerHTML=sorted.map((c,i)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
     // Angle: evenly spaced in degrees, centered at 0
@@ -925,11 +981,13 @@ function renderBoard(){
   }
 
   // Dynamic stack offset: compress as stacks grow
+  // Stack offset scales with card height — same fractions as computeLayout's offFrac
+  const curCardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'))||78;
   function getStackOffset(count){
-    if(count<=3) return 18;
-    if(count<=5) return 14;
-    if(count<=7) return 10;
-    return 7; // 8+ cards: very compressed
+    if(count<=3) return Math.round(curCardH*0.24);
+    if(count<=5) return Math.round(curCardH*0.19);
+    if(count<=7) return Math.round(curCardH*0.14);
+    return Math.round(curCardH*0.10);
   }
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
@@ -952,7 +1010,7 @@ function renderBoard(){
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
     const so=isExp?18:baseSo;
-    const stackH=`calc(var(--card-h) + ${(cards.length-1)*baseSo+10}px)`;
+    const stackH=`calc(var(--card-h) * 1.13 + ${(cards.length-1)*baseSo}px)`;
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${i*so+4}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}</div>`;
   }).join('');
@@ -1000,7 +1058,7 @@ function renderBoard(){
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
     const baseSo=getStackOffset(canPlay?nextIdx+1:cards.length);
     const so=isExp?18:baseSo;
-    const stackH=`calc(var(--card-h) + ${(canPlay?nextIdx:(cards.length-1))*baseSo+10}px)`;
+    const stackH=`calc(var(--card-h) * 1.13 + ${(canPlay?nextIdx:(cards.length-1))*baseSo}px)`;
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
