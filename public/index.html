@@ -1580,6 +1580,9 @@ function executeAIPhase1(p1, onDone){
   const card=hand.find(c=>c.id===p1.card.id);
   if(!card){aiFallbackTurn();return;}
 
+  // Grab card position before state change for FLIP animation
+  const saved=grabPos(card.id);
+
   const u={};
   const newHand=hand.filter(c=>c.id!==card.id);
   u['hands/player2']=newHand;
@@ -1589,6 +1592,7 @@ function executeAIPhase1(p1, onDone){
     exp.push(card);
     u[`expeditions/player2/${card.color}`]=exp;
     u['lastDiscardedColor']=null;u['justDiscarded']=false;
+    SFX.play();
   } else {
     if(variant==='single'){
       const pile=getCards(gameState,'singlePile');pile.push(card);
@@ -1597,10 +1601,12 @@ function executeAIPhase1(p1, onDone){
       const pile=getCards(gameState,'discards',card.color);pile.push(card);
       u[`discards/${card.color}`]=pile;u['lastDiscardedColor']=card.color;
     }
+    SFX.discard();
   }
   u['phase']='draw';
   localUpdate(u);
-  onAnimationsDone(()=>onDone());
+  slideFrom(saved);
+  setTimeout(()=>onDone(), ANIM_MS + 50);
 }
 
 function executeAIPhase2(p2){
@@ -1611,8 +1617,12 @@ function executeAIPhase2(p2){
   if(p2.type==='discard'&&variant==='classic'){
     const pile=getCards(gameState,'discards',p2.color);
     if(pile.length>0){
-      const card=pile.pop();aiHand.push(card);
+      const card=pile.pop();
+      // Grab position of the discard card before it disappears
+      const saved=grabPos(card.id);
+      aiHand.push(card);
       u2[`discards/${p2.color}`]=pile;
+      SFX.drawCard();
     } else {
       // Pile empty (opponent took it) — fall back to deck
       return drawAIFromDeck(u2,aiHand);
@@ -1622,10 +1632,12 @@ function executeAIPhase2(p2){
     if(pile.length>0){
       const card=pile.pop();aiHand.push(card);
       u2['singlePile']=pile;
+      SFX.drawCard();
     } else {
       return drawAIFromDeck(u2,aiHand);
     }
   } else {
+    SFX.drawCard();
     return drawAIFromDeck(u2,aiHand);
   }
 
