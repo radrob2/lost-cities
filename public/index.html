@@ -735,9 +735,9 @@ function renderGame(){
     let dhtml='';
     for(let i=0;i<deckLen;i++){
       const h=(i*7919+i*i*31)&0xFFFF;
-      const rot=((h%100)/100*4-2).toFixed(1);
-      const dx=((((h>>4)%100)/100*3-1.5)).toFixed(1);
-      const dy=((((h>>8)%100)/100*3-1.5)).toFixed(1);
+      const rot=((h%100)/100*6-3).toFixed(1);
+      const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
+      const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
       dhtml+=`<div class="card card-back deck-landscape" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
     }
     deckStack.innerHTML=dhtml;
@@ -795,9 +795,16 @@ function renderHand(){
     const ci=COLORS.indexOf(a.color)-COLORS.indexOf(b.color);
     return ci!==0 ? ci : a.value-b.value;
   });
-  container.innerHTML=sorted.map(c=>{
+  const n=sorted.length;
+  container.innerHTML=sorted.map((c,i)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
-    return `<div onclick="selectCard('${c.id}')">${cardHTML(c,sel)}</div>`;
+    // Fan curve: center cards raised, edges lowered and rotated
+    const mid=(n-1)/2;
+    const t=(i-mid)/(Math.max(mid,1)); // -1 to 1
+    const rot=(t*4).toFixed(1); // ±4 degrees at edges
+    const dy=(t*t*8).toFixed(1); // 0px center, 8px at edges (parabola down)
+    const fanStyle=sel?'':`transform:rotate(${rot}deg) translateY(${dy}px);transform-origin:center bottom`;
+    return `<div onclick="selectCard('${c.id}')" style="${fanStyle}">${cardHTML(c,sel)}</div>`;
   }).join('');
 }
 
@@ -860,9 +867,9 @@ function renderBoard(){
   // Card jitter — deterministic per card identity
   function jitter(card,i){
     const h=(card.color.charCodeAt(0)*31+card.value*97+i*53)&0xFFFF;
-    const rot=((h%100)/100*4-2).toFixed(1);       // ±2 degrees
-    const dx=((((h>>4)%100)/100*3-1.5)).toFixed(1);  // ±1.5px
-    const dy=((((h>>8)%100)/100*3-1.5)).toFixed(1);  // ±1.5px
+    const rot=((h%100)/100*6-3).toFixed(1);       // ±3 degrees
+    const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);  // ±2.5px
+    const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);  // ±2.5px
     return `rotate(${rot}deg) translate(${dx}px,${dy}px)`;
   }
 
