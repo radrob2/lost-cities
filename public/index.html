@@ -207,10 +207,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       <button class="variant-btn" id="pbtn-gambler" onclick="setPersonality('gambler')">&#x23F1;&#xFE0F; Gambler</button>
     </div>
   </div>
-  <button class="btn" onclick="startAIGame()">Play vs AI</button>
-  <button class="btn" onclick="createRoom()">Create Room</button>
+  <button class="btn" onclick="SFX.select();startAIGame()">Play vs AI</button>
+  <button class="btn" onclick="SFX.select();createRoom()">Create Room</button>
   <button class="btn" onclick="showJoin()">Join Room</button>
-  <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="showRules()">How to Play</button>
+  <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showRules()">How to Play</button>
   <div class="error-msg" id="lobby-error"></div>
 </div>
 
@@ -223,7 +223,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <label>Enter Room Code</label>
     <input id="room-code-input" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
   </div>
-  <button class="btn" onclick="joinRoom()">Join</button>
+  <button class="btn" onclick="SFX.select();joinRoom()">Join</button>
   <div class="error-msg" id="join-error"></div>
 </div>
 
@@ -242,7 +242,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div class="player-info"><span id="opponent-name">Opponent</span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
     <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
-    <button class="menu-btn" onclick="showGameMenu()">&#x2630;</button>
+    <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
   </div>
 
   <div class="board-area">
@@ -280,9 +280,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div id="score-details"></div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px;padding-bottom:max(20px,env(safe-area-inset-bottom))">
-    <button class="btn" onclick="viewFinalBoard()">View Board</button>
-    <button class="btn" onclick="playAgain()">New Expedition</button>
-    <button class="btn" onclick="leaveGame()">Leave</button>
+    <button class="btn" onclick="SFX.select();viewFinalBoard()">View Board</button>
+    <button class="btn" onclick="SFX.select();playAgain()">New Expedition</button>
+    <button class="btn" onclick="SFX.select();leaveGame()">Leave</button>
   </div>
 </div>
 
@@ -318,7 +318,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="game-menu">
     <h2>Menu</h2>
     <button class="btn" onclick="closeGameMenu()">Resume Game</button>
-    <button class="btn" onclick="closeGameMenu();showRules()">How to Play</button>
+    <button class="btn" onclick="SFX.select();closeGameMenu();showRules()">How to Play</button>
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="confirmQuit()">Main Menu</button>
     <div class="save-note">Game is saved automatically</div>
   </div>
@@ -329,7 +329,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="game-menu">
     <h2>Leave Game?</h2>
     <p style="color:var(--parchment-dark);font-size:14px;text-align:center;margin-bottom:12px">You can rejoin later with the same name.</p>
-    <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="closeQuitConfirm();leaveGame()">Leave</button>
+    <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="SFX.select();closeQuitConfirm();leaveGame()">Leave</button>
     <button class="btn" onclick="closeQuitConfirm()">Stay</button>
   </div>
 </div>
@@ -679,6 +679,7 @@ function renderHand(){
 }
 
 function toggleExpand(who,color){
+  SFX.select();
   if(expandedStack && expandedStack.who===who && expandedStack.color===color){
     expandedStack=null;
   } else {
@@ -1221,6 +1222,7 @@ async function undoLastPlay(){
 }
 
 function toggleScore(idx){
+  SFX.select();
   const row=document.getElementById('sc-row-'+idx);
   const exp=document.getElementById('sc-exp-'+idx);
   const body=document.getElementById('sc-body-'+idx);
