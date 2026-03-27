@@ -1441,7 +1441,12 @@ drawFromSingle=async function(){
 let aiWorker=null;
 function getAIWorker(){
   if(!aiWorker){
-    aiWorker=new Worker('ai-worker.js?v='+Date.now());
+    try{
+      aiWorker=new Worker('ai-worker.js?v='+Date.now());
+    }catch(e){
+      console.error('Worker creation failed:',e.message);
+      return null;
+    }
   }
   return aiWorker;
 }
@@ -1487,6 +1492,7 @@ function aiTurn(){
     snapshot.discards[c]=getCards(gameState,'discards',c).map(x=>({color:x.color,value:x.value,id:x.id}));
 
   const worker=getAIWorker();
+  if(!worker){aiThinking=false;oppNameEl.textContent=origName;aiFallbackTurn();return;}
   worker.onmessage=function(e){
     aiThinking=false;
     oppNameEl.textContent=origName;
