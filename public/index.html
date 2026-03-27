@@ -1852,7 +1852,9 @@ function aiFallbackTurn(){
 <script src="src/stats.js"></script>
 <script src="src/elo.js"></script>
 <script src="src/achievements.js"></script>
+<script src="src/replay.js"></script>
 <script src="src/tutorial.js"></script>
+<script src="src/timer.js"></script>
 <script>
 // Override playAgain and leaveGame for AI mode (must run after multiplayer.js defines them)
 const _origPlayAgain=playAgain;
@@ -1863,6 +1865,7 @@ playAgain=async function(){
 
 const _origLeaveGame=leaveGame;
 leaveGame=function(){
+  stopTurnTimer();
   if(!isAIGame)return _origLeaveGame();
   if(aiWorker){aiWorker.terminate();aiWorker=null;}
   isAIGame=false;gameState=null;selectedCard=null;
