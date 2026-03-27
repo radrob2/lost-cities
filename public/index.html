@@ -65,7 +65,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
 .card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
-.discard-deck-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-sm);padding:var(--gap-sm) 0;width:100%}
+.discard-deck-row{display:flex;flex-direction:column;align-items:center;gap:var(--gap-md);padding:var(--gap-sm) 0;width:100%}
 .discard-deck-row .card-row{width:100%}
 
 /* CARDS */
@@ -350,10 +350,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- GAME -->
 <div id="game-screen" class="screen">
   <div class="top-bar">
-    <div class="player-info"><span id="opponent-name">Opponent</span> <span id="opp-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span></div>
+    <div class="player-info" style="flex:1"><span id="opponent-name">Opponent</span> <span id="opp-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
-    <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
-    <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
+    <div style="flex:1;text-align:right"><button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button></div>
   </div>
 
   <div class="board-area">
@@ -368,7 +367,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
         <div class="deck-num" id="deck-count-label">44 left</div>
       </div>
     </div>
-    <div class="row-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Your Ventures</div>
+    <div class="row-label" id="my-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 var(--pad)">Your Ventures</div>
     <div class="card-row" id="my-row"></div>
 
     <div style="display:flex;align-items:center;justify-content:center;gap:var(--gap-md);padding:0 var(--gap-md)">
@@ -461,6 +460,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <h2>Menu</h2>
     <button class="btn" onclick="SFX.select();closeGameMenu()">Resume Game</button>
     <button class="btn" onclick="SFX.select();closeGameMenu();showTutorial()">How to Play</button>
+    <button class="btn" id="sound-toggle-btn" onclick="SFX.select();toggleSound()">Sound: On</button>
     <button class="btn" id="cb-toggle-btn" onclick="SFX.select();toggleColorblind()">Colorblind Mode: Off</button>
     <button class="btn" id="hc-toggle-btn" onclick="SFX.select();toggleHighContrast()">High Contrast: Off</button>
     <button class="btn" id="score-toggle-btn" onclick="SFX.select();toggleLiveScore()">Live Score: On</button>
@@ -624,6 +624,8 @@ function notifyTurn(){
 
 function showGameMenu(){
   document.getElementById('game-menu').classList.add('active');
+  const sndBtn=document.getElementById('sound-toggle-btn');
+  if(sndBtn) sndBtn.textContent='Sound: '+(soundEnabled?'On':'Off');
   const btn=document.getElementById('cb-toggle-btn');
   if(btn) btn.textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
   const hcbtn=document.getElementById('hc-toggle-btn');
@@ -1079,7 +1081,7 @@ function renderBoard(){
     }).join('');
     if(canPlay) inner+=`<div style="position:absolute;top:${nextIdx*baseSo+4}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" onclick="${stackClick}"><div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}`;
+    let html=`<div class="card-col" onclick="${stackClick}">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${stackH};overflow:visible">${inner}</div>`;
     return html+`</div>`;
   }).join('');
 }
@@ -1531,6 +1533,8 @@ function startAIGame(){
   };
   const pers=AI_PERSONALITIES[aiPersonality]||AI_PERSONALITIES.scholar;
   document.getElementById('opponent-name').textContent='AI '+pers.emoji+' '+pers.name;
+  const myLabel=document.getElementById('my-label');
+  if(myLabel) myLabel.textContent=getName().toUpperCase()+"'s Ventures";
   showScreen('game-screen');
   renderGame();
   // If AI goes first (seriesFirstPlayer is player2), trigger AI turn
