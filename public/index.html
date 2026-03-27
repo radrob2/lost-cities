@@ -800,8 +800,15 @@ function renderHand(){
   const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
   const cardH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
   const containerW=container.parentElement.offsetWidth||375;
-  const R=800;
-  const stepDeg=n<=1?0:Math.min(3.0, 20/(n-1)); // degrees between cards
+  // Scale arc to available width: use ~80% of container for the hand spread
+  const usableW=containerW*0.85;
+  // Max angular spread: find stepDeg so outermost cards fit within usableW
+  // R*sin(stepDeg*(n-1)/2 * pi/180) * 2 <= usableW - cardW
+  // Solve for stepDeg: stepDeg = asin((usableW-cardW)/(2*R)) * 360/pi / (n-1)
+  const R=Math.max(containerW*1.8, 600); // radius scales with screen
+  const maxSpreadPx=(usableW-cardW)/2;
+  const maxHalfAngle=Math.asin(Math.min(maxSpreadPx/R, 0.99));
+  const stepDeg=n<=1?0:Math.min(3.5, (maxHalfAngle*180/Math.PI)/((n-1)/2));
   const centerX=containerW/2;
   container.style.height=(cardH+12)+'px';
   container.innerHTML=sorted.map((c,i)=>{
