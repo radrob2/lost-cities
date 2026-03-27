@@ -295,7 +295,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- GAME -->
 <div id="game-screen" class="screen">
   <div class="top-bar">
-    <div class="player-info"><span id="opponent-name">Opponent</span></div>
+    <div class="player-info"><span id="opponent-name">Opponent</span> <span id="opp-hand-count" style="opacity:.5;font-size:11px"></span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
     <button class="menu-btn" id="sound-btn" onclick="toggleSound()" style="font-size:16px">&#x1F50A;</button>
     <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
@@ -587,6 +587,12 @@ function renderGame(){
   if(isMyTurn && !wasMyTurn && !isAIGame && document.hidden){
     notifyTurn();
   }
+
+  // Opponent hand count (visible info in physical game)
+  const oppSlotName=mySlot==='player1'?'player2':'player1';
+  const oppHandCount=getCards(gameState,'hands',oppSlotName).length;
+  const oppCountEl=document.getElementById('opp-hand-count');
+  if(oppCountEl) oppCountEl.textContent=oppHandCount>0?`(${oppHandCount} cards)`:'';
 
   // Deck count
   const deckLen = getCards(gameState,'deck').length;
