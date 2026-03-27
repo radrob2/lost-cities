@@ -1048,13 +1048,292 @@ function evaluate(gs, variant, simCount, genome){
           }};
 }
 
+// ========== HEURISTIC AI ==========
+// Pure rule-based AI — no Monte Carlo, no genomes. Fast and strong on discard safety.
+
+function heuristicEvaluate(gs, variant){
+  const hand=gs.hands.player2;
+  if(hand.length===0) return null;
+  const deckSize=gs.deckSize;
+  const myExps=gs.expeditions.player2;
+  const oppExps=gs.expeditions.player1;
+
+  // Build color info
+  const handByColor={};
+  for(const c of COLORS) handByColor[c]=[];
+  for(const card of hand) handByColor[card.color].push(card);
+
+  // Track what's known/unknown
+  const seen=new Set();
+  for(const p of ['player1','player2'])
+    for(const c of COLORS)
+      for(const card of (gs.expeditions[p][c]||[])) seen.add(card.id);
+  if(variant==='classic')
+    for(const c of COLORS)
+      for(const card of (gs.discards[c]||[])) seen.add(card.id);
+  else
+    for(const card of (gs.singlePile||[])) seen.add(card.id);
+  for(const card of hand) seen.add(card.id);
+
+  // Count how many expeditions we already have
+  let myExpCount=0;
+  for(const c of COLORS) if((myExps[c]||[]).length>0) myExpCount++;
+
+  // Project score for a hypothetical expedition sequence
+  function projectScore(exp, handCards){
+    const combined=[...exp];
+    const sorted=handCards.filter(h=>h.value>0).sort((a,b)=>a.value-b.value);
+    let topVal=exp.length>0?exp[exp.length-1].value:-1;
+    for(const c of sorted){
+      if(c.value>topVal){combined.push(c);topVal=c.value;}
+    }
+    return scoreColor(combined);
+  }
+
+  // === SCORE EACH PLAY OPTION ===
+  const playOptions=[];
+  for(const card of hand){
+    const c=card.color;
+    const exp=myExps[c]||[];
+    if(!canPlayCard(card, exp)) continue;
+
+    let score=0;
+    const commitment=exp.length;
+    const handInColor=handByColor[c];
+    const handCount=handInColor.length;
+    const isWager=card.value===0;
+
+    // Project: what's our score now vs after playing this card + remaining hand
+    const currentScore=scoreColor(exp);
+    const remaining=handInColor.filter(h=>h.id!==card.id);
+    const afterPlay=projectScore([...exp, card], remaining);
+    const delta=afterPlay-currentScore;
+
+    if(isWager){
+      // Wager: high multiplier risk/reward
+      if(commitment>0){
+        const hasNumbers=exp.some(e=>e.value>0);
+        if(hasNumbers) continue; // can't play wager after number
+      }
+      // Project with vs without wager
+      const withoutWager=projectScore(exp, remaining);
+      const wagerDelta=afterPlay-withoutWager;
+      if(wagerDelta>0) score=wagerDelta;
+      else score=wagerDelta*0.5; // penalize negative wagers less heavily
+      // Timing bonus: early is better
+      if(deckSize>35) score+=8;
+      else if(deckSize>25) score+=3;
+      else score-=5;
+      // Need cards to back it up
+      if(handCount>=4) score+=5;
+      else if(handCount>=3) score+=2;
+      else score-=8;
+    } else {
+      // Number card
+      if(commitment>0){
+        // Extending — use projected delta
+        score=Math.max(delta, card.value*0.5);
+        // 8+ bonus chase
+        const futureCount=commitment+1+remaining.filter(h=>h.value>card.value).length;
+        if(futureCount>=8) score+=20;
+        else if(futureCount>=6) score+=8;
+        // Wager multiplier bonus
+        const wagerCount=exp.filter(e=>e.value===0).length;
+        if(wagerCount>0) score+=card.value*wagerCount*0.3;
+        // Play low cards first to keep options open
+        if(card.value<=4) score+=3;
+      } else {
+        // Starting new expedition — use full projection
+        if(delta>-5) score=delta*0.5+handCount*3;
+        else score=delta*0.3;
+        // Penalize starting late without enough cards
+        if(deckSize<15) score-=10;
+        else if(deckSize<25 && handCount<3) score-=8;
+        // Don't over-expand
+        if(myExpCount>=3) score-=5;
+        if(myExpCount>=4) score-=10;
+        // Low starting cards are better — room to build
+        if(card.value<=4 && handCount>=3) score+=5;
+        if(card.value>=8 && handCount<=2) score-=15;
+      }
+    }
+
+    playOptions.push({card, score, action:'play'});
+  }
+
+  // === SCORE EACH DISCARD OPTION ===
+  const discardOptions=[];
+  for(const card of hand){
+    const c=card.color;
+    const exp=myExps[c]||[];
+    const oppExp=oppExps[c]||[];
+    let safety=0;
+
+    // CRITICAL: Never discard to opponent's active expedition
+    if(oppExp.length>0 && canPlayCard(card, oppExp)){
+      safety=-100;
+      const oppWagers=oppExp.filter(e=>e.value===0).length;
+      safety-=oppWagers*20;
+      safety-=(card.value||3)*3;
+    } else if(oppExp.length>0){
+      safety=-5-(card.value||0);
+      if(card.value>=7) safety=-25;
+    } else {
+      safety=8;
+    }
+
+    // Opponent draw history signals
+    if(gs.oppDrawHistory){
+      const drewFromColor=gs.oppDrawHistory.filter(dc=>dc===c).length;
+      if(drewFromColor>0) safety-=12*drewFromColor;
+    }
+
+    // Value to us
+    if(exp.length===0){
+      if(handByColor[c].length<=1) safety+=12;
+      safety+=3;
+      if(card.value<=4) safety+=4;
+    } else {
+      safety-=15;
+      if(canPlayCard(card, exp)){
+        // Playable card — terrible to discard
+        safety-=20-(card.value||0);
+      }
+    }
+
+    // High cards cost more to discard
+    if(card.value>=7) safety-=card.value*1.5;
+
+    // Wagers
+    if(card.value===0){
+      if(exp.length===0 && handByColor[c].length<=2) safety+=8;
+      else if(exp.length>0) safety-=12;
+    }
+
+    // Orphan bonus
+    if(handByColor[c].filter(h=>h.id!==card.id).length===0) safety+=6;
+
+    discardOptions.push({card, score:safety, action:'discard'});
+  }
+
+  // === DECIDE: PLAY or DISCARD ===
+  playOptions.sort((a,b)=>b.score-a.score);
+  discardOptions.sort((a,b)=>b.score-a.score);
+
+  let phase1;
+  const bestPlay=playOptions[0];
+  const bestDiscard=discardOptions[0];
+
+  // Play if positive score, or if discarding is very dangerous
+  if(bestPlay && (bestPlay.score>0 || (bestDiscard && bestDiscard.score<-50 && bestPlay.score>-10))){
+    phase1={type:'play', card:bestPlay.card, color:bestPlay.card.color,
+            idx:hand.findIndex(c=>c.id===bestPlay.card.id)};
+  } else {
+    phase1={type:'discard', card:bestDiscard.card, color:bestDiscard.card.color,
+            idx:hand.findIndex(c=>c.id===bestDiscard.card.id)};
+  }
+
+  // === DRAW DECISION ===
+  let phase2={type:'deck'};
+  const discardedColor=phase1.type==='discard'?phase1.color:null;
+  const justDiscarded=phase1.type==='discard';
+
+  if(variant==='classic'){
+    let bestDrawScore=-Infinity;
+    let bestDrawAction=null;
+    for(const c of COLORS){
+      if(c===discardedColor) continue;
+      const pile=gs.discards[c]||[];
+      if(pile.length===0) continue;
+      const top=pile[pile.length-1];
+      const myExp=myExps[c]||[];
+      const oppExp=oppExps[c]||[];
+      let drawScore=0;
+
+      // Draw if card fits our expedition
+      if(myExp.length>0 && canPlayCard(top, myExp)){
+        drawScore=8+top.value;
+        if(top.value>5) drawScore+=5;
+      }
+      // Also consider drawing for a color we have many hand cards in
+      if(myExp.length===0 && handByColor[c].length>=3 && canPlayCard(top, [])){
+        drawScore=Math.max(drawScore, 3+top.value*0.5);
+      }
+      // Deny opponent
+      if(oppExp.length>0 && canPlayCard(top, oppExp)){
+        const oppWagers=oppExp.filter(e=>e.value===0).length;
+        drawScore=Math.max(drawScore, 12+top.value+oppWagers*4);
+      }
+      drawScore-=2; // info leak penalty
+
+      if(drawScore>bestDrawScore){
+        bestDrawScore=drawScore;
+        bestDrawAction={type:'discard', color:c};
+      }
+    }
+    if(bestDrawAction && bestDrawScore>6){
+      phase2=bestDrawAction;
+    }
+  } else if(!justDiscarded && (gs.singlePile||[]).length>0){
+    const top=gs.singlePile[gs.singlePile.length-1];
+    const myExp=myExps[top.color]||[];
+    const oppExp=oppExps[top.color]||[];
+    let drawScore=0;
+    if(myExp.length>0 && canPlayCard(top, myExp)) drawScore=8+top.value;
+    if(oppExp.length>0 && canPlayCard(top, oppExp))
+      drawScore=Math.max(drawScore, 12+top.value);
+    if(drawScore>6) phase2={type:'single'};
+  }
+
+  // Build debug info
+  const topPlays=playOptions.slice(0,4).map(p=>({
+    action:'play_'+p.card.color+'_'+(p.card.value||'W'),
+    draw:phase2.type+(phase2.color?'_'+phase2.color:''),
+    mcWinRate:'-',
+    blended:(p.score).toFixed(1),
+    safety:'-', danger:'-'
+  }));
+  const topDiscards=discardOptions.slice(0,4).map(d=>({
+    action:'disc_'+d.card.color+'_'+(d.card.value||'W'),
+    draw:phase2.type+(phase2.color?'_'+phase2.color:''),
+    mcWinRate:'-',
+    blended:(d.score).toFixed(1),
+    safety:(d.score).toFixed(1), danger:(-d.score).toFixed(1)
+  }));
+  const topMoves=[...topPlays,...topDiscards];
+
+  const oppExpsDebug={};
+  for(const c of COLORS){
+    const exp=oppExps[c]||[];
+    if(exp.length>0) oppExpsDebug[c]=exp.map(c=>c.value||'W').join(',');
+  }
+
+  return {
+    phase1, phase2, winRate:0.5, simsRan:0,
+    debug:{
+      hand:hand.map(c=>c.color[0].toUpperCase()+(c.value||'W')).join(' '),
+      oppExps:oppExpsDebug,
+      deckSize,
+      chosen:phase1.type+'_'+phase1.color+'_'+(phase1.card.value||'W'),
+      chosenDraw:phase2.type+(phase2.color?'_'+phase2.color:''),
+      dangerNote:'[Heuristic AI]',
+      topMoves,
+    }
+  };
+}
+
 // ========== WORKER MESSAGE HANDLER ==========
 self.onmessage=function(e){
   const {gameState, variant, simCount, personality}=e.data;
-  const genomeSet=variant==='single'?GENOMES_SINGLE:GENOMES;
-  const genome=genomeSet[personality||'scholar']||genomeSet.scholar;
   const t0=performance.now();
-  const result=evaluate(gameState, variant, simCount||500, genome);
+  let result;
+  if(personality==='heuristic'){
+    result=heuristicEvaluate(gameState, variant);
+  } else {
+    const genomeSet=variant==='single'?GENOMES_SINGLE:GENOMES;
+    const genome=genomeSet[personality||'scholar']||genomeSet.scholar;
+    result=evaluate(gameState, variant, simCount||500, genome);
+  }
   const elapsed=Math.round(performance.now()-t0);
   self.postMessage({result, elapsed});
 };

@@ -464,8 +464,8 @@ let selectedCard=null, listeners=[];
 let expandedStack=null; // {who:'my'|'opp', color:'red'} — which stack is fanned out
 let variant='classic'; // 'classic' or 'single'
 let isAIGame=false;
-let aiPersonality='scholar'; // default AI personality
-const AI_PERSONALITIES={explorer:{name:'Explorer',emoji:'\u{1F5E1}\uFE0F'},scholar:{name:'Scholar',emoji:'\u{1F6E1}\uFE0F'},collector:{name:'Collector',emoji:'\u{1F3DB}\uFE0F'},spy:{name:'Spy',emoji:'\u{1F575}\uFE0F'},gambler:{name:'Gambler',emoji:'\u23F1\uFE0F'}};
+let aiPersonality='heuristic'; // default AI personality — Strategist beats all evolved genomes
+const AI_PERSONALITIES={explorer:{name:'Explorer',emoji:'\u{1F5E1}\uFE0F'},scholar:{name:'Scholar',emoji:'\u{1F6E1}\uFE0F'},collector:{name:'Collector',emoji:'\u{1F3DB}\uFE0F'},spy:{name:'Spy',emoji:'\u{1F575}\uFE0F'},gambler:{name:'Gambler',emoji:'\u23F1\uFE0F'},heuristic:{name:'Strategist',emoji:'\u{1F9E0}'}};
 let lastPlayedCard=null; // {card, from:'expedition'|'discard'|'single', color} for undo
 // pendingAnim removed — simplified animation system
 
