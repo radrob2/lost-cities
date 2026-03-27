@@ -93,6 +93,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.color-yellow{background:#c49a20;color:#fff8e0;border-color:rgba(200,160,30,.4)}
     .card.color-yellow::before{content:'';position:absolute;inset:0;border-radius:inherit;z-index:0;background:linear-gradient(180deg,#e8c44a 0%,#d4a830 30%,#b8862a 60%,#a06e22 100%)}
     .card.color-yellow::after{content:'';position:absolute;inset:0;border-radius:inherit;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 80'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f0d060'/%3E%3Cstop offset='40%25' stop-color='%23e8c040'/%3E%3Cstop offset='100%25' stop-color='%23d4a828'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='56' height='80'/%3E%3Ccircle cx='38' cy='14' r='8' fill='%23f5e088' opacity='.7'/%3E%3Ccircle cx='42' cy='16' r='4' fill='%23f0d870' opacity='.5'/%3E%3Cpath d='M0 52 Q8 40 18 46 Q26 38 34 44 Q44 36 56 42 L56 80 L0 80Z' fill='%23b07818' opacity='.6'/%3E%3Cpath d='M0 58 Q12 48 22 54 Q30 46 40 52 Q50 44 56 50 L56 80 L0 80Z' fill='%23a06a14' opacity='.7'/%3E%3Cpath d='M0 65 Q10 56 20 62 Q32 54 42 60 Q50 55 56 58 L56 80 L0 80Z' fill='%238a5a10' opacity='.8'/%3E%3Cpath d='M0 72 Q14 64 28 68 Q42 62 56 66 L56 80 L0 80Z' fill='%23704a0c' opacity='.7'/%3E%3C/svg%3E") center/cover no-repeat}
+.cb-sym{position:absolute;bottom:1px;right:2px;font-size:10px;opacity:.8;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8);line-height:1}
 .card.card-back{background:#2a1a0e;border-color:rgba(212,168,67,.4)}
 .card.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(212,168,67,.3);text-shadow:0 0 8px rgba(212,168,67,.15)}
 .card.card-back::after{content:'';position:absolute;inset:4px;border:1px solid rgba(212,168,67,.2);border-radius:4px;z-index:0}
@@ -396,6 +397,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <h2>Menu</h2>
     <button class="btn" onclick="closeGameMenu()">Resume Game</button>
     <button class="btn" onclick="SFX.select();closeGameMenu();showTutorial()">How to Play</button>
+    <button class="btn" id="cb-toggle-btn" onclick="SFX.select();toggleColorblind()">Colorblind Mode: Off</button>
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="confirmQuit()">Main Menu</button>
     <div class="save-note">Game is saved automatically</div>
   </div>
@@ -465,6 +467,8 @@ const db = firebase.database();
 const COLORS = ['red','green','blue','white','yellow'];
 const COLOR_LABELS = {red:'Red',green:'Green',blue:'Blue',white:'White',yellow:'Yellow'};
 const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',yellow:'#c0a030'};
+const COLOR_SYMBOLS = {red:'\u25B2',green:'\u25CF',blue:'\u2248',white:'\u25C6',yellow:'\u2605'};
+let colorblindMode=localStorage.getItem('expedition-colorblind')==='true';
 
 let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
 let selectedCard=null, listeners=[];
@@ -625,8 +629,18 @@ function toggleSound(){
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function showRules(){document.getElementById('rules-modal').classList.add('active')}
 function closeRules(){document.getElementById('rules-modal').classList.remove('active')}
-function showGameMenu(){document.getElementById('game-menu').classList.add('active')}
+function showGameMenu(){
+  document.getElementById('game-menu').classList.add('active');
+  const btn=document.getElementById('cb-toggle-btn');
+  if(btn) btn.textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
+}
 function closeGameMenu(){document.getElementById('game-menu').classList.remove('active')}
+function toggleColorblind(){
+  colorblindMode=!colorblindMode;
+  localStorage.setItem('expedition-colorblind',colorblindMode);
+  document.getElementById('cb-toggle-btn').textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
+  renderGame();
+}
 function confirmQuit(){closeGameMenu();document.getElementById('quit-confirm').classList.add('active')}
 function closeQuitConfirm(){document.getElementById('quit-confirm').classList.remove('active')}
 function showJoin(){showScreen('join-screen');document.getElementById('room-code-input').focus()}
@@ -728,10 +742,11 @@ function cardHTML(card, extra=''){
   const isWager = card.value===0;
   const valText = isWager ? '&#x1F91D;' : card.value;
   const corner = isWager ? '&#x1F91D;' : card.value;
-  const hiding = '';
-  return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}" style="${hiding}">
+  const cbSym = colorblindMode ? `<div class="cb-sym">${COLOR_SYMBOLS[card.color]}</div>` : '';
+  return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}">
     <div class="card-corner">${corner}</div>
     <div class="card-value">${valText}</div>
+    ${cbSym}
   </div>`;
 }
 
@@ -860,11 +875,13 @@ function renderBoard(){
     return 7; // 8+ cards: very compressed
   }
 
+  const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
+
   // Opponent row
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30"></div></div>`;
+      return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
@@ -911,7 +928,7 @@ function renderBoard(){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}</div></div>`;
+      return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
