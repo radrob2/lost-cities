@@ -126,3 +126,129 @@ function leaveGame(){
   document.title='Expedition';
   showScreen('lobby-screen');
 }
+
+// ===== MATCHMAKING =====
+// Write to matchmaking/{variant}/{playerId}, listen for another player,
+// first player to arrive creates the room, second joins it.
+
+let matchmakingRef=null;
+let matchmakingListener=null;
+let matchmakingTimeout=null;
+let matchmakingTimerInterval=null;
+
+async function findOpponent(){
+  const name=getName();
+  if(!name){document.getElementById('lobby-error').textContent='Enter your name';return}
+  myId=genId();
+  const mmPath='matchmaking/'+variant;
+  matchmakingRef=db.ref(mmPath);
+
+  showScreen('matchmaking-screen');
+  document.getElementById('matchmaking-text').textContent='Searching for an opponent...';
+
+  // Start countdown timer display
+  let secondsLeft=60;
+  const timerEl=document.getElementById('matchmaking-timer');
+  timerEl.textContent='Timeout in '+secondsLeft+'s';
+  matchmakingTimerInterval=setInterval(()=>{
+    secondsLeft--;
+    if(secondsLeft>0) timerEl.textContent='Timeout in '+secondsLeft+'s';
+    else timerEl.textContent='';
+  },1000);
+
+  // Timeout after 60 seconds
+  matchmakingTimeout=setTimeout(()=>{
+    cancelMatchmaking();
+    toast('No opponents found');
+  },60000);
+
+  const myRef=matchmakingRef.child(myId);
+  try{
+    // Write our entry
+    await myRef.set({id:myId,name:name,timestamp:firebase.database.ServerValue.TIMESTAMP});
+    // Set up onDisconnect cleanup
+    myRef.onDisconnect().remove();
+
+    // Listen for all entries in this variant's matchmaking queue
+    matchmakingListener=matchmakingRef.on('value',async snap=>{
+      const data=snap.val();
+      if(!data)return;
+      const entries=Object.keys(data).filter(k=>k!==myId);
+      if(entries.length===0)return; // still waiting alone
+
+      // Found an opponent — pick the first one (by key)
+      const oppId=entries[0];
+      const opp=data[oppId];
+
+      // Determine who creates the room: lexicographically smaller id is player1
+      if(myId<oppId){
+        // We are player1 — create the room
+        roomCode=genRoomCode();
+        roomRef=db.ref('rooms/'+roomCode);
+        mySlot='player1';
+        try{
+          await roomRef.set({
+            players:{player1:{id:myId,name:name},player2:{id:opp.id,name:opp.name}},
+            status:'waiting',variant:variant,
+            createdAt:firebase.database.ServerValue.TIMESTAMP
+          });
+          // Write the room code to matchmaking so the other player can find it
+          await matchmakingRef.child(myId).update({roomCode:roomCode});
+          // Clean up both matchmaking entries after a short delay
+          // (the other player will read roomCode and join)
+          cleanupMatchmakingState();
+          saveSession();
+          requestNotificationPermission();
+          startGame();
+        }catch(e){
+          console.error('Matchmaking room creation error:',e);
+          cancelMatchmaking();
+          toast('Connection error');
+        }
+      }else{
+        // We are player2 — wait for player1 to create the room
+        // Check if the opponent has written a roomCode yet
+        const oppData=data[oppId];
+        if(!oppData.roomCode)return; // wait for player1 to write roomCode
+        roomCode=oppData.roomCode;
+        roomRef=db.ref('rooms/'+roomCode);
+        mySlot='player2';
+        variant=variant; // already set
+        cleanupMatchmakingState();
+        // Remove our matchmaking entry
+        try{await db.ref('matchmaking/'+variant+'/'+myId).remove();}catch(e){}
+        try{await db.ref('matchmaking/'+variant+'/'+oppId).remove();}catch(e){}
+        saveSession();
+        requestNotificationPermission();
+        startGame();
+      }
+    });
+  }catch(e){
+    console.error('Matchmaking error:',e);
+    cancelMatchmaking();
+    document.getElementById('lobby-error').textContent='Connection error. Try again.';
+  }
+}
+
+function cleanupMatchmakingState(){
+  if(matchmakingListener&&matchmakingRef){
+    matchmakingRef.off('value',matchmakingListener);
+    matchmakingListener=null;
+  }
+  if(matchmakingTimeout){clearTimeout(matchmakingTimeout);matchmakingTimeout=null}
+  if(matchmakingTimerInterval){clearInterval(matchmakingTimerInterval);matchmakingTimerInterval=null}
+  // Cancel onDisconnect since we matched successfully
+  if(matchmakingRef&&myId){
+    matchmakingRef.child(myId).onDisconnect().cancel();
+  }
+}
+
+async function cancelMatchmaking(){
+  // Remove our matchmaking entry
+  if(matchmakingRef&&myId){
+    try{await matchmakingRef.child(myId).remove();}catch(e){console.error(e)}
+  }
+  cleanupMatchmakingState();
+  matchmakingRef=null;
+  showScreen('lobby-screen');
+}
