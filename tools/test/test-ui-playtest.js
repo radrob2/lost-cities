@@ -64,7 +64,7 @@ async function test(name, fn) {
   await test('lobby screen renders', async () => {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01-lobby.png') });
     const title = await page.$eval('.lobby-title', el => el.textContent);
-    if (!title.includes('Lost Cities') && !title.includes('Expedition'))
+    if (!title.includes('Lost Cities') && !title.includes('Expedition') && !title.includes('Venture'))
       throw new Error(`Unexpected title: ${title}`);
   });
 
@@ -91,6 +91,9 @@ async function test(name, fn) {
   });
 
   await test('personality selection shows boss warning', async () => {
+    // Open AI personality modal first
+    await page.evaluate(() => { if(typeof openAIPersonalityModal==='function') openAIPersonalityModal(); });
+    await new Promise(r=>setTimeout(r,300));
     await page.click('#pbtn-seer');
     await new Promise(r=>setTimeout(r,100));
     const warn = await page.$eval('#boss-warn', el => el.textContent);
@@ -99,6 +102,9 @@ async function test(name, fn) {
     await new Promise(r=>setTimeout(r,100));
     const noWarn = await page.$eval('#boss-warn', el => el.textContent);
     if (noWarn.length > 0) throw new Error(`Should have no warning, got: "${noWarn}"`);
+    // Close modal
+    await page.evaluate(() => { if(typeof closeAIPersonalityModal==='function') closeAIPersonalityModal(); });
+    await new Promise(r=>setTimeout(r,200));
   });
 
   // ========== TUTORIAL TESTS ==========
@@ -137,11 +143,21 @@ async function test(name, fn) {
     // Type name
     await page.type('#player-name', 'TestBot');
     await new Promise(r=>setTimeout(r,100));
-    // Click Play vs AI
+    // Click Play vs AI (opens modal or starts game directly)
     const btns = await page.$$('.btn');
     for (const btn of btns) {
       const text = await btn.evaluate(el => el.textContent.trim());
       if (text.includes('Play vs AI')) { await btn.click(); break; }
+    }
+    await new Promise(r=>setTimeout(r,300));
+    // If a modal opened, click Start Game
+    const startBtn = await page.$('#ai-personality-modal .btn');
+    if (startBtn) {
+      const allBtns = await page.$$('#ai-personality-modal .btn');
+      for (const b of allBtns) {
+        const t = await b.evaluate(el => el.textContent.trim());
+        if (t.includes('Start Game')) { await b.click(); break; }
+      }
     }
     await new Promise(r=>setTimeout(r,500));
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '04-game-start.png') });
