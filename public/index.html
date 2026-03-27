@@ -629,6 +629,18 @@ function toggleSound(){
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function showRules(){document.getElementById('rules-modal').classList.add('active')}
 function closeRules(){document.getElementById('rules-modal').classList.remove('active')}
+// ===== TURN NOTIFICATIONS =====
+function requestNotificationPermission(){
+  if('Notification' in window && Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+function notifyTurn(){
+  if('Notification' in window && Notification.permission==='granted'){
+    try{new Notification('Expedition',{body:"It's your turn!",icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="%23d4a843"/><text x="16" y="22" text-anchor="middle" font-size="18">%E2%9C%A6</text></svg>'});}catch(e){}
+  }
+}
+
 function showGameMenu(){
   document.getElementById('game-menu').classList.add('active');
   const btn=document.getElementById('cb-toggle-btn');
@@ -670,6 +682,7 @@ async function createRoom(){
     document.getElementById('display-code').textContent=roomCode;
     showScreen('waiting-screen');
     saveSession();
+    requestNotificationPermission();
     const ref=roomRef.child('players/player2');
     const l=ref.on('value',snap=>{if(snap.val())startGame()});
     listeners.push(()=>ref.off('value',l));
@@ -689,7 +702,7 @@ async function joinRoom(){
     if(data.players.player2){document.getElementById('join-error').textContent='Room is full';return}
     await roomRef.child('players/player2').set({id:myId,name:name});
     variant=data.variant||'classic';
-    mySlot='player2'; saveSession(); startGame();
+    mySlot='player2'; saveSession(); requestNotificationPermission(); startGame();
   }catch(e){document.getElementById('join-error').textContent='Error joining room';console.error(e)}
 }
 
@@ -763,6 +776,12 @@ function renderGame(){
   ti.textContent=isMyTurn?'Your Turn':'Their Turn';
   ti.className='turn-indicator '+(isMyTurn?'your-turn':'their-turn');
   if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
+
+  // Title + notification for multiplayer
+  document.title=isMyTurn?'\uD83D\uDFE1 Your Turn \u2014 Expedition':'Expedition';
+  if(isMyTurn && !wasMyTurn && !isAIGame && document.hidden){
+    notifyTurn();
+  }
 
   // Deck count
   const deckLen = getCards(gameState,'deck').length;
