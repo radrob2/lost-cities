@@ -391,7 +391,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       <div class="card-row" id="discard-row"></div>
       <div id="single-pile-area" style="display:none"></div>
       <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
-        <div class="card card-back deck-landscape"></div>
+        <div id="deck-stack" style="position:relative;width:var(--card-h);height:var(--card-w)"></div>
         <div class="deck-num" id="deck-count-label">44 left</div>
       </div>
       <div id="live-score" style="font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);opacity:.5;margin-top:2px;text-align:center;font-variant-numeric:tabular-nums"></div>
@@ -728,6 +728,20 @@ function renderGame(){
   deckLabel.textContent=deckLen+' left';
   deckLabel.style.opacity=deckLen<=10?'1':'.5';
   deckLabel.style.color=deckLen<=10?'var(--gold)':'var(--parchment-dark)';
+
+  // Render deck as stacked card-backs with jitter
+  const deckStack=document.getElementById('deck-stack');
+  if(deckStack){
+    let dhtml='';
+    for(let i=0;i<deckLen;i++){
+      const h=(i*7919+i*i*31)&0xFFFF;
+      const rot=((h%100)/100*4-2).toFixed(1);
+      const dx=((((h>>4)%100)/100*3-1.5)).toFixed(1);
+      const dy=((((h>>8)%100)/100*3-1.5)).toFixed(1);
+      dhtml+=`<div class="card card-back deck-landscape" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
+    }
+    deckStack.innerHTML=dhtml;
+  }
 
   // Live score tracker (toggleable)
   const liveScoreEl=document.getElementById('live-score');
