@@ -65,8 +65,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .expedition-stack .card{position:static}
 .card.empty-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13)}
 .card-slot{width:calc(var(--card-w) + var(--card-h)*.13);height:calc(var(--card-h) + var(--card-h)*.13);display:flex;align-items:center;justify-content:center;position:relative}
-.discard-deck-wrap{display:flex;align-items:flex-start;gap:var(--gap-sm);width:100%}
-.discard-deck-wrap>.card-row{flex:1}
+/* Discard + deck area: portrait = deck below centered, landscape = deck as 6th col */
+#discard-deck-area{display:flex;flex-direction:column;align-items:center;width:100%;gap:var(--gap-sm)}
+#deck-slot{display:flex;flex-direction:column;align-items:center}
+@media(orientation:landscape){
+  #discard-deck-area{flex-direction:row;justify-content:center;gap:var(--gap-sm)}
+  #discard-deck-area>.card-row{flex:0 1 auto}
+}
+/* Info rows: name left, score right */
+.info-row{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 calc(var(--pad)*1.5)}
+.player-label{font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap}
+.total-score{font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.85);font-weight:700;font-variant-numeric:tabular-nums}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:calc(var(--card-h)*.02) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
@@ -122,8 +131,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 @keyframes undo-pulse{from{opacity:.7}to{opacity:1}}
 
 /* HAND */
-.hand-area{padding:var(--gap-sm) var(--gap-sm);padding-bottom:max(calc(var(--gap-md) * .88),env(safe-area-inset-bottom));
-  background:rgba(0,0,0,.4);width:100%}
+.hand-area{padding:var(--gap-sm) var(--gap-sm);padding-bottom:max(calc(var(--gap-md) * .88),env(safe-area-inset-bottom));width:100%}
 .hand-cards{position:relative;width:100%;overflow:visible;padding:var(--gap-sm) 0}
 .hand-cards .card{flex-shrink:0}
 .hand-cards>div{position:absolute;z-index:0}
@@ -348,27 +356,39 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 <!-- GAME -->
 <div id="game-screen" class="screen">
+  <span id="opponent-name-store" style="display:none">Opponent</span>
   <div class="top-bar">
-    <div class="player-info" style="flex:1"><span id="opponent-name">Opponent</span> <span id="opp-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span></div>
     <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
-    <div style="flex:1;text-align:right"><button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button></div>
+    <div style="flex:1"></div>
+    <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
   </div>
 
   <div class="board-area">
-    <div id="opp-hand-row" style="display:flex;justify-content:center;gap:1px;padding:0 var(--pad)"></div>
-    <div id="opp-name-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;text-align:center"></div>
+    <!-- Opponent hand peeking from top edge -->
+    <div id="opp-hand-row" style="display:flex;justify-content:center;gap:1px;overflow:hidden;margin-top:calc(var(--card-h) * -0.82)"></div>
+
+    <!-- Opponent info row: name left, score right -->
+    <div class="info-row">
+      <span id="opp-name-label" class="player-label"></span>
+      <span id="opp-total-score" class="total-score"></span>
+    </div>
+
     <div class="card-row" id="opp-row"></div>
-    <div class="discard-deck-wrap">
+
+    <!-- Discard row (5 cols) + deck below in portrait, 6th col in landscape -->
+    <div id="discard-deck-area">
       <div class="card-row" id="discard-row"></div>
-      <div id="deck-slot" style="display:flex;flex-direction:column;align-items:center"></div>
+      <div id="deck-slot"></div>
     </div>
     <div id="single-pile-area" style="display:none"></div>
-    <div class="card-row" id="my-row"></div>
-    <div id="my-name-label" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;text-align:center"></div>
 
-    <div style="display:flex;align-items:center;justify-content:center;gap:var(--gap-md);padding:0 var(--gap-md)">
-      <span id="my-total-score" style="font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .85);font-weight:700;font-variant-numeric:tabular-nums"></span>
-      <div class="phase-bar" id="phase-bar" style="flex:1">Select a card from your hand</div>
+    <div class="card-row" id="my-row"></div>
+
+    <!-- Player info row: name left, hint center, score right -->
+    <div class="info-row">
+      <span id="my-name-label" class="player-label"></span>
+      <span class="phase-bar" id="phase-bar" style="flex:1;text-align:center">Tap a card in your hand</span>
+      <span id="my-total-score" class="total-score"></span>
     </div>
 
     <div class="hand-area">
@@ -839,24 +859,34 @@ function renderGame(){
   renderHand();
   renderBoard();
 
-  // Opponent hand (card-backs) for visual symmetry
+  // Opponent hand: full-size card-backs peeking from top (clipped ~80%)
   const oppHandRow=document.getElementById('opp-hand-row');
   if(oppHandRow){
     const oppSlotN=mySlot==='player1'?'player2':'player1';
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
+    // Use same arc layout as player hand but inverted (upside down peeking)
+    const cardW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w'))||48;
     const cardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'))||78;
-    const miniH=Math.round(cardH*0.35);
-    const miniW=Math.round(miniH*0.615);
+    const containerW=oppHandRow.parentElement?.offsetWidth||375;
+    const R=Math.max(containerW*1.8,600);
+    const maxStep=Math.asin(Math.min((containerW*0.88-cardW)/(2*R),0.99))*180/Math.PI;
+    const stepDeg=oppHandLen<=1?0:Math.min(3.0,maxStep/((oppHandLen-1)/2));
+    const centerX=containerW/2;
+    oppHandRow.style.height=Math.round(cardH*0.22)+'px';
     let html='';
     for(let i=0;i<oppHandLen;i++){
-      html+=`<div class="card card-back" style="width:${miniW}px;height:${miniH}px;border-radius:${Math.round(miniH*0.05)}px;font-size:${Math.round(miniH*0.4)}px"></div>`;
+      const angleDeg=(i-(oppHandLen-1)/2)*stepDeg;
+      const angleRad=angleDeg*Math.PI/180;
+      const x=centerX+R*Math.sin(angleRad)-cardW/2;
+      const y=R*(1-Math.cos(angleRad));
+      html+=`<div class="card card-back" style="position:absolute;left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;transform:rotate(${(-angleDeg).toFixed(1)}deg);transform-origin:center center"></div>`;
     }
     oppHandRow.innerHTML=html;
   }
 
-  // Name labels (symmetric)
+  // Name labels (symmetric: left-aligned)
   const oppNameLabel=document.getElementById('opp-name-label');
-  if(oppNameLabel) oppNameLabel.textContent=document.getElementById('opponent-name')?.textContent||'Opponent';
+  if(oppNameLabel) oppNameLabel.textContent=document.getElementById('opponent-name-store')?.textContent||'Opponent';
   const myNameLabel=document.getElementById('my-name-label');
   if(myNameLabel) myNameLabel.textContent=getName?getName().toUpperCase():'YOU';
 
@@ -1044,11 +1074,13 @@ function renderBoard(){
       return `<div class="card-col"><div class="card-slot" onclick="${handler}" style="position:relative">${stackHTML}${labels}</div></div>`;
     }).join('');
 
-    // Render deck in its own slot beside the discard grid
+    // Render deck: portrait=landscape card below discards, landscape=portrait card as 6th col
     const deckSlot=document.getElementById('deck-slot');
     if(deckSlot){
+      const isLandscapeLayout=window.innerWidth>window.innerHeight;
       const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
       let deckInner='';
+      const deckCardClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
       if(deckLen>0){
         const showCount=Math.min(deckLen,10);
         for(let i=0;i<showCount;i++){
@@ -1056,12 +1088,15 @@ function renderBoard(){
           const rot=((h%100)/100*6-3).toFixed(1);
           const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
           const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
-          deckInner+=`<div class="card card-back" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
+          deckInner+=`<div class="${deckCardClass}" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
         }
       }
-      const emptySlot=`<div class="card empty-slot" style="border:calc(var(--card-h)*.02) dashed rgba(212,168,67,.2)"></div>`;
-      const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:1px;font-family:'Cinzel',serif">${deckLen} left</div>`;
-      deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:var(--card-w);height:calc(var(--card-h)*1.13)">${deckLen>0?deckInner:emptySlot}</div>${countLabel}`;
+      // Deck slot: same visual treatment as discard empty slots
+      const slotW=isLandscapeLayout?'var(--card-w)':'var(--card-h)';
+      const slotH=isLandscapeLayout?'calc(var(--card-h)*1.13)':'var(--card-w)';
+      const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH}"></div>`;
+      const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:calc(var(--gap-sm)*.5);font-family:'Cinzel',serif">${deckLen} left</div>`;
+      deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckInner:emptySlot}</div>${countLabel}`;
     }
   }
 
@@ -1538,7 +1573,7 @@ function startAIGame(){
     lastDiscardedColor:null,justDiscarded:false,status:'playing'
   };
   const pers=AI_PERSONALITIES[aiPersonality]||AI_PERSONALITIES.scholar;
-  document.getElementById('opponent-name').textContent='AI '+pers.emoji+' '+pers.name;
+  document.getElementById('opponent-name-store').textContent='AI '+pers.emoji+' '+pers.name;
   const myLabel=document.getElementById('my-label');
   if(myLabel) myLabel.textContent=getName().toUpperCase()+"'s Ventures";
   showScreen('game-screen');

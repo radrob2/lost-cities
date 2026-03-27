@@ -77,8 +77,7 @@ async function startGame(){
     const p=snap.val(); if(!p)return;
     const oppSlot=mySlot==='player1'?'player2':'player1';
     if(p[oppSlot]){
-      document.getElementById('opponent-name').textContent=p[oppSlot].name;
-      const ol=document.getElementById('opp-label');if(ol)ol.textContent=p[oppSlot].name+"'s Expeditions";
+      const store=document.getElementById('opponent-name-store');if(store)store.textContent=p[oppSlot].name;
     }
   });
   listeners.push(()=>pRef.off('value',l2));
