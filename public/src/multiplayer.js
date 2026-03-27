@@ -51,7 +51,7 @@ async function startGame(){
     const hand1=deck.splice(0,8), hand2=deck.splice(0,8);
     const exps={}, discard={};
     COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
-    const firstPlayer=Math.random()<0.5?'player1':'player2';
+    const firstPlayer=typeof seriesFirstPlayer!=='undefined'?seriesFirstPlayer:(Math.random()<0.5?'player1':'player2');
     await roomRef.child('game').set({
       deck, hands:{player1:hand1,player2:hand2},
       expeditions:{player1:exps,player2:exps},
