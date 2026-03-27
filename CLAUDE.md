@@ -100,18 +100,25 @@ docs/
 3. **Post-MC correction**: Penalize discards to opponent's active expeditions and colors they've drawn from. This compensates for MC's blind spot (random hands don't model real opponent behavior).
 4. **Endgame solver**: When deck ≤ 6, use minimax instead of MC for exact calculation.
 
-### 5 AI Personalities
+### AI Personalities
+**Evolved genome (MC-driven):**
 - **Explorer**: Aggressive, starts many expeditions, plays fast
 - **Scholar**: Conservative, deep focus on few colors, values 8+ bonus
+- **Collector**: Focused, high concentration, avoids spreading
+- **Spy**: High opponent awareness, strategic blocking
 - **Gambler**: High wager willingness, high risk tolerance
-- **Trader**: Adaptive, high opponent awareness, tempo control
-- **Guardian**: Defensive, blocks opponent, avoids dangerous discards
+
+**Heuristic (rule-based):**
+- **Strategist** (default): Handcrafted heuristic using projected score deltas, opponent expedition awareness, and discard safety scoring. Beats all evolved genomes 67-91% in classic. No MC overhead.
+
+**Boss AIs (cheating):**
+- **The Seer**: MC AI with known opponent hand — no random sampling for opponent cards
+- **The Oracle**: Perfect information — sees opponent hand AND deck order
 
 ### Known AI Issues
-- MC with random opponent hands fundamentally underestimates discard danger
-- Post-MC penalty is a band-aid — proper fix is genome-direct decisions for opponent-aware moves
-- Evolution couldn't optimize opponent-awareness genes (no signal through MC noise)
-- Some games the AI still makes obviously bad discards
+- MC with random opponent hands still has blind spots for opponent-awareness
+- Heuristic AI is fast but doesn't consider multi-turn sequences
+- Potential hybrid: heuristic for discard safety + MC for play optimization
 
 ## Firebase Structure
 
@@ -151,14 +158,20 @@ rooms/{roomCode}/
 
 ## Testing
 
-Currently: zero automated tests. This is tech debt.
+**47 automated tests** in `tools/test/`:
+- `test-scoring.js`: 17 tests — scoring edge cases (empty, wagers, bonus, max)
+- `test-legal-moves.js`: 20 tests — card play legality
+- `test-game-sim.js`: 10 tests — deck construction, 100-game random simulation, card accounting
+- Run all: `node tools/test/run-all.js`
 
-**Priority tests to add:**
-1. Scoring calculation (given expedition cards, verify score)
-2. Legal move detection (can this card play on this expedition?)
-3. AI doesn't crash on any game state
-4. Firebase empty-array edge cases
-5. Full game simulation (AI vs AI, no errors)
+**Benchmark scripts:**
+- `test-heuristic.js`: Heuristic AI vs all evolved genomes (1000 games each)
+- `test-vs-default.js`: Evolved genomes vs default genome
+- `test-ai.js`: AI crash/stress testing
+
+**Debug tools:**
+- Tap "Lost Cities" title 5x on lobby to open debug score screen
+- Set `window.EXPEDITION_DEBUG=true` in console for AI decision logging
 
 ## Legal Notes
 
