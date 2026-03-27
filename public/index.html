@@ -795,25 +795,25 @@ function renderHand(){
     return ci!==0 ? ci : a.value-b.value;
   });
   const n=sorted.length;
-  // Arc fan: cards at constant radius from pivot point below hand center
+  // Arc fan: equal angular spacing, X and Y both from arc geometry
+  // Pivot point is R pixels below the center of the hand
   const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+  const cardH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
   const containerW=container.parentElement.offsetWidth||375;
-  const R=900; // arc radius — pivot point below the hand
-  const totalArc=Math.min(n*2.5, 22); // total arc degrees
-  const spacing=Math.min(cardW*0.78, (containerW-cardW)/(n-1||1)); // card spacing along x
-  const handW=spacing*(n-1)+cardW;
-  const startX=(containerW-handW)/2; // center the hand
-  container.style.height=(cardW*1.8)+'px'; // reserve space for cards
+  const R=800;
+  const stepDeg=n<=1?0:Math.min(3.0, 20/(n-1)); // degrees between cards
+  const centerX=containerW/2;
+  container.style.height=(cardH+12)+'px';
   container.innerHTML=sorted.map((c,i)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
-    // Angle on arc, centered at 0
-    const angleDeg=n<=1?0:((i-(n-1)/2)/((n-1)/2))*(totalArc/2);
+    // Angle: evenly spaced in degrees, centered at 0
+    const angleDeg=(i-(n-1)/2)*stepDeg;
     const angleRad=angleDeg*Math.PI/180;
-    // Position: x from even spacing, y from arc geometry
-    const x=startX+i*spacing;
-    const dy=(R*(1-Math.cos(angleRad))).toFixed(1);
-    if(sel) return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(0)}px;top:0;z-index:5">${cardHTML(c,sel)}</div>`;
-    return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(0)}px;top:${dy}px;transform:rotate(${angleDeg.toFixed(1)}deg);transform-origin:center center">${cardHTML(c,sel)}</div>`;
+    // Position on arc: pivot at (centerX, R below hand)
+    const x=centerX+R*Math.sin(angleRad)-cardW/2;
+    const y=R-R*Math.cos(angleRad);
+    if(sel) return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:0;z-index:5">${cardHTML(c,sel)}</div>`;
+    return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;transform:rotate(${angleDeg.toFixed(1)}deg);transform-origin:center center">${cardHTML(c,sel)}</div>`;
   }).join('');
 }
 
