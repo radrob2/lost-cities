@@ -181,8 +181,51 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .r-neg{color:#e07060}
 .r-muted{opacity:.5}
 .r-color-total{font-weight:900;font-size:18px}
+
+/* STATS SCREEN */
+#stats-screen{overflow-y:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-top:max(24px,env(safe-area-inset-top))}
+.stats-container{width:90%;max-width:400px;margin:0 auto}
+.stats-header{font-family:'Cinzel',serif;font-size:clamp(22px,6vw,32px);font-weight:900;color:var(--gold);text-align:center;margin-bottom:16px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.stats-section{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:1.5px solid rgba(201,168,76,.3);border-radius:10px;padding:16px;margin-bottom:14px}
+.stats-section h3{font-family:'Cinzel',serif;color:var(--gold);font-size:14px;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:14px}
+.stat-label{color:var(--parchment-dark)}
+.stat-value{color:var(--parchment);font-family:'Cinzel',serif;font-weight:700;font-variant-numeric:tabular-nums}
+.stat-value.gold{color:var(--gold-bright)}
+.stat-value.positive{color:#4caf50}
+.stat-value.negative{color:#e07060}
+.stats-personality-grid,.stats-variant-grid{display:flex;flex-direction:column;gap:6px}
+.stats-record-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px}
+.stats-record-row .rec-name{color:var(--parchment);min-width:80px;font-family:'Cinzel',serif;font-size:12px}
+.stats-record-row .rec-bar{flex:1;display:flex;gap:8px;color:var(--parchment-dark);font-variant-numeric:tabular-nums}
+.stats-record-row .rec-wr{color:var(--gold);font-family:'Cinzel',serif;font-size:12px;min-width:44px;text-align:right}
+.stats-actions{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:8px;padding-bottom:max(20px,env(safe-area-inset-bottom))}
+.btn-reset{font-family:'Cinzel',serif;font-weight:700;padding:10px 24px;border:1.5px solid #c0392b;background:transparent;color:#e74c3c;font-size:13px;border-radius:8px;cursor:pointer;transition:all .2s}
+.btn-reset:active{background:rgba(192,57,43,.15)}
+
 @media(min-width:420px){:root{--card-w:56px;--card-h:91px}}
 @media(min-width:500px){:root{--card-w:64px;--card-h:104px}}
+
+/* ONBOARDING TUTORIAL */
+.tutorial-overlay{position:fixed;inset:0;background:rgba(6,4,2,.96);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;touch-action:pan-y}
+.tutorial-overlay.active{display:flex}
+.tutorial-skip{position:absolute;top:max(16px,env(safe-area-inset-top));right:16px;background:none;border:none;color:var(--parchment-dark);font-family:'Cinzel',serif;font-size:13px;cursor:pointer;padding:8px 12px;letter-spacing:1px;opacity:.7;z-index:1}
+.tutorial-skip:active{opacity:1}
+.tutorial-slides{position:relative;width:100%;max-width:340px;flex:0 0 auto;overflow:hidden}
+.tutorial-slide{display:none;flex-direction:column;align-items:center;text-align:center;padding:0 8px;animation:tut-fade-in .35s ease-out}
+.tutorial-slide.active{display:flex}
+@keyframes tut-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.tutorial-icon{font-size:48px;margin-bottom:16px}
+.tutorial-title{font-family:'Cinzel',serif;font-size:clamp(22px,6vw,30px);font-weight:900;color:var(--gold);margin-bottom:12px;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.tutorial-text{font-size:15px;line-height:1.6;color:var(--parchment-dark);max-width:300px;margin-bottom:24px}
+.tutorial-text b{color:var(--parchment);font-weight:600}
+.tutorial-dots{display:flex;gap:10px;margin-top:24px;margin-bottom:20px}
+.tutorial-dot{width:10px;height:10px;border-radius:50%;background:rgba(212,168,67,.2);border:1.5px solid rgba(212,168,67,.3);transition:all .25s}
+.tutorial-dot.active{background:var(--gold);border-color:var(--gold-bright);box-shadow:0 0 8px rgba(212,168,67,.4)}
+.tutorial-nav-btn{font-family:'Cinzel',serif;font-weight:700;padding:14px 40px;border:1.5px solid var(--gold);background:linear-gradient(160deg,#30241a,#221810);color:var(--gold);font-size:15px;border-radius:10px;cursor:pointer;transition:all .2s;min-width:180px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.04)}
+.tutorial-nav-btn:active{transform:scale(.96);background:linear-gradient(160deg,#3a2e20,#2a1e14)}
+.tutorial-nav-btn.primary{background:linear-gradient(160deg,var(--gold),#b8922a);color:var(--bg);border-color:var(--gold-bright)}
+.tutorial-nav-btn.primary:active{background:linear-gradient(160deg,#c49a30,#a08020)}
 </style>
 </head>
 <body>
@@ -210,7 +253,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <button class="btn" onclick="SFX.select();startAIGame()">Play vs AI</button>
   <button class="btn" onclick="SFX.select();createRoom()">Create Room</button>
   <button class="btn" onclick="showJoin()">Join Room</button>
-  <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showRules()">How to Play</button>
+  <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showTutorial()">How to Play</button>
+  <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showStats()">Stats</button>
   <div class="error-msg" id="lobby-error"></div>
 </div>
 
@@ -286,6 +330,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 </div>
 
+<!-- STATS -->
+<div id="stats-screen" class="screen">
+  <button class="back-btn" onclick="SFX.select();showScreen('lobby-screen')">&larr;</button>
+  <div class="stats-container">
+    <div class="stats-header">Expedition Log</div>
+    <div id="stats-content"></div>
+    <div class="stats-actions">
+      <button class="btn" onclick="SFX.select();showScreen('lobby-screen')">Back</button>
+      <button class="btn-reset" onclick="SFX.select();confirmResetStats()">Reset Stats</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET CONFIRM -->
+<div class="game-menu-overlay" id="reset-confirm" onclick="if(event.target===this)closeResetConfirm()">
+  <div class="game-menu">
+    <h2>Reset Stats?</h2>
+    <p style="color:var(--parchment-dark);font-size:14px;text-align:center;margin-bottom:12px">This will permanently erase all your expedition records.</p>
+    <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="SFX.select();doResetStats()">Reset Everything</button>
+    <button class="btn" onclick="SFX.select();closeResetConfirm()">Keep Records</button>
+  </div>
+</div>
+
 <!-- RULES -->
 <div class="modal-overlay" id="rules-modal" onclick="if(event.target===this)closeRules()">
   <div class="modal">
@@ -318,7 +385,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div class="game-menu">
     <h2>Menu</h2>
     <button class="btn" onclick="closeGameMenu()">Resume Game</button>
-    <button class="btn" onclick="SFX.select();closeGameMenu();showRules()">How to Play</button>
+    <button class="btn" onclick="SFX.select();closeGameMenu();showTutorial()">How to Play</button>
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="confirmQuit()">Main Menu</button>
     <div class="save-note">Game is saved automatically</div>
   </div>
@@ -332,6 +399,40 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="SFX.select();closeQuitConfirm();leaveGame()">Leave</button>
     <button class="btn" onclick="closeQuitConfirm()">Stay</button>
   </div>
+</div>
+
+<!-- ONBOARDING TUTORIAL -->
+<div class="tutorial-overlay" id="tutorial-overlay">
+  <button class="tutorial-skip" id="tutorial-skip" onclick="closeTutorial()">Skip</button>
+  <div class="tutorial-slides" id="tutorial-slides">
+    <div class="tutorial-slide active" data-slide="0">
+      <div class="tutorial-icon">&#x1F9ED;</div>
+      <div class="tutorial-title">The Goal</div>
+      <div class="tutorial-text">You\u2019re an explorer funding expeditions. Play cards across <b>5 colors</b> to build ascending sequences. <b>Highest score wins!</b></div>
+    </div>
+    <div class="tutorial-slide" data-slide="1">
+      <div class="tutorial-icon">&#x1F0CF;</div>
+      <div class="tutorial-title">Your Turn</div>
+      <div class="tutorial-text"><b>Play</b> a card to an expedition or <b>discard</b> it, then <b>draw</b> from the deck or a discard pile. Cards must go <b>ascending</b>. Wagers before numbers.</div>
+    </div>
+    <div class="tutorial-slide" data-slide="2">
+      <div class="tutorial-icon">&#x2728;</div>
+      <div class="tutorial-title">Scoring</div>
+      <div class="tutorial-text">Each expedition costs <b>&minus;20</b> to start. Wagers <b>multiply</b> your total. Play <b>8+ cards</b> in one color for a +20 bonus.</div>
+    </div>
+    <div class="tutorial-slide" data-slide="3">
+      <div class="tutorial-icon">&#x1F4A1;</div>
+      <div class="tutorial-title">Tips</div>
+      <div class="tutorial-text">Don\u2019t start too many expeditions &mdash; an empty one scores <b>&minus;20</b>. Watch what your opponent discards for clues.</div>
+    </div>
+  </div>
+  <div class="tutorial-dots" id="tutorial-dots">
+    <div class="tutorial-dot active" onclick="goToTutorialSlide(0)"></div>
+    <div class="tutorial-dot" onclick="goToTutorialSlide(1)"></div>
+    <div class="tutorial-dot" onclick="goToTutorialSlide(2)"></div>
+    <div class="tutorial-dot" onclick="goToTutorialSlide(3)"></div>
+  </div>
+  <button class="tutorial-nav-btn" id="tutorial-next-btn" onclick="advanceTutorial()">Next</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1566,7 +1667,245 @@ leaveGame=function(){
 document.getElementById('player-name').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom()});
 document.getElementById('room-code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom()});
 window.addEventListener('beforeunload',()=>{listeners.forEach(fn=>fn())});
+
+// ===== STATS TRACKING =====
+const STATS_KEY='expedition-stats';
+function defaultStats(){
+  return {
+    totalGames:0,wins:0,losses:0,draws:0,
+    currentStreak:0,bestStreak:0,
+    highestScore:-Infinity,
+    totalScore:0,
+    byPersonality:{},
+    byVariant:{}
+  };
+}
+function loadStats(){
+  try{
+    const raw=localStorage.getItem(STATS_KEY);
+    if(!raw)return defaultStats();
+    const s=JSON.parse(raw);
+    const d=defaultStats();
+    for(const k of Object.keys(d)){
+      if(s[k]===undefined||s[k]===null) s[k]=d[k];
+    }
+    if(typeof s.totalGames!=='number'||s.totalGames<0) return defaultStats();
+    return s;
+  }catch(e){
+    console.error('Stats corrupted, resetting:',e);
+    return defaultStats();
+  }
+}
+function saveStats(s){
+  try{localStorage.setItem(STATS_KEY,JSON.stringify(s))}
+  catch(e){console.error('Failed to save stats:',e)}
+}
+
+function recordGameResult(myScore,oppScore,personality,gameVariant){
+  const s=loadStats();
+  s.totalGames++;
+  s.totalScore+=myScore;
+  if(myScore>oppScore){
+    s.wins++;
+    s.currentStreak=Math.max(0,s.currentStreak)+1;
+    if(s.currentStreak>s.bestStreak) s.bestStreak=s.currentStreak;
+  } else if(myScore<oppScore){
+    s.losses++;
+    s.currentStreak=Math.min(0,s.currentStreak)-1;
+  } else {
+    s.draws++;
+    s.currentStreak=0;
+  }
+  if(myScore>s.highestScore) s.highestScore=myScore;
+
+  if(personality){
+    if(!s.byPersonality[personality]) s.byPersonality[personality]={w:0,l:0,d:0};
+    const p=s.byPersonality[personality];
+    if(myScore>oppScore) p.w++; else if(myScore<oppScore) p.l++; else p.d++;
+  }
+
+  if(gameVariant){
+    if(!s.byVariant[gameVariant]) s.byVariant[gameVariant]={w:0,l:0,d:0};
+    const v=s.byVariant[gameVariant];
+    if(myScore>oppScore) v.w++; else if(myScore<oppScore) v.l++; else v.d++;
+  }
+
+  saveStats(s);
+}
+
+// Hook into showGameOver to record stats (once per game)
+let _statsRecordedForGame=false;
+const _origShowGameOver=showGameOver;
+showGameOver=function(){
+  if(gameState&&gameState.status==='finished'&&!_statsRecordedForGame){
+    _statsRecordedForGame=true;
+    const s1=calcScore(gameState.expeditions.player1);
+    const s2=calcScore(gameState.expeditions.player2);
+    const myScore=mySlot==='player1'?s1.total:s2.total;
+    const oppScore=mySlot==='player1'?s2.total:s1.total;
+    const pers=isAIGame?aiPersonality:null;
+    recordGameResult(myScore,oppScore,pers,variant);
+  }
+  _origShowGameOver();
+};
+
+function showStats(){
+  renderStats();
+  showScreen('stats-screen');
+}
+
+function pct(n,total){return total===0?'0%':Math.round(n/total*100)+'%'}
+
+function renderStats(){
+  const s=loadStats();
+  const winRate=s.totalGames?pct(s.wins,s.totalGames):'--';
+  const avgScore=s.totalGames?Math.round(s.totalScore/s.totalGames):'--';
+  const highScore=s.highestScore===-Infinity?'--':s.highestScore;
+  const streakDisplay=s.currentStreak>0?'+'+s.currentStreak:s.currentStreak<0?''+s.currentStreak:'0';
+  const streakClass=s.currentStreak>0?'positive':s.currentStreak<0?'negative':'';
+
+  let html='';
+
+  html+=`<div class="stats-section">
+    <h3>Overall Record</h3>
+    <div class="stat-row"><span class="stat-label">Games Played</span><span class="stat-value">${s.totalGames}</span></div>
+    <div class="stat-row"><span class="stat-label">Wins / Losses / Draws</span><span class="stat-value">${s.wins} / ${s.losses} / ${s.draws}</span></div>
+    <div class="stat-row"><span class="stat-label">Win Rate</span><span class="stat-value gold">${winRate}</span></div>
+    <div class="stat-row"><span class="stat-label">Current Streak</span><span class="stat-value ${streakClass}">${streakDisplay}</span></div>
+    <div class="stat-row"><span class="stat-label">Best Win Streak</span><span class="stat-value gold">${s.bestStreak}</span></div>
+  </div>`;
+
+  html+=`<div class="stats-section">
+    <h3>Scoring</h3>
+    <div class="stat-row"><span class="stat-label">Highest Score</span><span class="stat-value gold">${highScore}</span></div>
+    <div class="stat-row"><span class="stat-label">Average Score</span><span class="stat-value">${avgScore}</span></div>
+  </div>`;
+
+  const persKeys=Object.keys(s.byPersonality);
+  if(persKeys.length>0){
+    html+=`<div class="stats-section"><h3>vs AI Personality</h3><div class="stats-personality-grid">`;
+    for(const k of persKeys){
+      const p=s.byPersonality[k];
+      const total=p.w+p.l+p.d;
+      const info=AI_PERSONALITIES[k];
+      const name=info?(info.emoji+' '+info.name):k;
+      const wr=pct(p.w,total);
+      html+=`<div class="stats-record-row">
+        <span class="rec-name">${name}</span>
+        <span class="rec-bar">${p.w}W ${p.l}L ${p.d}D</span>
+        <span class="rec-wr">${wr}</span>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+
+  const varKeys=Object.keys(s.byVariant);
+  if(varKeys.length>0){
+    html+=`<div class="stats-section"><h3>By Variant</h3><div class="stats-variant-grid">`;
+    for(const k of varKeys){
+      const v=s.byVariant[k];
+      const total=v.w+v.l+v.d;
+      const name=k==='classic'?'Classic (5 piles)':k==='single'?'Single Pile':k;
+      const wr=pct(v.w,total);
+      html+=`<div class="stats-record-row">
+        <span class="rec-name">${name}</span>
+        <span class="rec-bar">${v.w}W ${v.l}L ${v.d}D</span>
+        <span class="rec-wr">${wr}</span>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  }
+
+  if(s.totalGames===0){
+    html+=`<div class="stats-section" style="text-align:center">
+      <p style="color:var(--parchment-dark);font-style:italic;font-size:14px">No expeditions completed yet.<br>Play a game to start tracking!</p>
+    </div>`;
+  }
+
+  document.getElementById('stats-content').innerHTML=html;
+}
+
+function confirmResetStats(){
+  document.getElementById('reset-confirm').classList.add('active');
+}
+function closeResetConfirm(){
+  document.getElementById('reset-confirm').classList.remove('active');
+}
+function doResetStats(){
+  closeResetConfirm();
+  localStorage.removeItem(STATS_KEY);
+  renderStats();
+  toast('Stats reset');
+}
+
 tryReconnect();
+
+// --- ONBOARDING TUTORIAL ---
+let tutorialSlide=0;
+const TUTORIAL_TOTAL=4;
+
+function showTutorial(){
+  tutorialSlide=0;
+  renderTutorialSlide();
+  document.getElementById('tutorial-overlay').classList.add('active');
+}
+
+function closeTutorial(){
+  SFX.select();
+  document.getElementById('tutorial-overlay').classList.remove('active');
+  localStorage.setItem('onboarded','1');
+}
+
+function renderTutorialSlide(){
+  const slides=document.querySelectorAll('.tutorial-slide');
+  const dots=document.querySelectorAll('.tutorial-dot');
+  slides.forEach((s,i)=>{s.classList.toggle('active',i===tutorialSlide)});
+  dots.forEach((d,i)=>{d.classList.toggle('active',i===tutorialSlide)});
+  const btn=document.getElementById('tutorial-next-btn');
+  const skip=document.getElementById('tutorial-skip');
+  if(tutorialSlide===TUTORIAL_TOTAL-1){
+    btn.textContent='Got it!';
+    btn.classList.add('primary');
+    skip.style.display='none';
+  }else{
+    btn.textContent='Next';
+    btn.classList.remove('primary');
+    skip.style.display='';
+  }
+}
+
+function advanceTutorial(){
+  SFX.select();
+  if(tutorialSlide>=TUTORIAL_TOTAL-1){closeTutorial();return}
+  tutorialSlide++;
+  renderTutorialSlide();
+}
+
+function goToTutorialSlide(i){
+  if(i===tutorialSlide)return;
+  SFX.select();
+  tutorialSlide=i;
+  renderTutorialSlide();
+}
+
+// Swipe support for tutorial
+(function(){
+  const el=document.getElementById('tutorial-overlay');
+  let startX=0,startY=0;
+  el.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY},{passive:true});
+  el.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=e.changedTouches[0].clientY-startY;
+    if(Math.abs(dx)<50||Math.abs(dy)>Math.abs(dx))return;
+    if(dx<0&&tutorialSlide<TUTORIAL_TOTAL-1){SFX.select();tutorialSlide++;renderTutorialSlide()}
+    else if(dx>0&&tutorialSlide>0){SFX.select();tutorialSlide--;renderTutorialSlide()}
+  },{passive:true});
+})();
+
+// Show tutorial on first visit
+if(!localStorage.getItem('onboarded')){
+  setTimeout(showTutorial,400);
+}
 </script>
 </body>
 </html>
