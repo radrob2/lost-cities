@@ -20,7 +20,7 @@
 html,body{height:100%;overflow:hidden;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment)}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center}
 
-.screen{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:20px;position:absolute;top:0;left:0}
+.screen{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:100%;padding:20px;position:absolute;top:0;left:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .screen.active{display:flex}
 
 /* LOBBY */
@@ -245,24 +245,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <button class="variant-btn active" id="vbtn-classic" onclick="SFX.select();setVariant('classic')">Classic (5 piles)</button>
     <button class="variant-btn" id="vbtn-single" onclick="SFX.select();setVariant('single')">Single pile</button>
   </div>
-  <div style="margin-bottom:12px;text-align:center">
-    <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--parchment-dark);margin-bottom:6px;opacity:.7">AI Personality</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
-      <button class="variant-btn" id="pbtn-explorer" onclick="SFX.select();setPersonality('explorer')">&#x1F5E1;&#xFE0F; Explorer</button>
-      <button class="variant-btn" id="pbtn-scholar" onclick="SFX.select();setPersonality('scholar')">&#x1F6E1;&#xFE0F; Scholar</button>
-      <button class="variant-btn" id="pbtn-collector" onclick="SFX.select();setPersonality('collector')">&#x1F3DB;&#xFE0F; Collector</button>
-      <button class="variant-btn" id="pbtn-spy" onclick="SFX.select();setPersonality('spy')">&#x1F575;&#xFE0F; Spy</button>
-      <button class="variant-btn" id="pbtn-gambler" onclick="SFX.select();setPersonality('gambler')">&#x23F1;&#xFE0F; Gambler</button>
-      <button class="variant-btn active" id="pbtn-heuristic" onclick="SFX.select();setPersonality('heuristic')">&#x1F9E0; Strategist</button>
-    </div>
-    <div style="font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);margin:8px 0 2px;opacity:.5">Boss AI</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
-      <button class="variant-btn" id="pbtn-seer" onclick="SFX.select();setPersonality('seer')">&#x1F441;&#xFE0F; The Seer</button>
-      <button class="variant-btn" id="pbtn-oracle" onclick="SFX.select();setPersonality('oracle')">&#x1F52E; The Oracle</button>
-    </div>
-    <div id="boss-warn" style="font-size:11px;color:#e07060;text-align:center;min-height:16px;margin-top:4px"></div>
-  </div>
-  <button class="btn" onclick="SFX.select();startAIGame()">Play vs AI</button>
+  <button class="btn" onclick="SFX.select();openAIPersonalityModal()">Play vs AI</button>
   <button class="btn" onclick="SFX.select();createRoom()">Create Room</button>
   <button class="btn" onclick="SFX.select();showJoin()">Join Room</button>
   <button class="btn" style="border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();showTutorial()">How to Play</button>
@@ -417,6 +400,29 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 </div>
 
+<!-- AI PERSONALITY PICKER -->
+<div class="game-menu-overlay" id="ai-personality-modal" onclick="if(event.target===this)closeAIPersonalityModal()">
+  <div class="game-menu" style="max-width:320px">
+    <h2>Choose Your Opponent</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:4px">
+      <button class="variant-btn" id="pbtn-explorer" onclick="SFX.select();setPersonality('explorer')">&#x1F5E1;&#xFE0F; Explorer</button>
+      <button class="variant-btn" id="pbtn-scholar" onclick="SFX.select();setPersonality('scholar')">&#x1F6E1;&#xFE0F; Scholar</button>
+      <button class="variant-btn" id="pbtn-collector" onclick="SFX.select();setPersonality('collector')">&#x1F3DB;&#xFE0F; Collector</button>
+      <button class="variant-btn" id="pbtn-spy" onclick="SFX.select();setPersonality('spy')">&#x1F575;&#xFE0F; Spy</button>
+      <button class="variant-btn" id="pbtn-gambler" onclick="SFX.select();setPersonality('gambler')">&#x23F1;&#xFE0F; Gambler</button>
+      <button class="variant-btn active" id="pbtn-heuristic" onclick="SFX.select();setPersonality('heuristic')">&#x1F9E0; Strategist</button>
+    </div>
+    <div style="font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);margin:8px 0 2px;opacity:.5">Boss AI</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+      <button class="variant-btn" id="pbtn-seer" onclick="SFX.select();setPersonality('seer')">&#x1F441;&#xFE0F; The Seer</button>
+      <button class="variant-btn" id="pbtn-oracle" onclick="SFX.select();setPersonality('oracle')">&#x1F52E; The Oracle</button>
+    </div>
+    <div id="boss-warn" style="font-size:11px;color:#e07060;text-align:center;min-height:16px;margin-top:4px"></div>
+    <button class="btn" style="margin-top:8px;width:100%" onclick="SFX.select();closeAIPersonalityModal();startAIGame()">Start Game</button>
+    <button class="btn" style="width:100%;border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();closeAIPersonalityModal()">Back</button>
+  </div>
+</div>
+
 <!-- ONBOARDING TUTORIAL -->
 <div class="tutorial-overlay" id="tutorial-overlay">
   <button class="tutorial-skip" id="tutorial-skip" onclick="closeTutorial()">Skip</button>
@@ -520,6 +526,8 @@ function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.c
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function showRules(){document.getElementById('rules-modal').classList.add('active')}
 function closeRules(){document.getElementById('rules-modal').classList.remove('active')}
+function openAIPersonalityModal(){document.getElementById('ai-personality-modal').classList.add('active')}
+function closeAIPersonalityModal(){document.getElementById('ai-personality-modal').classList.remove('active')}
 // ===== TURN NOTIFICATIONS =====
 function requestNotificationPermission(){
   if('Notification' in window && Notification.permission==='default'){

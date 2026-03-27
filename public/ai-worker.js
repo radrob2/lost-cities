@@ -1186,6 +1186,14 @@ function heuristicEvaluate(gs, variant){
     playOptions.push({card, score, action:'play'});
   }
 
+  // === OPPONENT HAND ANALYSIS (Seer/Oracle) ===
+  const oppHand=(gs.hands.player1&&gs.hands.player1.length>0)?gs.hands.player1:null;
+  const oppHandByColor={};
+  if(oppHand){
+    for(const c of COLORS) oppHandByColor[c]=[];
+    for(const card of oppHand) oppHandByColor[card.color].push(card);
+  }
+
   // === SCORE EACH DISCARD OPTION ===
   const discardOptions=[];
   for(const card of hand){
@@ -1211,6 +1219,35 @@ function heuristicEvaluate(gs, variant){
     if(gs.oppDrawHistory){
       const drewFromColor=gs.oppDrawHistory.filter(dc=>dc===c).length;
       if(drewFromColor>0) safety-=12*drewFromColor;
+    }
+
+    // === SEER/ORACLE: Opponent hand awareness for discards ===
+    if(oppHand){
+      const oppCardsInColor=oppHandByColor[c]||[];
+      if(oppCardsInColor.length>0){
+        // Opponent holds cards in this color — discarding here is dangerous
+        // Check if opponent can play cards that connect to our discard
+        const oppPlayable=oppCardsInColor.filter(oc=>oc.value>0 && oc.value>(card.value||0));
+        if(oppExp.length>0){
+          // Opponent has expedition AND hand cards in this color
+          safety-=15*oppCardsInColor.length;
+          // Extra penalty if opponent has cards that chain from our discard
+          if(oppPlayable.length>0) safety-=10*oppPlayable.length;
+        } else if(oppCardsInColor.length>=2){
+          // Opponent has multiple cards — might start expedition from our discard
+          safety-=8*oppCardsInColor.length;
+          if(card.value<=4) safety-=10; // low cards help them start
+        } else {
+          // Single card — mild danger
+          safety-=5;
+        }
+        // Wager in opponent hand + our discard = very bad
+        const oppWagersInHand=oppCardsInColor.filter(oc=>oc.value===0).length;
+        if(oppWagersInHand>0 && card.value>0) safety-=12*oppWagersInHand;
+      } else {
+        // Opponent has NO cards in this color — safe to discard here
+        safety+=10;
+      }
     }
 
     // Value to us
@@ -1354,15 +1391,14 @@ self.onmessage=function(e){
   let result;
   if(personality==='heuristic'){
     result=heuristicEvaluate(gameState, variant);
+  } else if(personality==='seer'||personality==='oracle'){
+    // Seer/Oracle use enhanced heuristic with known opponent hand
+    result=heuristicEvaluate(gameState, variant);
   } else {
     const genomeSet=variant==='single'?GENOMES_SINGLE:GENOMES;
-    // Seer/Oracle use scholar genome for MC rollouts
-    const gKey=(personality==='seer'||personality==='oracle')?'scholar':(personality||'scholar');
+    const gKey=personality||'scholar';
     const genome=genomeSet[gKey]||genomeSet.scholar;
-    // Pass known opponent hand for Seer/Oracle
-    const knownOppHand=(personality==='seer'||personality==='oracle')?gameState.hands.player1:null;
-    const knownDeck=(personality==='oracle')?gameState.knownDeck:null;
-    result=evaluate(gameState, variant, simCount||500, genome, knownOppHand, knownDeck);
+    result=evaluate(gameState, variant, simCount||500, genome, null, null);
   }
   const elapsed=Math.round(performance.now()-t0);
   self.postMessage({result, elapsed});
