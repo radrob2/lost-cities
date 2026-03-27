@@ -384,8 +384,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   </div>
 
   <div class="board-area">
+    <div class="row-label" id="opp-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Opponent</div>
     <div class="card-row" id="opp-row"></div>
     <div class="middle-row">
+      <div class="row-label" id="discard-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Discard</div>
       <div class="card-row" id="discard-row"></div>
       <div id="single-pile-area" style="display:none"></div>
       <div class="deck-card" id="deck-draw" onclick="drawFromDeck()">
@@ -394,6 +396,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       </div>
       <div id="live-score" style="font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);opacity:.5;margin-top:2px;text-align:center;font-variant-numeric:tabular-nums"></div>
     </div>
+    <div class="row-label" style="font-family:'Cinzel',serif;font-size:9px;color:var(--parchment-dark);opacity:.4;text-transform:uppercase;letter-spacing:1.5px;padding:0 12px">Your Ventures</div>
     <div class="card-row" id="my-row"></div>
   </div>
 
@@ -733,11 +736,16 @@ function renderGame(){
       const oppSlotName=mySlot==='player1'?'player2':'player1';
       const myS=calcScore(gameState.expeditions[mySlot]);
       const oppS=calcScore(gameState.expeditions[oppSlotName]);
-      const diff=myS.total-oppS.total;
-      const diffStr=diff>0?`+${diff}`:diff<0?`${diff}`:'tied';
-      liveScoreEl.textContent=`${myS.total} vs ${oppS.total} (${diffStr})`;
-      liveScoreEl.style.color=diff>0?'var(--gold)':diff<0?'#e07060':'var(--parchment-dark)';
-      liveScoreEl.style.display='';
+      // Hide when both are 0 (no ventures started yet)
+      if(myS.total===0 && oppS.total===0){
+        liveScoreEl.style.display='none';
+      } else {
+        const diff=myS.total-oppS.total;
+        const diffStr=diff>0?`+${diff}`:diff<0?`${diff}`:'tied';
+        liveScoreEl.textContent=`${myS.total} vs ${oppS.total} (${diffStr})`;
+        liveScoreEl.style.color=diff>0?'var(--gold)':diff<0?'#e07060':'var(--parchment-dark)';
+        liveScoreEl.style.display='';
+      }
     } else {
       liveScoreEl.style.display='none';
     }
@@ -802,10 +810,14 @@ function renderBoard(){
   // Undo state
   const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
 
+  // Discard label visibility
+  const discardLabel=document.getElementById('discard-label');
+
   // Single pile
   if(variant==='single'){
     singleContainer.style.display='inline-block';
     discardRow.style.display='none';
+    if(discardLabel) discardLabel.style.display='none';
     const pile=getCards(gameState,'singlePile');
     const topCard=pile.length>0?pile[pile.length-1]:null;
     const canDiscard=selectedCard && inPlayPhase && isMyTurn;
@@ -826,6 +838,7 @@ function renderBoard(){
     }
     singleContainer.innerHTML=inner;
   } else {
+    if(discardLabel) discardLabel.style.display='';
     singleContainer.style.display='none';
     discardRow.style.display='flex';
   }
