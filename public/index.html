@@ -244,6 +244,78 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .tutorial-nav-btn:active{transform:scale(.96);background:linear-gradient(160deg,#3a2e20,#2a1e14)}
 .tutorial-nav-btn.primary{background:linear-gradient(160deg,var(--gold),#b8922a);color:var(--bg);border-color:var(--gold-bright)}
 .tutorial-nav-btn.primary:active{background:linear-gradient(160deg,#c49a30,#a08020)}
+
+/* IPAD / TABLET LAYOUT */
+@media(min-width:768px){
+  :root{--card-w:72px;--card-h:112px}
+  .card-row{gap:14px;padding:0 20px}
+  .card-col{min-width:calc(var(--card-w) + 16px);max-width:calc(var(--card-w) + 16px)}
+  .expedition-stack{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
+  .card.empty-slot{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
+  .card-col>.card.target{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
+  .card-slot{width:calc(var(--card-w) + 16px);height:calc(var(--card-h) + 16px)}
+  .card-value{font-size:28px}
+  .card-corner{font-size:13px;top:2px;left:3px;padding:2px 4px}
+  .cb-sym{font-size:13px;bottom:2px;right:3px}
+  .hand-cards>div{margin-left:calc(var(--card-w) * -0.12)}
+  .hand-area{padding:10px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .top-bar{padding:12px 20px;font-size:15px}
+  .turn-indicator{font-size:12px;padding:6px 16px}
+  .phase-bar{font-size:14px;padding:6px 16px}
+  .middle-row{gap:10px;padding:8px 0}
+  .deck-card .deck-num{font-size:11px}
+  .board-area{padding:12px 0}
+  .btn{font-size:18px;padding:16px 36px;min-width:240px;max-width:400px}
+  .lobby-title{font-size:clamp(36px,8vw,56px)}
+  .lobby-subtitle{font-size:clamp(16px,3.5vw,22px);margin-bottom:36px}
+  .score-board{max-width:500px;padding:28px}
+  .score-table th,.score-table td{padding:8px 12px;font-size:16px}
+  .score-table .total-row td{font-size:22px}
+  .modal{max-width:500px;padding:32px}
+  .game-menu{max-width:380px;padding:32px 28px}
+  .stats-container{max-width:500px}
+  .tutorial-slides{max-width:440px}
+  .tutorial-text{max-width:400px;font-size:17px}
+  .tutorial-title{font-size:clamp(26px,6vw,36px)}
+  .target-label{font-size:8px;bottom:-16px}
+  .undo-label{font-size:8px;bottom:-14px}
+  .toast{font-size:14px;padding:12px 28px}
+}
+
+/* IPAD LANDSCAPE */
+@media(min-width:768px) and (orientation:landscape){
+  :root{--card-w:68px;--card-h:106px}
+  .card-row{gap:18px;padding:0 28px}
+  .board-area{padding:6px 16px;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:8px}
+  .hand-cards>div{margin-left:calc(var(--card-w) * -0.08)}
+  .hand-area{padding:8px 24px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .middle-row{flex-direction:row;gap:16px;padding:6px 0}
+}
+
+/* HIGH CONTRAST MODE */
+.high-contrast .card{border-width:2.5px;border-style:solid}
+.high-contrast .card.color-red{border-color:#ff4444}
+.high-contrast .card.color-green{border-color:#33cc66}
+.high-contrast .card.color-blue{border-color:#4499ff}
+.high-contrast .card.color-white{border-color:#ccccdd}
+.high-contrast .card.color-yellow{border-color:#ffcc00}
+.high-contrast .card-value{color:#ffffff;text-shadow:0 1px 4px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.6)}
+.high-contrast .card-corner{color:#ffffff;background:rgba(0,0,0,.55);font-size:11px;padding:2px 4px}
+.high-contrast .card.selected{box-shadow:0 8px 32px rgba(255,215,0,.85);border-color:#ffd700!important;border-width:3px}
+.high-contrast .card.empty-slot{border:2.5px dashed rgba(255,255,255,.2);background:rgba(255,255,255,.05)}
+.high-contrast .card.target{border-width:3px;box-shadow:0 0 18px rgba(255,215,0,.5)}
+.high-contrast .card.undoable{border-width:3px}
+.high-contrast .turn-indicator{font-size:12px;font-weight:900;letter-spacing:1.5px}
+.high-contrast .your-turn{background:#ffd700;color:#000}
+.high-contrast .their-turn{background:rgba(255,255,255,.12);color:rgba(255,255,255,.6)}
+.high-contrast .phase-bar{font-size:14px;font-weight:700;color:#ffffff}
+.high-contrast .phase-bar.draw-phase{color:#ffd700;font-weight:900}
+.high-contrast .top-bar .player-info{color:#e0d8c8}
+.high-contrast .toast{border:1.5px solid rgba(255,215,0,.5);color:#ffd700}
+.high-contrast .score-table td{color:#ffffff}
+.high-contrast .target-label{font-size:7px;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,.7)}
+.high-contrast .hand-area{background:rgba(0,0,0,.55)}
+.high-contrast .top-bar{background:rgba(0,0,0,.55)}
 </style>
 </head>
 <body>
@@ -409,6 +481,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <button class="btn" onclick="SFX.select();closeGameMenu()">Resume Game</button>
     <button class="btn" onclick="SFX.select();closeGameMenu();showTutorial()">How to Play</button>
     <button class="btn" id="cb-toggle-btn" onclick="SFX.select();toggleColorblind()">Colorblind Mode: Off</button>
+    <button class="btn" id="hc-toggle-btn" onclick="SFX.select();toggleHighContrast()">High Contrast: Off</button>
     <button class="btn" id="score-toggle-btn" onclick="SFX.select();toggleLiveScore()">Live Score: On</button>
     <button class="btn" style="border-color:#c0392b;color:#e74c3c" onclick="SFX.select();confirmQuit()">Main Menu</button>
     <div class="save-note">Game is saved automatically</div>
@@ -506,6 +579,8 @@ const COLOR_LABELS = {red:'Red',green:'Green',blue:'Blue',white:'White',yellow:'
 const COLOR_HEX = {red:'#c04040',green:'#40a060',blue:'#4080c0',white:'#909098',yellow:'#c0a030'};
 const COLOR_SYMBOLS = {red:'\u25B2',green:'\u25CF',blue:'\u2248',white:'\u25C6',yellow:'\u2605'};
 let colorblindMode=localStorage.getItem('expedition-colorblind')==='true';
+let highContrastMode=localStorage.getItem('expedition-highcontrast')==='true';
+if(highContrastMode) document.body.classList.add('high-contrast');
 let liveScoreEnabled=localStorage.getItem('expedition-livescore')!=='false'; // on by default
 let seriesScore={you:0,opp:0};
 let seriesFirstPlayer='player1'; // alternates each rematch
@@ -569,6 +644,8 @@ function showGameMenu(){
   document.getElementById('game-menu').classList.add('active');
   const btn=document.getElementById('cb-toggle-btn');
   if(btn) btn.textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
+  const hcbtn=document.getElementById('hc-toggle-btn');
+  if(hcbtn) hcbtn.textContent='High Contrast: '+(highContrastMode?'On':'Off');
   const sbtn=document.getElementById('score-toggle-btn');
   if(sbtn) sbtn.textContent='Live Score: '+(liveScoreEnabled?'On':'Off');
 }
@@ -577,6 +654,13 @@ function toggleColorblind(){
   colorblindMode=!colorblindMode;
   localStorage.setItem('expedition-colorblind',colorblindMode);
   document.getElementById('cb-toggle-btn').textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
+  renderGame();
+}
+function toggleHighContrast(){
+  highContrastMode=!highContrastMode;
+  localStorage.setItem('expedition-highcontrast',highContrastMode);
+  document.body.classList.toggle('high-contrast',highContrastMode);
+  document.getElementById('hc-toggle-btn').textContent='High Contrast: '+(highContrastMode?'On':'Off');
   renderGame();
 }
 function toggleLiveScore(){
