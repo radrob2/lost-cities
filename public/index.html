@@ -750,16 +750,8 @@ function computeLayout(){
   const boardMargin=Math.min(vw*0.012, vh*0.012);
   const availH=vh-2*boardMargin; // top + bottom margin (opp hand claws back the top via neg margin)
 
-  // Solve: totalFrac * cardH = availH, then verify after render
+  // Solve: totalFrac * cardH = availH
   let cardH=Math.floor(availH/totalFrac);
-  // If we've measured actual overflow from a previous render, use that to correct
-  if(computeLayout._lastOverflow && computeLayout._lastCardH){
-    const measured=computeLayout._lastOverflow;
-    const lastH=computeLayout._lastCardH;
-    // actual content was 'measured' px at cardH='lastH'. Scale down proportionally.
-    const corrected=Math.floor(lastH * (vh/measured));
-    if(corrected<cardH) cardH=corrected;
-  }
 
   // Cap at max card size (don't make cards huge on big screens)
   const maxH=vw>=768?(isLandscape?88:112):(vh<=750?68:78);
@@ -935,20 +927,8 @@ function renderGame(){
   const myNameLabel=document.getElementById('my-name-label');
   if(myNameLabel) myNameLabel.textContent=getName?getName().toUpperCase():'YOU';
 
-  // Measure actual height — if overflowing, correct and re-render once
-  const gs=document.getElementById('game-screen');
-  if(gs && gs.scrollHeight>gs.clientHeight+2 && !computeLayout._correcting){
-    computeLayout._correcting=true;
-    computeLayout._lastOverflow=gs.scrollHeight;
-    computeLayout._lastCardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
-    computeLayout();
-    renderHand();
-    renderBoard();
-    computeLayout._correcting=false;
-  } else if(gs && gs.scrollHeight<=gs.clientHeight+2){
-    computeLayout._lastOverflow=null;
-    computeLayout._lastCardH=null;
-  }
+  // Layout is now fully deterministic (fixed stack heights, fixed hand height)
+  // — no overflow correction loop needed.
 }
 
 // === CONE PERSPECTIVE PROJECTION ===
@@ -1135,10 +1115,24 @@ function renderHand(){
 
   const projH=maxSY-minSY;
   const liftPx=cardH*0.18;
-  // Fixed hand height based on full 8-card hand so layout never shifts
-  const fullHandCone=computeCone(8, containerW);
-  const fixedH=Math.ceil(cardH+liftPx+cardH*0.1);
-  container.style.height=fixedH+'px';
+  // Fixed hand height: compute bounding box for a full 8-card hand to prevent layout shift
+  if(!renderHand._fixedH || renderHand._fixedCardH!==cardH){
+    const ref=computeCone(8, containerW);
+    let refMinY=Infinity, refMaxY=-Infinity;
+    for(let i=0;i<8;i++){
+      const phi=(i-3.5)*ref.stepRad;
+      for(const t of [0, ref.cardHSlant]){
+        for(const dw of [-ref.cardWRad/2, ref.cardWRad/2]){
+          const p=conePoint(ref.R,ref.h,ref.slantH,phi+dw,t);
+          const pr=coneProject(p,ref.POV,ref.focalLen);
+          if(pr){if(pr.y<refMinY)refMinY=pr.y;if(pr.y>refMaxY)refMaxY=pr.y;}
+        }
+      }
+    }
+    renderHand._fixedH=Math.ceil((refMaxY-refMinY)+liftPx+cardH*0.1);
+    renderHand._fixedCardH=cardH;
+  }
+  container.style.height=renderHand._fixedH+'px';
   const offsetSY=-minSY+liftPx;
 
   container.innerHTML=sorted.map((c,idx)=>{
@@ -1298,7 +1292,7 @@ function renderBoard(){
       const topSo=isExp?(pile.length-1)*18:0;
       stackHTML+=`<div style="position:relative;top:${topSo}px;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
       const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
-      return `<div class="card-col"><div class="card-slot" onclick="${handler}" style="position:relative">${stackHTML}${labels}</div></div>`;
+      return `<div class="card-col" style="${isExp?'z-index:50;position:relative':''}"><div class="card-slot" onclick="${handler}" style="position:relative;overflow:visible">${stackHTML}${labels}</div></div>`;
     }).join('');
 
     // Render deck
