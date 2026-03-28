@@ -54,12 +54,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* Hand peek: clipped opponent hand at top */
 .hand-peek{position:relative;overflow:hidden}
 /* Hand glow when it's your turn */
-.hand-glow{box-shadow:0 calc(var(--card-h)*0.15) calc(var(--card-h)*0.4) rgba(212,168,67,.25)}
+.hand-glow{box-shadow:0 calc(var(--card-h)*-0.15) calc(var(--card-h)*0.4) rgba(212,168,67,.2)}
 /* Ensure hands have margin for floating hamburger */
 .hand-peek,.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
 /* BOARD LAYOUT */
-.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-evenly;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10}
+.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:var(--gap-sm);align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10}
 .card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .expedition-stack{position:relative;width:var(--col-w);height:calc(var(--card-h)*1.13);overflow:visible}
@@ -67,11 +67,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.empty-slot{width:var(--col-w);height:calc(var(--card-h)*1.13)}
 .card-slot{width:var(--col-w);height:calc(var(--card-h)*1.13);display:flex;align-items:center;justify-content:center;position:relative}
 /* Deck slot: centered below discards in portrait, hidden in landscape (rendered as 6th grid col) */
-#deck-slot{display:flex;flex-direction:column;align-items:center;margin-top:var(--gap-sm);margin-bottom:0}
+#deck-slot{display:flex;flex-direction:column;align-items:center}
 /* Info rows: name left, score right */
-.info-row{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 calc(var(--pad)*1.5)}
-.player-label{font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap}
-.total-score{font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.85);font-weight:700;font-variant-numeric:tabular-nums}
+.info-row{display:flex;align-items:baseline;width:100%;padding:0 calc(var(--pad)*1.5)}
+.player-label{flex:1;font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.total-score{flex:1;font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.85);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 
 /* CARDS */
 .card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:calc(var(--card-h)*.02) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
@@ -127,7 +127,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 @keyframes undo-pulse{from{opacity:.7}to{opacity:1}}
 
 /* HAND */
-.hand-area{padding:var(--gap-sm) var(--gap-sm);padding-bottom:max(calc(var(--gap-md) * .88),env(safe-area-inset-bottom));width:100%}
+.hand-area{padding:0;padding-bottom:env(safe-area-inset-bottom,0);width:100%}
 .hand-cards{position:relative;width:100%;overflow:visible;padding:var(--gap-sm) 0}
 .hand-cards .card{flex-shrink:0}
 .hand-cards>div{position:absolute;z-index:0}
