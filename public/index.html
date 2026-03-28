@@ -49,15 +49,16 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* GAME BOARD */
 #game-screen{padding:0;flex-direction:column;justify-content:space-between;background:var(--bg);position:relative}
-/* Floating hamburger menu */
-.floating-menu-btn{position:absolute;top:max(var(--gap-md),env(safe-area-inset-top));right:var(--gap-md);z-index:20;background:none;border:none;color:var(--parchment-dark);font-size:calc(var(--font-base)*1.7);cursor:pointer;padding:var(--gap-md);line-height:1;opacity:.7;transition:opacity .2s}
+/* Floating gear menu */
+.floating-menu-btn{position:absolute;bottom:max(var(--gap-md),env(safe-area-inset-bottom));right:var(--gap-md);z-index:20;background:none;border:none;color:var(--gold);font-size:calc(var(--font-base)*1.7);cursor:pointer;padding:var(--gap-md);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 .floating-menu-btn:active{opacity:1}
 /* Hand peek: clipped opponent hand at top */
 .hand-peek{position:relative;overflow:hidden;width:100%}
 /* Screen edge glow when it's your turn */
-.your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.4) rgba(212,168,67,.6)}
-/* Ensure hands have margin for floating hamburger */
-.hand-peek,.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
+.your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.4) rgba(212,168,67,.7)}
+/* Ensure hands have margin for floating gear */
+.hand-peek{padding-left:var(--pad);padding-right:var(--pad)}
+.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10}
@@ -286,7 +287,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .high-contrast .toast{border:2px solid rgba(255,215,0,.7);color:#ffd700}
 .high-contrast .score-table td{color:#ffffff}
 .high-contrast .target-label{font-size:8px;color:#ffd700;font-weight:900;text-shadow:0 0 10px rgba(255,215,0,.8)}
-.high-contrast .floating-menu-btn{color:rgba(255,215,0,.8);opacity:1}
+.high-contrast .floating-menu-btn{color:var(--gold-bright);opacity:1}
 .high-contrast .r-line{font-size:14px}
 .high-contrast .r-pos{color:#ffdd00}
 .high-contrast .r-neg{color:#ff5555}
@@ -349,9 +350,6 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div id="game-screen" class="screen">
   <span id="opponent-name-store" style="display:none">Opponent</span>
 
-  <!-- Floating hamburger menu button -->
-  <button class="floating-menu-btn" onclick="SFX.select();showGameMenu()">&#x2699;</button>
-
   <div class="board-area">
     <!-- Opponent hand peeking from top edge -->
     <div id="opp-hand-row" class="hand-peek"></div>
@@ -385,6 +383,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       <div class="hand-cards" id="hand-cards"></div>
     </div>
   </div>
+
+  <!-- Floating gear menu button -->
+  <button class="floating-menu-btn" onclick="SFX.select();showGameMenu()">&#x2699;</button>
 
   <div id="stack-overlay" class="stack-overlay" onclick="expandedStack=null;document.getElementById('stack-overlay').classList.remove('active');renderBoard()">
     <div class="stack-overlay-cards" id="stack-overlay-cards" onclick="event.stopPropagation()"></div>
@@ -761,7 +762,7 @@ function computeLayout(){
   // Floor at minimum usable size
   cardH=Math.max(cardH, 12); // absolute floor: 12px card (practically invisible, but won't break)
 
-  const cardW=Math.round(cardH*0.615);
+  const cardW=Math.round(cardH*0.618);
   const scale=cardH/maxH;
 
   // Derived sizing — all proportional
@@ -860,29 +861,65 @@ function renderGame(){
   renderHand();
   renderBoard();
 
-  // Opponent hand: same arc as player hand, flipped, clipped to show ~20% peeking from top
+  // Opponent hand: cone perspective mirrored, clipped to show ~35% peeking from top
   const oppHandRow=document.getElementById('opp-hand-row');
   if(oppHandRow){
     const oppSlotN=mySlot==='player1'?'player2':'player1';
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
-    const containerW=oppHandRow.parentElement?.offsetWidth||375;
-    const arc=computeArc(oppHandLen, containerW);
-    // Same arc as player hand, but only show the bottom ~20% of cards
-    // Cards are positioned normally (center high, edges low + rotated)
-    // Container clips everything above its height
-    const visibleH=Math.round(arc.cardH*0.35);
-    oppHandRow.style.height=visibleH+'px';
-    let html='';
+    const oppContainerW=oppHandRow.parentElement?.offsetWidth||375;
+    const oppCone=computeCone(oppHandLen, oppContainerW);
+    const {cardW:oCW, cardH:oCH, R:oR, h:oH, d:oD, slantH:oSH, POV:oPOV, cardWRad:oWR, cardHSlant:oHS, stepRad:oSR}=oppCone;
+    const oCX=oppContainerW/2;
+
+    // Project cards to find bounds
+    let oMinY=Infinity, oMaxY=-Infinity;
+    const oppCards=[];
     for(let i=0;i<oppHandLen;i++){
-      const angleDeg=(i-(oppHandLen-1)/2)*arc.stepDeg;
-      const angleRad=angleDeg*Math.PI/180;
-      const x=arc.centerX+arc.R*Math.sin(angleRad)-arc.cardW/2;
-      const arcY=arc.R*(1-Math.cos(angleRad));
-      // Invert: center cards lowest (most visible), edge cards higher (less visible)
-      const y=arc.arcDrop-arcY;
-      // Position so the bottom of the center card (y=arcDrop) sits at container bottom
-      const top=y+(visibleH-arc.cardH-arc.arcDrop);
-      html+=`<div class="card card-back" style="position:absolute;left:${x.toFixed(1)}px;top:${top.toFixed(1)}px;transform:rotate(${(-angleDeg).toFixed(1)}deg);transform-origin:center center"></div>`;
+      const phi=(i-(oppHandLen-1)/2)*oSR;
+      const tl=conePoint(oR,oH,oSH, phi-oWR/2, 0);
+      const tr=conePoint(oR,oH,oSH, phi+oWR/2, 0);
+      const bl=conePoint(oR,oH,oSH, phi-oWR/2, oHS);
+      const br=conePoint(oR,oH,oSH, phi+oWR/2, oHS);
+      const ptl=coneProject(tl,oPOV,oD), ptr=coneProject(tr,oPOV,oD);
+      const pbl=coneProject(bl,oPOV,oD), pbr=coneProject(br,oPOV,oD);
+      if(!ptl||!ptr||!pbl||!pbr) continue;
+      for(const p of [ptl,ptr,pbl,pbr]){
+        if(p.y<oMinY) oMinY=p.y;
+        if(p.y>oMaxY) oMaxY=p.y;
+      }
+      oppCards.push({phi,ptl,ptr,pbl,pbr});
+    }
+
+    // Show only bottom ~35% of projected height (cards peeking from top, mirrored)
+    const projHOpp=oMaxY-oMinY;
+    const visibleH=Math.round(projHOpp*0.50);
+    oppHandRow.style.height=visibleH+'px';
+
+    // Mirror vertically: flip Y so cards appear to fan from top edge
+    // Offset so the "bottom" (rim edge) of cards sits at y=0 (top of visible area)
+    const mirrorOffY=oMaxY+visibleH-projHOpp;
+
+    let html='';
+    for(const cd of oppCards){
+      // Mirror: negate Y, shift into container. Flip X for mirrored fan direction
+      const sx=[0, oCW, 0, oCW];
+      const sy=[0, 0, oCH, oCH];
+      const dx=[cd.ptl.x+oCX, cd.ptr.x+oCX, cd.pbl.x+oCX, cd.pbr.x+oCX];
+      // Mirror Y: subtract from oMaxY, then offset so bottom of fan shows at container bottom
+      const dy=[
+        -(cd.ptl.y-oMaxY)+(visibleH-projHOpp),
+        -(cd.ptr.y-oMaxY)+(visibleH-projHOpp),
+        -(cd.pbl.y-oMaxY)+(visibleH-projHOpp),
+        -(cd.pbr.y-oMaxY)+(visibleH-projHOpp)
+      ];
+
+      const m=computeHomography(
+        sx[0],sy[0],sx[1],sy[1],sx[2],sy[2],sx[3],sy[3],
+        dx[0],dy[0],dx[1],dy[1],dx[2],dy[2],dx[3],dy[3]
+      );
+      if(!m) continue;
+      const cssMatrix=`matrix3d(${m[0]},${m[3]},0,${m[6]}, ${m[1]},${m[4]},0,${m[7]}, 0,0,1,0, ${m[2]},${m[5]},0,${m[8]})`;
+      html+=`<div class="card card-back" style="position:absolute;left:0;top:0;transform:${cssMatrix};transform-origin:0 0"></div>`;
     }
     oppHandRow.innerHTML=html;
   }
@@ -910,20 +947,123 @@ function renderGame(){
 }
 
 // Shared arc calculation for both player and opponent hands
-function computeArc(n, containerW){
-  const cardW=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
-  const cardH=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
-  const usableW=containerW*0.88;
-  const R=Math.max(containerW*1.8, 600);
-  const maxSpreadPx=(usableW-cardW)/2;
-  const maxHalfAngle=Math.asin(Math.min(maxSpreadPx/R, 0.99));
-  const fitStep=n<=1?0:(maxHalfAngle*180/Math.PI)/((n-1)/2);
-  const overlapStep=n<=1?0:Math.atan((cardW*0.85)/R)*180/Math.PI;
-  const stepDeg=Math.min(fitStep, overlapStep, 3.0);
-  const centerX=containerW/2;
-  const outerAngle=((n-1)/2)*stepDeg*Math.PI/180;
-  const arcDrop=R*(1-Math.cos(outerAngle));
-  return {cardW, cardH, R, stepDeg, centerX, arcDrop};
+// === CONE PERSPECTIVE PROJECTION ===
+// All cone geometry derived from two inputs: vw, vh
+// Constants: R = h = d = min(vw, vh)  (cone radius = height = POV distance)
+// Card aspect: cardW = cardH * 0.618
+
+function conePoint(R, h, slantH, phi, t) {
+  // Point on cone surface at rim angle phi, distance t down the slant from rim
+  const frac = 1 - t / slantH;
+  return { x: R * frac * Math.cos(phi), y: h * frac, z: R * frac * Math.sin(phi) };
+}
+
+function coneProject(p, POV, focalLength) {
+  const depth = POV.y - p.y;
+  if (depth <= 0) return null;
+  return {
+    x: (p.z - POV.z) * (focalLength / depth),
+    y: -(p.x - POV.x) * (focalLength / depth)
+  };
+}
+
+function squareToQuad(x0,y0,x1,y1,x2,y2,x3,y3) {
+  const dx1=x1-x3, dx2=x2-x3, dx3=x0-x1+x3-x2;
+  const dy1=y1-y3, dy2=y2-y3, dy3=y0-y1+y3-y2;
+  const det=dx1*dy2-dx2*dy1;
+  if (Math.abs(det)<1e-10) return null;
+  const g=(dx3*dy2-dx2*dy3)/det;
+  const h=(dx1*dy3-dx3*dy1)/det;
+  return [x1-x0+g*x1,x2-x0+h*x2,x0, y1-y0+g*y1,y2-y0+h*y2,y0, g,h,1];
+}
+
+function adjugate3x3(m) {
+  return [
+    m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+    m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+    m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3]
+  ];
+}
+
+function multiply3x3(a,b) {
+  return [
+    a[0]*b[0]+a[1]*b[3]+a[2]*b[6], a[0]*b[1]+a[1]*b[4]+a[2]*b[7], a[0]*b[2]+a[1]*b[5]+a[2]*b[8],
+    a[3]*b[0]+a[4]*b[3]+a[5]*b[6], a[3]*b[1]+a[4]*b[4]+a[5]*b[7], a[3]*b[2]+a[4]*b[5]+a[5]*b[8],
+    a[6]*b[0]+a[7]*b[3]+a[8]*b[6], a[6]*b[1]+a[7]*b[4]+a[8]*b[7], a[6]*b[2]+a[7]*b[5]+a[8]*b[8]
+  ];
+}
+
+function computeHomography(sx0,sy0,sx1,sy1,sx2,sy2,sx3,sy3,dx0,dy0,dx1,dy1,dx2,dy2,dx3,dy3) {
+  const srcInv = adjugate3x3(squareToQuad(sx0,sy0,sx1,sy1,sx2,sy2,sx3,sy3));
+  const dstM = squareToQuad(dx0,dy0,dx1,dy1,dx2,dy2,dx3,dy3);
+  if (!srcInv || !dstM) return null;
+  return multiply3x3(dstM, srcInv);
+}
+
+function computeCone(n, containerW) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const cardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w'));
+  const cardH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h'));
+
+  // R = h = d = short side of display
+  const R = Math.min(vw, vh);
+  const h = R;
+  const d = R;
+  const slantH = R * Math.SQRT2;  // sqrt(R² + h²) with R=h
+
+  // POV: above center of fan on rim
+  const POV = { x: R, y: h + d, z: 0 };
+
+  // Card dimensions on the cone surface
+  const cardWRad = cardW / R;
+  const cardHSlant = cardH * slantH / R;  // preserves aspect ratio on cone surface
+
+  // Derive spacing from available screen width:
+  // Project the outermost card edges to find how much screen width the fan uses.
+  // We want the fan to fit within ~88% of containerW.
+  // Available arc = the arc angle whose projected width fits in usableW.
+  const usableW = containerW * 0.88;
+
+  // Binary search for max total arc span that fits in usableW
+  // Total span = (N-1)*step + cardWRad (N cards, each cardWRad wide, spaced by step)
+  // We project left/right edges and check projected width
+  function projectedWidth(totalArcRad) {
+    const halfArc = totalArcRad / 2;
+    const pLeft = coneProject(
+      { x: R * Math.cos(-halfArc), y: h, z: R * Math.sin(-halfArc) },
+      POV, d
+    );
+    const pRight = coneProject(
+      { x: R * Math.cos(halfArc), y: h, z: R * Math.sin(halfArc) },
+      POV, d
+    );
+    if (!pLeft || !pRight) return Infinity;
+    return pRight.x - pLeft.x;
+  }
+
+  // Find the arc span whose projection fills usableW
+  let lo = 0, hi = Math.PI / 2;
+  for (let iter = 0; iter < 30; iter++) {
+    const mid = (lo + hi) / 2;
+    if (projectedWidth(mid) < usableW) lo = mid; else hi = mid;
+  }
+  const maxArcRad = lo;
+
+  // Total arc = (N-1)*step + cardWRad. Step = spacing between card centers.
+  // Solve: step = (maxArcRad - cardWRad) / (N-1), clamped so cards don't spread too thin
+  let stepRad;
+  if (n <= 1) {
+    stepRad = 0;
+  } else {
+    stepRad = (maxArcRad - cardWRad) / (n - 1);
+    // Don't let step exceed ~1.5 card widths (would look too sparse)
+    stepRad = Math.min(stepRad, cardWRad * 1.5);
+    // Ensure at least some overlap for large hands
+    stepRad = Math.max(stepRad, cardWRad * 0.3);
+  }
+
+  return { cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad, containerW };
 }
 
 function renderHand(){
@@ -935,18 +1075,71 @@ function renderHand(){
   });
   const n=sorted.length;
   const containerW=container.parentElement.offsetWidth||375;
-  const {cardW, cardH, R, stepDeg, centerX, arcDrop}=computeArc(n, containerW);
-  container.style.height=Math.ceil(cardH+arcDrop+cardH*0.1)+'px';
-  container.innerHTML=sorted.map((c,i)=>{
+  const cone=computeCone(n, containerW);
+  const {cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad}=cone;
+  const centerX=containerW/2;
+
+  // Project all cards to find bounding box for container height
+  let minY=Infinity, maxY=-Infinity;
+  const cardData=[];
+  for(let i=0;i<n;i++){
+    const phi=(i-(n-1)/2)*stepRad;
+    const tl=conePoint(R,h,slantH, phi-cardWRad/2, 0);
+    const tr=conePoint(R,h,slantH, phi+cardWRad/2, 0);
+    const bl=conePoint(R,h,slantH, phi-cardWRad/2, cardHSlant);
+    const br=conePoint(R,h,slantH, phi+cardWRad/2, cardHSlant);
+    const ptl=coneProject(tl,POV,d);
+    const ptr=coneProject(tr,POV,d);
+    const pbl=coneProject(bl,POV,d);
+    const pbr=coneProject(br,POV,d);
+    if(!ptl||!ptr||!pbl||!pbr) continue;
+    // Track Y bounds
+    for(const p of [ptl,ptr,pbl,pbr]){
+      if(p.y<minY) minY=p.y;
+      if(p.y>maxY) maxY=p.y;
+    }
+    cardData.push({i, phi, ptl, ptr, pbl, pbr});
+  }
+
+  // Container height: projected height + padding
+  const projH=maxY-minY;
+  // Extra space for selected card lift
+  const liftPx=cardH*0.18;
+  container.style.height=Math.ceil(projH+liftPx+cardH*0.1)+'px';
+
+  // Offset so top of projected cards sits at liftPx from top (room for lift)
+  const offsetY=-minY+liftPx;
+
+  container.innerHTML=sorted.map((c,idx)=>{
     const sel = selectedCard && selectedCard.id===c.id ? 'selected' : '';
-    // Angle: evenly spaced in degrees, centered at 0
-    const angleDeg=(i-(n-1)/2)*stepDeg;
-    const angleRad=angleDeg*Math.PI/180;
-    // Position on arc: pivot at (centerX, R below hand)
-    const x=centerX+R*Math.sin(angleRad)-cardW/2;
-    const y=R-R*Math.cos(angleRad);
-    if(sel) return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:0;z-index:5">${cardHTML(c,sel)}</div>`;
-    return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;transform:rotate(${angleDeg.toFixed(1)}deg);transform-origin:center center">${cardHTML(c,sel)}</div>`;
+    const cd=cardData.find(d=>d.i===idx);
+    if(!cd) return '';
+
+    if(sel){
+      // Selected card: flat (no perspective), centered at its arc position, lifted
+      const projCenter = coneProject(
+        {x:R*Math.cos(cd.phi), y:h, z:R*Math.sin(cd.phi)}, POV, d
+      );
+      if(!projCenter) return '';
+      const x=projCenter.x+centerX-cardW/2;
+      const y=0; // top of container = lifted position
+      return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;z-index:5">${cardHTML(c,sel)}</div>`;
+    }
+
+    // Unselected: cone perspective via homography matrix3d
+    const sx=[0, cardW, 0, cardW];
+    const sy=[0, 0, cardH, cardH];
+    const dx=[cd.ptl.x+centerX, cd.ptr.x+centerX, cd.pbl.x+centerX, cd.pbr.x+centerX];
+    const dy=[cd.ptl.y+offsetY, cd.ptr.y+offsetY, cd.pbl.y+offsetY, cd.pbr.y+offsetY];
+
+    const m=computeHomography(
+      sx[0],sy[0],sx[1],sy[1],sx[2],sy[2],sx[3],sy[3],
+      dx[0],dy[0],dx[1],dy[1],dx[2],dy[2],dx[3],dy[3]
+    );
+    if(!m) return '';
+
+    const cssMatrix=`matrix3d(${m[0]},${m[3]},0,${m[6]}, ${m[1]},${m[4]},0,${m[7]}, 0,0,1,0, ${m[2]},${m[5]},0,${m[8]})`;
+    return `<div onclick="selectCard('${c.id}')" style="left:0;top:0;transform:${cssMatrix};transform-origin:0 0;z-index:${idx}">${cardHTML(c,'')}</div>`;
   }).join('');
 }
 

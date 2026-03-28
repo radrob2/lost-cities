@@ -62,7 +62,4 @@ function goToTutorialSlide(i){
   },{passive:true});
 })();
 
-// Show tutorial on first visit
-if(!localStorage.getItem('expedition-onboarded')){
-  setTimeout(showTutorial,400);
-}
+// No auto-start — tutorial is accessible via "How to Play" button in lobby
