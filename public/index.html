@@ -48,14 +48,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .variant-btn.active{border-color:var(--gold);background:rgba(201,168,76,.15);color:var(--gold)}
 
 /* GAME BOARD */
-#game-screen{padding:0;flex-direction:column;justify-content:space-between;background:var(--bg)}
-.top-bar{display:flex;justify-content:space-between;align-items:center;padding:var(--pad) calc(var(--pad) * 1.25);
-  padding-top:max(var(--pad),env(safe-area-inset-top));background:rgba(0,0,0,.4);width:100%;font-size:var(--font-base);z-index:10}
-.top-bar .player-info{color:var(--parchment-dark)}
-.turn-indicator{font-family:'Cinzel',serif;font-weight:700;padding:calc(var(--pad) * .44) calc(var(--pad) * 1.06);border-radius:14px;font-size:calc(var(--font-base) * .77);text-transform:uppercase;letter-spacing:1px}
-.your-turn{background:var(--gold);color:var(--bg)}
-.their-turn{background:rgba(255,255,255,.08);color:rgba(240,224,192,.4)}
-.menu-btn{background:none;border:none;color:rgba(240,224,192,.4);font-size:calc(var(--font-base) * 1.38);cursor:pointer;padding:var(--gap-sm) var(--gap-md)}
+#game-screen{padding:0;flex-direction:column;justify-content:space-between;background:var(--bg);position:relative}
+/* Floating hamburger menu */
+.floating-menu-btn{position:absolute;top:max(var(--gap-md),env(safe-area-inset-top));right:var(--gap-md);z-index:20;background:rgba(0,0,0,.5);border:calc(var(--card-h)*.015) solid rgba(212,168,67,.3);border-radius:calc(var(--card-h)*.08);color:var(--parchment);font-size:calc(var(--font-base)*1.5);cursor:pointer;padding:var(--gap-sm) var(--gap-md);line-height:1}
+/* Hand peek: clipped opponent hand at top */
+.hand-peek{display:flex;justify-content:center;overflow:hidden;margin-top:calc(var(--card-h)*-0.82);position:relative}
+/* Hand glow when it's your turn */
+.hand-glow{box-shadow:0 calc(var(--card-h)*0.15) calc(var(--card-h)*0.4) rgba(212,168,67,.25)}
+/* Ensure hands have margin for floating hamburger */
+.hand-peek,.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:var(--gap-md) 0;position:relative;z-index:10}
@@ -280,17 +281,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .high-contrast .card.empty-slot{border:3px dashed rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
 .high-contrast .card.target{border-width:3px;box-shadow:0 0 24px rgba(255,215,0,.7)}
 .high-contrast .card.undoable{border-width:3px;box-shadow:0 0 12px rgba(255,100,50,.4)}
-.high-contrast .turn-indicator{font-size:13px;font-weight:900;letter-spacing:2px}
-.high-contrast .your-turn{background:#ffd700;color:#000;box-shadow:0 0 12px rgba(255,215,0,.5)}
-.high-contrast .their-turn{background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
-.high-contrast .phase-bar{font-size:15px;font-weight:700;color:#ffffff}
-.high-contrast .phase-bar.draw-phase{color:#ffd700;font-weight:900;text-shadow:0 0 8px rgba(255,215,0,.4)}
-.high-contrast .top-bar .player-info{color:#ffffff}
+.high-contrast .phase-bar{font-weight:700;color:#ffffff}
 .high-contrast .toast{border:2px solid rgba(255,215,0,.7);color:#ffd700}
 .high-contrast .score-table td{color:#ffffff}
 .high-contrast .target-label{font-size:8px;color:#ffd700;font-weight:900;text-shadow:0 0 10px rgba(255,215,0,.8)}
-.high-contrast .hand-area{background:rgba(0,0,0,.6)}
-.high-contrast .top-bar{background:rgba(0,0,0,.6)}
+.high-contrast .floating-menu-btn{background:rgba(0,0,0,.8);border-color:rgba(255,215,0,.5)}
 .high-contrast .r-line{font-size:14px}
 .high-contrast .r-pos{color:#ffdd00}
 .high-contrast .r-neg{color:#ff5555}
@@ -352,19 +347,18 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <!-- GAME -->
 <div id="game-screen" class="screen">
   <span id="opponent-name-store" style="display:none">Opponent</span>
-  <div class="top-bar">
-    <div class="turn-indicator their-turn" id="turn-indicator">Their Turn</div>
-    <div style="flex:1"></div>
-    <button class="menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
-  </div>
+
+  <!-- Floating hamburger menu button -->
+  <button class="floating-menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
 
   <div class="board-area">
     <!-- Opponent hand peeking from top edge -->
-    <div id="opp-hand-row" style="display:flex;justify-content:center;gap:1px;overflow:hidden;margin-top:calc(var(--card-h) * -0.82)"></div>
+    <div id="opp-hand-row" class="hand-peek"></div>
 
-    <!-- Opponent info row: name left, score right -->
+    <!-- Opponent info row: name left, status center, score right -->
     <div class="info-row">
       <span id="opp-name-label" class="player-label"></span>
+      <span id="opp-status" class="phase-bar" style="flex:1;text-align:center"></span>
       <span id="opp-total-score" class="total-score"></span>
     </div>
 
@@ -379,11 +373,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <!-- Player info row: name left, hint center, score right -->
     <div class="info-row">
       <span id="my-name-label" class="player-label"></span>
-      <span class="phase-bar" id="phase-bar" style="flex:1;text-align:center">Tap a card in your hand</span>
+      <span id="phase-bar" class="phase-bar" style="flex:1;text-align:center">Tap a card in your hand</span>
       <span id="my-total-score" class="total-score"></span>
     </div>
 
-    <div class="hand-area">
+    <!-- Player hand with glow when it's your turn -->
+    <div class="hand-area" id="hand-area">
       <div class="hand-cards" id="hand-cards"></div>
     </div>
   </div>
@@ -798,12 +793,32 @@ function renderGame(){
   const inPlayPhase = gameState.phase==='play';
   const inDrawPhase = gameState.phase==='draw';
 
-  // Turn indicator
-  const ti=document.getElementById('turn-indicator');
-  const wasMyTurn=ti.classList.contains('your-turn');
-  ti.textContent=isMyTurn?'Your Turn':'Their Turn';
-  ti.className='turn-indicator '+(isMyTurn?'your-turn':'their-turn');
+  // Turn state — reflected in info rows and hand glow
+  const phaseBar=document.getElementById('phase-bar');
+  const oppStatus=document.getElementById('opp-status');
+  const handArea=document.getElementById('hand-area');
+  const wasMyTurn=handArea&&handArea.classList.contains('hand-glow');
   if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
+  // Player hint
+  if(phaseBar){
+    if(!isMyTurn) phaseBar.textContent='Waiting...';
+    else if(inPlayPhase) phaseBar.textContent=selectedCard?'Tap a highlighted zone':'Tap a card in your hand';
+    else phaseBar.textContent=lastPlayedCard?'Draw a card, or undo':'Draw from deck or discard';
+    phaseBar.style.color=isMyTurn?(inDrawPhase?'var(--gold-bright)':''):'';
+    phaseBar.style.fontStyle=isMyTurn?'':'italic';
+    phaseBar.style.opacity=isMyTurn?'':'0.4';
+  }
+  // Opponent status
+  if(oppStatus){
+    if(isMyTurn) oppStatus.textContent='';
+    else oppStatus.textContent='thinking...';
+    oppStatus.style.fontStyle='italic';
+    oppStatus.style.opacity='0.4';
+  }
+  // Hand glow
+  if(handArea){
+    handArea.classList.toggle('hand-glow',isMyTurn);
+  }
 
   // Title + notification for multiplayer
   document.title=isMyTurn?'\uD83D\uDFE1 Your Turn \u2014 Venture':'Venture';
@@ -834,19 +849,7 @@ function renderGame(){
     if(myTotalEl) myTotalEl.textContent='';
   }
 
-  // Phase bar
-  const pb=document.getElementById('phase-bar');
-  if(!isMyTurn){
-    pb.textContent='Waiting for opponent...'; pb.className='phase-bar';
-  } else if(inPlayPhase){
-    pb.textContent=selectedCard
-      ? (variant==='single'?'Tap venture to play or discard pile':'Tap a highlighted zone to play or discard')
-      : 'Tap a card in your hand';
-    pb.className='phase-bar';
-  } else {
-    pb.textContent=lastPlayedCard?'Draw a card, or tap played card to undo':'Draw from deck or a discard pile';
-    pb.className='phase-bar draw-phase';
-  }
+  // Phase bar handled above in turn state section
 
   // Deck draw target highlight
   // Deck target highlight handled in renderBoard discard row
