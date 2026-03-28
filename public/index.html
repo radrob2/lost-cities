@@ -706,14 +706,15 @@ function computeLayout(){
   //
   // Fractions (of cardH):
   const oppPeekFrac   = 0.35;       // fixed peek height
-  const infoRowFrac   = 0.25;       // name/score/hint row
+  const infoRowFrac   = 0.28;       // name/score/hint row (needs to fit font-base text)
   const maxStack      = 8;
   const stackOffFrac  = 0.10;       // per-card offset at max stack
-  const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac + 0.15; // stack + score label
+  const scoreLabelFrac= 0.18;       // live score label below/above stacks
+  const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac + scoreLabelFrac; // stack + score label
   const discardFrac   = 1.13;       // discard card slots
-  const deckFrac      = isLandscape ? 0 : 0.80; // deck below discards in portrait
+  const deckFrac      = isLandscape ? 0 : (0.80 + 0.15); // deck below discards in portrait + "N left" label
   const gapFrac       = 0.06;       // gap between sections
-  const handFrac      = 1.28;       // hand area (cardH + lift + padding)
+  const handFrac      = 1.50;       // hand area (cone projection for 8 cards + lift)
   const numGaps       = 6;          // gaps between 7 sections
 
   const totalFrac =
