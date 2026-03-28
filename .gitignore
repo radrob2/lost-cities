@@ -6,3 +6,4 @@ playtest-screenshots/
 package-lock.json
 ios/
 android/
+.DS_Store

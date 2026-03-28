@@ -50,11 +50,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* GAME BOARD */
 #game-screen{padding:0;flex-direction:column;justify-content:space-between;background:var(--bg);position:relative}
 /* Floating hamburger menu */
-.floating-menu-btn{position:absolute;top:max(var(--gap-md),env(safe-area-inset-top));right:var(--gap-md);z-index:20;background:rgba(0,0,0,.5);border:calc(var(--card-h)*.015) solid rgba(212,168,67,.3);border-radius:calc(var(--card-h)*.08);color:var(--parchment);font-size:calc(var(--font-base)*1.5);cursor:pointer;padding:var(--gap-sm) var(--gap-md);line-height:1}
+.floating-menu-btn{position:absolute;top:max(var(--gap-md),env(safe-area-inset-top));right:var(--gap-md);z-index:20;background:none;border:none;color:var(--parchment-dark);font-size:calc(var(--font-base)*1.7);cursor:pointer;padding:var(--gap-md);line-height:1;opacity:.7;transition:opacity .2s}
+.floating-menu-btn:active{opacity:1}
 /* Hand peek: clipped opponent hand at top */
 .hand-peek{position:relative;overflow:hidden;width:100%}
 /* Screen edge glow when it's your turn */
-.your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.4) rgba(212,168,67,.35)}
+.your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.4) rgba(212,168,67,.6)}
 /* Ensure hands have margin for floating hamburger */
 .hand-peek,.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
@@ -285,7 +286,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .high-contrast .toast{border:2px solid rgba(255,215,0,.7);color:#ffd700}
 .high-contrast .score-table td{color:#ffffff}
 .high-contrast .target-label{font-size:8px;color:#ffd700;font-weight:900;text-shadow:0 0 10px rgba(255,215,0,.8)}
-.high-contrast .floating-menu-btn{background:rgba(0,0,0,.8);border-color:rgba(255,215,0,.5)}
+.high-contrast .floating-menu-btn{color:rgba(255,215,0,.8);opacity:1}
 .high-contrast .r-line{font-size:14px}
 .high-contrast .r-pos{color:#ffdd00}
 .high-contrast .r-neg{color:#ff5555}
@@ -349,7 +350,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <span id="opponent-name-store" style="display:none">Opponent</span>
 
   <!-- Floating hamburger menu button -->
-  <button class="floating-menu-btn" onclick="SFX.select();showGameMenu()">&#x2630;</button>
+  <button class="floating-menu-btn" onclick="SFX.select();showGameMenu()">&#x2699;</button>
 
   <div class="board-area">
     <!-- Opponent hand peeking from top edge -->
@@ -869,7 +870,7 @@ function renderGame(){
     // Same arc as player hand, but only show the bottom ~20% of cards
     // Cards are positioned normally (center high, edges low + rotated)
     // Container clips everything above its height
-    const visibleH=Math.round(arc.cardH*0.25);
+    const visibleH=Math.round(arc.cardH*0.35);
     oppHandRow.style.height=visibleH+'px';
     let html='';
     for(let i=0;i<oppHandLen;i++){
