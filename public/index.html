@@ -1035,8 +1035,9 @@ function computeCone(n, containerW) {
   const d = R;
   const slantH = R * Math.SQRT2;  // sqrt(R² + h²) with R=h
 
-  // POV: centered on screen (x=0, y=0), distance d in front of screen plane (z=h)
-  const POV = { x: 0, y: 0, z: h + d };
+  // POV: above fan center on rim, distance d in front of screen
+  // y=R places POV directly above the rim, matching prototype behavior
+  const POV = { x: 0, y: R, z: h + d };
 
   // Card dimensions on the cone surface
   const cardWRad = cardW / R;
