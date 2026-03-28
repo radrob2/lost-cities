@@ -713,7 +713,7 @@ function computeLayout(){
   const discardFrac   = 1.13;       // discard card slots
   const deckFrac      = isLandscape ? 0 : 0.80; // deck below discards in portrait
   const gapFrac       = 0.06;       // gap between sections
-  const handFrac      = 1.50;       // hand area
+  const handFrac      = 1.28;       // hand area (cardH + lift + padding)
   const numGaps       = 6;          // gaps between 7 sections
 
   const totalFrac =
@@ -2160,6 +2160,12 @@ leaveGame=function(){
 document.getElementById('player-name').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom()});
 document.getElementById('room-code-input').addEventListener('keydown',e=>{if(e.key==='Enter')joinRoom()});
 window.addEventListener('beforeunload',()=>{listeners.forEach(fn=>fn())});
+window.addEventListener('resize',()=>{
+  // Invalidate layout cache and re-render on orientation change / resize
+  computeLayout._vh=null;
+  renderHand._fixedH=null;
+  if(gameState) renderGame();
+});
 tryReconnect();
 </script>
 </body>
