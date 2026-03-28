@@ -1072,7 +1072,9 @@ function computeCone(n, containerW) {
     stepRad = 0;
   } else {
     stepRad = (maxArcRad - cardWRad) / (n - 1);
-    stepRad = Math.min(stepRad, cardWRad * 1.5);
+    // Max step < cardWRad so cards always overlap (0.8 = at least 20% overlap)
+    stepRad = Math.min(stepRad, cardWRad * 0.8);
+    // Min step for very full hands
     stepRad = Math.max(stepRad, cardWRad * 0.3);
   }
 
