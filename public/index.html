@@ -51,7 +51,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* GAME BOARD */
 #game-screen{padding:var(--board-margin);flex-direction:column;justify-content:space-between;background:var(--bg);position:relative}
 /* Floating gear menu */
-.floating-menu-btn{position:absolute;top:max(var(--board-margin),env(safe-area-inset-top));right:var(--board-margin);z-index:20;background:none;border:none;color:var(--gold);font-size:calc(var(--font-base)*3.4);cursor:pointer;padding:var(--gap-md);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6);font-family:sans-serif}
+.floating-menu-btn{position:absolute;top:max(var(--board-margin),env(safe-area-inset-top));right:max(var(--board-margin),env(safe-area-inset-right));z-index:20;background:none;border:none;color:var(--gold);font-size:calc(var(--font-base)*3.4);cursor:pointer;padding:var(--board-margin);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6);font-family:sans-serif}
 .floating-menu-btn:active{opacity:1}
 /* Hand peek: clipped opponent hand at top — bleeds past board margin on all three sides */
 .hand-peek{position:relative;overflow:hidden;width:calc(100% + 2*var(--board-margin));margin-left:calc(-1*var(--board-margin));margin-right:calc(-1*var(--board-margin));margin-top:calc(-1*var(--board-margin))}
@@ -115,7 +115,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* EMPTY SLOTS & TARGETS */
 .card.empty-slot{background:rgba(255,255,255,.02);border:calc(var(--card-h)*.02) dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
 .card.target{border:calc(var(--card-h)*.026) solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 calc(var(--card-h)*.15) rgba(212,168,67,.25)}
-.card-col>.card.target{width:var(--col-w);height:calc(var(--card-h) * 1.13)}
+.card-col>.card.target{width:var(--col-w);height:calc(var(--card-h) * 1.13);margin:0}
 .target-label{position:absolute;bottom:calc(var(--card-h)*-0.18);left:50%;transform:translateX(-50%);font-size:calc(var(--card-h)*.077);font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 calc(var(--card-h)*.077) rgba(212,168,67,.5);z-index:1}
 @keyframes card-pop{
   0%{transform:scale(0.8);opacity:.5}
@@ -812,7 +812,7 @@ function renderGame(){
   if(phaseBar){
     if(!isMyTurn) phaseBar.textContent='Waiting...';
     else if(inPlayPhase) phaseBar.textContent=selectedCard?'Play or discard':'Select a card';
-    else phaseBar.textContent=lastPlayedCard?'Draw or undo':'Draw a card';
+    else phaseBar.textContent='Draw a card';
     phaseBar.classList.toggle('draw-phase',isMyTurn&&inDrawPhase);
     phaseBar.style.fontStyle=isMyTurn?'':'italic';
     phaseBar.style.opacity=isMyTurn?'':'0.4';
@@ -1135,7 +1135,10 @@ function renderHand(){
 
   const projH=maxSY-minSY;
   const liftPx=cardH*0.18;
-  container.style.height=Math.ceil(projH+liftPx+cardH*0.1)+'px';
+  // Fixed hand height based on full 8-card hand so layout never shifts
+  const fullHandCone=computeCone(8, containerW);
+  const fixedH=Math.ceil(cardH+liftPx+cardH*0.1);
+  container.style.height=fixedH+'px';
   const offsetSY=-minSY+liftPx;
 
   container.innerHTML=sorted.map((c,idx)=>{
@@ -1242,11 +1245,12 @@ function renderBoard(){
 
   // Per-stack score label (only when live score enabled and stack has cards)
   function stackScoreLabel(cards){
-    if(!liveScoreEnabled||!cards||cards.length===0) return '';
-    let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}
-    const score=(s-20)*(1+w)+(cards.length>=8?20:0);
-    const cls=score>=0?'color:var(--gold-bright)':'color:#e07060';
-    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);${cls};opacity:.7;margin-top:1px;font-variant-numeric:tabular-nums">${score}</div>`;
+    // Always render the label container to reserve space and prevent layout shift
+    const hasCards=cards&&cards.length>0;
+    const show=liveScoreEnabled&&hasCards;
+    let score=0,cls='';
+    if(hasCards){let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(cards.length>=8?20:0);cls=score>=0?'color:var(--gold-bright)':'color:#e07060';}
+    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);${cls};opacity:${show?.7:0};margin-top:1px;font-variant-numeric:tabular-nums;min-height:calc(var(--font-base) * .69)">${show?score:'&nbsp;'}</div>`;
   }
 
   // Opponent row
