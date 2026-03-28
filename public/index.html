@@ -1110,9 +1110,9 @@ function renderHand(){
       if(p.y<minSY) minSY=p.y;
       if(p.y>maxSY) maxSY=p.y;
     }
-    // Store projected center X for selected card positioning (rim point)
-    const pCenter=coneProject({x:R*Math.sin(phi), y:R*Math.cos(phi), z:h}, POV, d);
-    cardData.push({i, phi, ptl, ptr, pbl, pbr, centerSX: pCenter ? pCenter.x : 0});
+    // Selected card X = average of all 4 projected corners (keeps center constant)
+    const centerSX = (ptl.x + ptr.x + pbl.x + pbr.x) / 4;
+    cardData.push({i, phi, ptl, ptr, pbl, pbr, centerSX});
   }
 
   const projH=maxSY-minSY;
