@@ -51,7 +51,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* GAME BOARD */
 #game-screen{padding:var(--board-margin);flex-direction:column;justify-content:space-between;background:var(--bg);position:relative}
 /* Floating gear menu */
-.floating-menu-btn{position:absolute;bottom:max(var(--board-margin),env(safe-area-inset-bottom));right:var(--board-margin);z-index:20;background:none;border:none;color:var(--gold);font-size:calc(var(--font-base)*1.7);cursor:pointer;padding:var(--gap-md);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6);font-family:sans-serif}
+.floating-menu-btn{position:absolute;top:max(var(--board-margin),env(safe-area-inset-top));right:var(--board-margin);z-index:20;background:none;border:none;color:var(--gold);font-size:calc(var(--font-base)*3.4);cursor:pointer;padding:var(--gap-md);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6);font-family:sans-serif}
 .floating-menu-btn:active{opacity:1}
 /* Hand peek: clipped opponent hand at top — bleeds past board margin on all three sides */
 .hand-peek{position:relative;overflow:hidden;width:calc(100% + 2*var(--board-margin));margin-left:calc(-1*var(--board-margin));margin-right:calc(-1*var(--board-margin));margin-top:calc(-1*var(--board-margin))}
@@ -517,7 +517,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div class="tutorial-slide active" data-slide="0">
       <div class="tutorial-icon">&#x1F9ED;</div>
       <div class="tutorial-title">The Goal</div>
-      <div class="tutorial-text">You\u2019re an explorer funding ventures into the unknown. Play cards across <b>5 colors</b> to build ascending sequences. <b>Highest score wins!</b></div>
+      <div class="tutorial-text">You're an explorer funding ventures into the unknown. Play cards across <b>5 colors</b> to build ascending sequences. <b>Highest score wins!</b></div>
     </div>
     <div class="tutorial-slide" data-slide="1">
       <div class="tutorial-icon">&#x1F0CF;</div>
@@ -532,7 +532,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div class="tutorial-slide" data-slide="3">
       <div class="tutorial-icon">&#x1F4A1;</div>
       <div class="tutorial-title">Tips</div>
-      <div class="tutorial-text">Don\u2019t start too many ventures &mdash; each one costs <b>&minus;20</b>. Watch what your opponent discards for clues.</div>
+      <div class="tutorial-text">Don't start too many ventures &mdash; each one costs <b>&minus;20</b>. Watch what your opponent discards for clues.</div>
     </div>
   </div>
   <div class="tutorial-dots" id="tutorial-dots">
@@ -724,9 +724,10 @@ function computeLayout(){
   // Stack offset fractions (must match getStackOffset in renderBoard)
   function offFrac(count){ return count<=3?0.24:count<=5?0.19:count<=7?0.14:0.10; }
 
-  // Stack height = 1 card + (n-1)*offset + 0.13 base offset + 0.15 score label
-  const oppStackFrac=1.0+Math.max(0,maxOppStack-1)*offFrac(maxOppStack)+0.13+0.15;
-  const myStackFrac=1.0+Math.max(0,maxMyStack-1)*offFrac(maxMyStack)+0.13+0.15;
+  // Fixed stack height — use worst case (8 cards) so layout never shifts during game
+  const maxStack=8;
+  const oppStackFrac=1.0+Math.max(0,maxStack-1)*offFrac(maxStack)+0.13+0.15;
+  const myStackFrac=oppStackFrac;
   const deckFrac=isLandscape?0:0.80;
 
   // Every vertical element as fraction of cardH:
@@ -810,9 +811,9 @@ function renderGame(){
   // Player hint
   if(phaseBar){
     if(!isMyTurn) phaseBar.textContent='Waiting...';
-    else if(inPlayPhase) phaseBar.textContent=selectedCard?'Tap a highlighted zone':'Tap a card in your hand';
-    else phaseBar.textContent=lastPlayedCard?'Draw a card, or undo':'Draw from deck or discard';
-    phaseBar.style.color=isMyTurn?(inDrawPhase?'var(--gold-bright)':''):'';
+    else if(inPlayPhase) phaseBar.textContent=selectedCard?'Play or discard':'Select a card';
+    else phaseBar.textContent=lastPlayedCard?'Draw or undo':'Draw a card';
+    phaseBar.classList.toggle('draw-phase',isMyTurn&&inDrawPhase);
     phaseBar.style.fontStyle=isMyTurn?'':'italic';
     phaseBar.style.opacity=isMyTurn?'':'0.4';
   }
@@ -1278,15 +1279,20 @@ function renderBoard(){
         return `<div class="card-col"><div class="card-slot" onclick="undoLastPlay()">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div></div>`;
       }
       const extra=canDraw?'target':(canDiscard?'target':'');
-      const handler=inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`;
-      // Show all cards in pile with jitter to convey stack depth
+      const hasAction=canDraw||canDiscard;
+      const handler=hasAction?(inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`):(pile.length>1?`toggleExpand('discard','${c}')`:'');
+      const isExp=expandedStack && expandedStack.who==='discard' && expandedStack.color===c;
+      // Show all cards in pile with jitter; expand on tap if no action
+      const baseSo=getStackOffset(pile.length);
       let stackHTML='';
       for(let i=0;i<pile.length-1;i++){
         const card=pile[i];
-        stackHTML+=`<div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
+        const so=isExp?18:0;
+        stackHTML+=`<div style="position:absolute;top:${i*so}px;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
       }
       // Top card (interactive)
-      stackHTML+=`<div style="position:relative;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
+      const topSo=isExp?(pile.length-1)*18:0;
+      stackHTML+=`<div style="position:relative;top:${topSo}px;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
       const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
       return `<div class="card-col"><div class="card-slot" onclick="${handler}" style="position:relative">${stackHTML}${labels}</div></div>`;
     }).join('');
@@ -1747,7 +1753,6 @@ async function undoLastPlay(){
   lastPlayedCard=null;
   selectedCard=card;
   if(isAIGame){localUpdate(u)} else {await roomRef.child('game').update(u)}
-  toast('Undone');
 }
 
 function toggleScore(idx){
