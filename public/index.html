@@ -66,7 +66,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card.empty-slot{width:var(--col-w);height:calc(var(--card-h)*1.13)}
 .card-slot{width:var(--col-w);height:calc(var(--card-h)*1.13);display:flex;align-items:center;justify-content:center;position:relative}
 /* Deck slot: centered below discards in portrait, hidden in landscape (rendered as 6th grid col) */
-#deck-slot{display:flex;flex-direction:column;align-items:center}
+#deck-slot{display:flex;flex-direction:column;align-items:center;margin-top:var(--gap-sm)}
 /* Info rows: name left, score right */
 .info-row{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0 calc(var(--pad)*1.5)}
 .player-label{font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap}
@@ -101,7 +101,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     .card.color-yellow::after{content:'';position:absolute;inset:0;border-radius:inherit;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 80'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%23f0d060'/%3E%3Cstop offset='40%25' stop-color='%23e8c040'/%3E%3Cstop offset='100%25' stop-color='%23d4a828'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23sky)' width='56' height='80'/%3E%3Ccircle cx='38' cy='14' r='8' fill='%23f5e088' opacity='.7'/%3E%3Ccircle cx='42' cy='16' r='4' fill='%23f0d870' opacity='.5'/%3E%3Cpath d='M0 52 Q8 40 18 46 Q26 38 34 44 Q44 36 56 42 L56 80 L0 80Z' fill='%23b07818' opacity='.6'/%3E%3Cpath d='M0 58 Q12 48 22 54 Q30 46 40 52 Q50 44 56 50 L56 80 L0 80Z' fill='%23a06a14' opacity='.7'/%3E%3Cpath d='M0 65 Q10 56 20 62 Q32 54 42 60 Q50 55 56 58 L56 80 L0 80Z' fill='%238a5a10' opacity='.8'/%3E%3Cpath d='M0 72 Q14 64 28 68 Q42 62 56 66 L56 80 L0 80Z' fill='%23704a0c' opacity='.7'/%3E%3C/svg%3E") center/cover no-repeat}
 .cb-sym{position:absolute;bottom:1px;right:2px;font-size:calc(var(--card-h) * .128);opacity:.8;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8);line-height:1}
 .card.card-back{background:#2a1a0e;border-color:rgba(212,168,67,.4)}
-.card.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:28px;color:rgba(212,168,67,.3)}
+.card.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:calc(var(--card-h)*.36);color:rgba(212,168,67,.3)}
 .card.card-back::after{content:'';position:absolute;inset:calc(var(--card-h)*.05);border:1px solid rgba(212,168,67,.2);border-radius:calc(var(--card-h)*.04);z-index:0}
 /* Card flip animation container */
 .flip-container{perspective:600px;position:fixed;z-index:9999;pointer-events:none}
@@ -1031,7 +1031,7 @@ function renderBoard(){
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col"><div class="card empty-slot" style="border-bottom:2px solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>`;
+      return `<div class="card-col"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
@@ -1050,7 +1050,7 @@ function renderBoard(){
       const canDraw=inDrawPhase && isMyTurn && topCard && c!==gameState.lastDiscardedColor;
       if(!topCard){
         const cls=canDiscard?'card target':'card empty-slot';
-        return `<div class="card-col"><div class="${cls}" style="${canDiscard?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`}" onclick="discardTo('${c}')">${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+        return `<div class="card-col"><div class="${cls}" style="${canDiscard?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`}" onclick="discardTo('${c}')">${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
       if(isUndoDiscard){
@@ -1089,11 +1089,11 @@ function renderBoard(){
     const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:calc(var(--gap-sm)*.5);font-family:'Cinzel',serif">${deckLen} left</div>`;
 
     if(isLandscapeLayout){
-      // Landscape: append deck as 6th column in discard grid
-      discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},1fr) auto`;
-      const slotW='var(--card-w)';
+      // Landscape: append deck as 6th column in discard grid (same col-w)
+      discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},var(--col-w)) var(--col-w)`;
+      const slotW='var(--col-w)';
       const slotH='calc(var(--card-h)*1.13)';
-      const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH}"></div>`;
+      const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
       discardRow.innerHTML+=`<div class="card-col"><div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}</div>`;
       if(deckSlot) deckSlot.style.display='none';
     } else {
@@ -1103,7 +1103,7 @@ function renderBoard(){
         deckSlot.style.display='';
         const slotW='var(--card-h)';
         const slotH='var(--card-w)';
-        const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH}"></div>`;
+        const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
         deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
       }
     }
@@ -1116,7 +1116,7 @@ function renderBoard(){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:2px solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div>`;
+      return `<div class="card-col"><div class="${cls}" style="${canPlay?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
