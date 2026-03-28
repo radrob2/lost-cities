@@ -709,10 +709,9 @@ function computeLayout(){
   const infoRowFrac   = 0.28;       // name/score/hint row (needs to fit font-base text)
   const maxStack      = 8;
   const stackOffFrac  = 0.10;       // per-card offset at max stack
-  const scoreLabelFrac= 0.18;       // live score label below/above stacks
-  const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac + scoreLabelFrac; // stack + score label
+  const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac; // stack (score labels are absolutely positioned, don't add height)
   const discardFrac   = 1.13;       // discard card slots
-  const deckFrac      = isLandscape ? 0 : (0.80 + 0.15); // deck below discards in portrait + "N left" label
+  const deckFrac      = isLandscape ? 0 : 0.95; // deck (landscape card = ~0.75*cardH) + "N left" label + gap
   const gapFrac       = 0.06;       // gap between sections
   const handFrac      = 1.50;       // hand area (cone projection for 8 cards + lift)
   const numGaps       = 6;          // gaps between 7 sections
@@ -1232,21 +1231,23 @@ function renderBoard(){
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
 
-  // Per-stack score label (only when live score enabled and stack has cards)
-  function stackScoreLabel(cards){
-    // Always render the label container to reserve space and prevent layout shift
+  // Per-stack score label — positioned absolutely so it doesn't affect stack layout
+  function stackScoreLabel(cards, position){
     const hasCards=cards&&cards.length>0;
     const show=liveScoreEnabled&&hasCards;
     let score=0,cls='';
     if(hasCards){let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(cards.length>=8?20:0);cls=score>=0?'color:var(--gold-bright)':'color:#e07060';}
-    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);${cls};opacity:${show?.7:0};margin-top:1px;font-variant-numeric:tabular-nums;min-height:calc(var(--font-base) * .69)">${show?score:'&nbsp;'}</div>`;
+    const posStyle=position==='above'
+      ? 'bottom:100%;margin-bottom:1px'
+      : 'top:100%;margin-top:1px';
+    return `<div style="position:absolute;left:0;right:0;${posStyle};text-align:center;font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);${cls};opacity:${show?.7:0};font-variant-numeric:tabular-nums;pointer-events:none">${show?score:'&nbsp;'}</div>`;
   }
 
   // Opponent row
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards)}</div>`;
+      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards,'below')}</div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
@@ -1256,7 +1257,7 @@ function renderBoard(){
     const stackHPx=parseInt(fixedStackH)||curCardH*1.13+7*getStackOffset(8);
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    return `<div class="card-col" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}</div>`;
+    return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>${stackScoreLabel(cards,'below')}</div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -1336,6 +1337,7 @@ function renderBoard(){
       discardRow.style.gridTemplateColumns='';
       if(deckSlot){
         deckSlot.style.display='flex';
+        deckSlot.style.flexDirection='column';
         deckSlot.style.justifyContent='center';
         deckSlot.style.alignItems='center';
         const slotW='calc(var(--card-h)*1.13)';
@@ -1353,15 +1355,16 @@ function renderBoard(){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="position:relative">${stackScoreLabel(cards,'above')}<div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
-    const totalCards=canPlay?nextIdx+1:cards.length;
-    const baseSo=getStackOffset(totalCards);
+    // Always compute offset as if card is already played (so highlight matches final position)
+    const withPlayCount=nextIdx+1;
+    const baseSo=getStackOffset(withPlayCount);
     const so=isExp?18:baseSo;
-    // Center cards vertically within fixed stack height
-    const totalStackPx=((cards.length-1)*so)+curCardH+(canPlay?baseSo+curCardH*1.13:0);
+    // Center the full stack (including target slot) within fixed height
+    const totalStackPx=((withPlayCount-1)*so)+curCardH;
     const stackHPx=parseInt(fixedStackH)||curCardH*1.13+7*getStackOffset(8);
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
     let inner=cards.map((card,i)=>{
@@ -1372,7 +1375,7 @@ function renderBoard(){
     }).join('');
     if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" onclick="${stackClick}">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
+    let html=`<div class="card-col" style="position:relative" onclick="${stackClick}">${stackScoreLabel(cards,'above')}<div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
     return html+`</div>`;
   }).join('');
 }
