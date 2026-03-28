@@ -52,14 +52,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 /* Floating hamburger menu */
 .floating-menu-btn{position:absolute;top:max(var(--gap-md),env(safe-area-inset-top));right:var(--gap-md);z-index:20;background:rgba(0,0,0,.5);border:calc(var(--card-h)*.015) solid rgba(212,168,67,.3);border-radius:calc(var(--card-h)*.08);color:var(--parchment);font-size:calc(var(--font-base)*1.5);cursor:pointer;padding:var(--gap-sm) var(--gap-md);line-height:1}
 /* Hand peek: clipped opponent hand at top */
-.hand-peek{position:relative;overflow:hidden}
+.hand-peek{position:relative;overflow:hidden;width:100%}
 /* Screen edge glow when it's your turn */
 .your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.4) rgba(212,168,67,.35)}
 /* Ensure hands have margin for floating hamburger */
 .hand-peek,.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
 /* BOARD LAYOUT */
-.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:var(--gap-sm);align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10}
+.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10}
 .card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .expedition-stack{position:relative;width:var(--col-w);height:calc(var(--card-h)*1.13);overflow:visible}
@@ -364,9 +364,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     <div class="card-row" id="opp-row"></div>
 
-    <div class="card-row" id="discard-row"></div>
-    <div id="deck-slot"></div>
-    <div id="single-pile-area" style="display:none"></div>
+    <div id="middle-section" style="display:flex;flex-direction:column;align-items:center;gap:var(--gap-sm);width:100%">
+      <div class="card-row" id="discard-row"></div>
+      <div id="deck-slot"></div>
+      <div id="single-pile-area" style="display:none"></div>
+    </div>
 
     <div class="card-row" id="my-row"></div>
 
