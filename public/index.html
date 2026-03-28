@@ -62,7 +62,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10;gap:var(--section-gap,4px)}
-.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%;flex-shrink:0}
+.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;align-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%;flex-shrink:0}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .expedition-stack{position:relative;width:var(--col-w);overflow:visible}
 .expedition-stack .card{position:static}
@@ -129,8 +129,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 @keyframes undo-pulse{from{opacity:.7}to{opacity:1}}
 
 /* HAND */
-.hand-area{padding:0;padding-bottom:env(safe-area-inset-bottom,0);width:100%}
-.hand-cards{position:relative;width:100%;overflow:visible;padding:var(--gap-sm) 0}
+.hand-area{padding:0;padding-bottom:env(safe-area-inset-bottom,0);width:100%;display:flex;align-items:center}
+.hand-cards{position:relative;width:100%;overflow:visible}
 .hand-cards .card{flex-shrink:0}
 .hand-cards>div{position:absolute;z-index:0}
 .hand-cards>div:hover{z-index:2}
@@ -363,7 +363,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     <div class="card-row" id="opp-row"></div>
 
-    <div id="middle-section" style="display:flex;flex-direction:column;align-items:center;width:100%">
+    <div id="middle-section" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%">
       <div class="card-row" id="discard-row"></div>
       <div id="deck-slot" style="margin-top:var(--gap-sm)"></div>
       <div id="single-pile-area" style="display:none;margin-top:var(--gap-sm)"></div>
@@ -712,7 +712,7 @@ function computeLayout(){
   const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac; // stack (score labels are absolutely positioned, don't add height)
   const discardFrac   = 1.13;       // discard card slots
   const deckFrac      = isLandscape ? 0 : 0.95; // deck (landscape card = ~0.75*cardH) + "N left" label + gap
-  const gapFrac       = 0.06;       // gap between sections
+  const gapFrac       = 0.18;       // gap between sections (needs to fit abs-positioned score labels ~12px)
   const handFrac      = 1.50;       // hand area (cone projection for 8 cards + lift)
   const numGaps       = 6;          // gaps between 7 sections
 
@@ -1124,7 +1124,8 @@ function renderHand(){
 
   const projH=maxSY-minSY;
   const liftPx=cardH*0.18;
-  // Height is set by computeLayout — don't change it here
+  // Set hand-cards height to actual content size so flex centering in hand-area works
+  container.style.height=Math.ceil(projH+liftPx)+'px';
   const offsetSY=-minSY+liftPx;
 
   container.innerHTML=sorted.map((c,idx)=>{
