@@ -53,8 +53,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .floating-menu-btn{position:absolute;top:max(var(--gap-md),env(safe-area-inset-top));right:var(--gap-md);z-index:20;background:rgba(0,0,0,.5);border:calc(var(--card-h)*.015) solid rgba(212,168,67,.3);border-radius:calc(var(--card-h)*.08);color:var(--parchment);font-size:calc(var(--font-base)*1.5);cursor:pointer;padding:var(--gap-sm) var(--gap-md);line-height:1}
 /* Hand peek: clipped opponent hand at top */
 .hand-peek{position:relative;overflow:hidden}
-/* Hand glow when it's your turn */
-.hand-glow{box-shadow:0 calc(var(--card-h)*-0.15) calc(var(--card-h)*0.4) rgba(212,168,67,.2)}
+/* Screen edge glow when it's your turn */
+.your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.6) rgba(212,168,67,.12)}
 /* Ensure hands have margin for floating hamburger */
 .hand-peek,.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
@@ -796,8 +796,8 @@ function renderGame(){
   // Turn state — reflected in info rows and hand glow
   const phaseBar=document.getElementById('phase-bar');
   const oppStatus=document.getElementById('opp-status');
-  const handArea=document.getElementById('hand-area');
-  const wasMyTurn=handArea&&handArea.classList.contains('hand-glow');
+  const gameScreenEl=document.getElementById('game-screen');
+  const wasMyTurn=gameScreenEl&&gameScreenEl.classList.contains('your-turn-glow');
   if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
   // Player hint
   if(phaseBar){
@@ -815,9 +815,9 @@ function renderGame(){
     oppStatus.style.fontStyle='italic';
     oppStatus.style.opacity='0.4';
   }
-  // Hand glow
-  if(handArea){
-    handArea.classList.toggle('hand-glow',isMyTurn);
+  // Screen edge glow
+  if(gameScreenEl){
+    gameScreenEl.classList.toggle('your-turn-glow',isMyTurn);
   }
 
   // Title + notification for multiplayer
@@ -864,22 +864,21 @@ function renderGame(){
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
     const containerW=oppHandRow.parentElement?.offsetWidth||375;
     const arc=computeArc(oppHandLen, containerW);
-    // Mirror of player hand: arc curves downward (center lowest), clipped to show bottom tips
-    const visibleFrac=0.22;
+    // Same arc as player hand, but only show the bottom ~20% of cards
+    // Cards are positioned normally (center high, edges low + rotated)
+    // Container clips everything above its height
+    const visibleH=Math.round(arc.cardH*0.20);
     const fullH=Math.ceil(arc.cardH+arc.arcDrop+arc.cardH*0.1);
-    oppHandRow.style.height=Math.round(arc.cardH*visibleFrac)+'px';
-    // Position cards on an inverted arc: center cards are lower, edge cards higher
-    // Then shift so only the bottom portion (visibleFrac) is visible
+    oppHandRow.style.height=visibleH+'px';
     let html='';
     for(let i=0;i<oppHandLen;i++){
       const angleDeg=(i-(oppHandLen-1)/2)*arc.stepDeg;
       const angleRad=angleDeg*Math.PI/180;
       const x=arc.centerX+arc.R*Math.sin(angleRad)-arc.cardW/2;
-      // Invert Y: edge cards at y=0, center cards drop down by arcDrop
-      const y=arc.arcDrop - arc.R*(1-Math.cos(angleRad));
-      // Shift everything up so only bottom visibleFrac of tallest card shows
-      const shiftY=-(arc.cardH*(1-visibleFrac));
-      html+=`<div class="card card-back" style="position:absolute;left:${x.toFixed(1)}px;top:${(y+shiftY).toFixed(1)}px;transform:rotate(${(-angleDeg).toFixed(1)}deg);transform-origin:center center"></div>`;
+      const y=arc.R*(1-Math.cos(angleRad));
+      // Offset so bottom of cards aligns with bottom of container
+      const offsetY=visibleH-arc.cardH-y;
+      html+=`<div class="card card-back" style="position:absolute;left:${x.toFixed(1)}px;top:${offsetY.toFixed(1)}px;transform:rotate(${angleDeg.toFixed(1)}deg);transform-origin:center center"></div>`;
     }
     oppHandRow.innerHTML=html;
   }
@@ -1078,7 +1077,7 @@ function renderBoard(){
     const deckSlot=document.getElementById('deck-slot');
     const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
     let deckCardsHTML='';
-    const deckCardClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
+    const deckCardClass='card card-back'; // always portrait orientation
     if(deckLen>0){
       const showCount=Math.min(deckLen,10);
       for(let i=0;i<showCount;i++){
@@ -1100,12 +1099,12 @@ function renderBoard(){
       discardRow.innerHTML+=`<div class="card-col"><div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}</div>`;
       if(deckSlot) deckSlot.style.display='none';
     } else {
-      // Portrait: deck below discards, centered, landscape card
+      // Portrait: deck below discards, centered, same slot size as discard slots
       discardRow.style.gridTemplateColumns='';
       if(deckSlot){
         deckSlot.style.display='';
-        const slotW='var(--card-h)';
-        const slotH='var(--card-w)';
+        const slotW='var(--col-w)';
+        const slotH='calc(var(--card-h)*1.13)';
         const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
         deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
       }
@@ -1585,7 +1584,7 @@ function startAIGame(){
     lastDiscardedColor:null,justDiscarded:false,status:'playing'
   };
   const pers=AI_PERSONALITIES[aiPersonality]||AI_PERSONALITIES.scholar;
-  document.getElementById('opponent-name-store').textContent='AI '+pers.emoji+' '+pers.name;
+  document.getElementById('opponent-name-store').textContent=pers.name;
   const myLabel=document.getElementById('my-label');
   if(myLabel) myLabel.textContent=getName().toUpperCase()+"'s Ventures";
   showScreen('game-screen');
