@@ -1053,6 +1053,10 @@ function computeCone(n, containerW) {
   const cardWRad = cardW / R;
   const cardHSlant = cardH;  // same units as cardW on the arc (matches prototype)
 
+  // Focal length = distance from POV to fan center = R√2 (with R=h=d)
+  // This makes the center card project at 1:1 pixel size
+  const focalLen = R * Math.SQRT2;
+
   // Derive spacing from available screen width
   const usableW = containerW * 0.88;
 
@@ -1088,10 +1092,6 @@ function computeCone(n, containerW) {
     // Min step for very full hands
     stepRad = Math.max(stepRad, cardWRad * 0.3);
   }
-
-  // Focal length = distance from POV to fan center = R√2 (with R=h=d)
-  // This makes the center card project at 1:1 pixel size
-  const focalLen = R * Math.SQRT2;
 
   return { cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad, containerW, focalLen };
 }
