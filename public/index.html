@@ -872,7 +872,7 @@ function renderGame(){
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
     const oppContainerW=oppHandRow.parentElement?.offsetWidth||375;
     const oppCone=computeCone(oppHandLen, oppContainerW);
-    const {cardW:oCW, cardH:oCH, R:oR, h:oH, d:oD, slantH:oSH, POV:oPOV, cardWRad:oWR, cardHSlant:oHS, stepRad:oSR}=oppCone;
+    const {cardW:oCW, cardH:oCH, R:oR, h:oH, d:oD, slantH:oSH, POV:oPOV, cardWRad:oWR, cardHSlant:oHS, stepRad:oSR, focalLen:oFL}=oppCone;
     const oCX=oppContainerW/2;
 
     // Project cards to find bounds
@@ -884,8 +884,8 @@ function renderGame(){
       const tr=conePoint(oR,oH,oSH, phi+oWR/2, 0);
       const bl=conePoint(oR,oH,oSH, phi-oWR/2, oHS);
       const br=conePoint(oR,oH,oSH, phi+oWR/2, oHS);
-      const ptl=coneProject(tl,oPOV,oD), ptr=coneProject(tr,oPOV,oD);
-      const pbl=coneProject(bl,oPOV,oD), pbr=coneProject(br,oPOV,oD);
+      const ptl=coneProject(tl,oPOV,oFL), ptr=coneProject(tr,oPOV,oFL);
+      const pbl=coneProject(bl,oPOV,oFL), pbr=coneProject(br,oPOV,oFL);
       if(!ptl||!ptr||!pbl||!pbr) continue;
       for(const p of [ptl,ptr,pbl,pbr]){
         if(p.y<oMinY) oMinY=p.y;
@@ -981,12 +981,23 @@ function conePoint(R, h, slantH, phi, t) {
 }
 
 function coneProject(p, POV, focalLength) {
-  // Perspective projection from POV onto screen plane (z=h)
-  const dz = POV.z - p.z;  // depth from POV to point
-  if (dz <= 0) return null;
+  // View-space projection: project onto plane perpendicular to line of sight
+  // (POV looking at fan center on rim), not onto the z=h screen plane.
+  // This way the center card appears at its true size.
+  //
+  // With R=h=d, view direction = (0, 1/√2, -1/√2)
+  // View basis: right=(1,0,0), up=(0,-1/√2,-1/√2), forward=(0,1/√2,-1/√2)
+  const dx = p.x - POV.x;
+  const dy = p.y - POV.y;
+  const dz = p.z - POV.z;
+  const S = Math.SQRT1_2;  // 1/√2
+  const viewX = dx;                   // horizontal (unchanged)
+  const viewY = -(dy + dz) * S;       // up component (positive = down on screen)
+  const viewZ = (dy - dz) * S;        // depth toward scene (positive = in front of camera)
+  if (viewZ <= 0) return null;
   return {
-    x: (p.x - POV.x) * (focalLength / dz),    // screen horizontal
-    y: -(p.y - POV.y) * (focalLength / dz)     // screen vertical (negate so further down cone = lower on screen)
+    x: viewX * (focalLength / viewZ),
+    y: viewY * (focalLength / viewZ)
   };
 }
 
@@ -1050,10 +1061,10 @@ function computeCone(n, containerW) {
     const halfArc = totalArcRad / 2;
     // Rim points at ±halfArc: (R·sin(φ), R·cos(φ), h)
     const pLeft = coneProject(
-      { x: R * Math.sin(-halfArc), y: R * Math.cos(-halfArc), z: h }, POV, d
+      { x: R * Math.sin(-halfArc), y: R * Math.cos(-halfArc), z: h }, POV, focalLen
     );
     const pRight = coneProject(
-      { x: R * Math.sin(halfArc), y: R * Math.cos(halfArc), z: h }, POV, d
+      { x: R * Math.sin(halfArc), y: R * Math.cos(halfArc), z: h }, POV, focalLen
     );
     if (!pLeft || !pRight) return Infinity;
     return pRight.x - pLeft.x;
@@ -1078,7 +1089,11 @@ function computeCone(n, containerW) {
     stepRad = Math.max(stepRad, cardWRad * 0.3);
   }
 
-  return { cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad, containerW };
+  // Focal length = distance from POV to fan center = R√2 (with R=h=d)
+  // This makes the center card project at 1:1 pixel size
+  const focalLen = R * Math.SQRT2;
+
+  return { cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad, containerW, focalLen };
 }
 
 function renderHand(){
@@ -1091,7 +1106,7 @@ function renderHand(){
   const n=sorted.length;
   const containerW=container.parentElement.offsetWidth||375;
   const cone=computeCone(n, containerW);
-  const {cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad}=cone;
+  const {cardW, cardH, R, h, d, slantH, POV, cardWRad, cardHSlant, stepRad, focalLen}=cone;
   const centerX=containerW/2;
 
   // Project all card corners to find bounding box
@@ -1103,10 +1118,10 @@ function renderHand(){
     const tr=conePoint(R,h,slantH, phi+cardWRad/2, 0);
     const bl=conePoint(R,h,slantH, phi-cardWRad/2, cardHSlant);
     const br=conePoint(R,h,slantH, phi+cardWRad/2, cardHSlant);
-    const ptl=coneProject(tl,POV,d);
-    const ptr=coneProject(tr,POV,d);
-    const pbl=coneProject(bl,POV,d);
-    const pbr=coneProject(br,POV,d);
+    const ptl=coneProject(tl,POV,focalLen);
+    const ptr=coneProject(tr,POV,focalLen);
+    const pbl=coneProject(bl,POV,focalLen);
+    const pbr=coneProject(br,POV,focalLen);
     if(!ptl||!ptr||!pbl||!pbr) continue;
     for(const p of [ptl,ptr,pbl,pbr]){
       if(p.y<minSY) minSY=p.y;
