@@ -61,17 +61,17 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
 /* BOARD LAYOUT */
-.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10}
-.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%}
+.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10;gap:var(--section-gap,4px)}
+.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%;flex-shrink:0}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
-.expedition-stack{position:relative;width:var(--col-w);height:calc(var(--card-h)*1.13);overflow:visible}
+.expedition-stack{position:relative;width:var(--col-w);overflow:visible}
 .expedition-stack .card{position:static}
 .card.empty-slot{width:var(--col-w);height:calc(var(--card-h)*1.13)}
 .card-slot{width:var(--col-w);height:calc(var(--card-h)*1.13);display:flex;align-items:center;justify-content:center;position:relative}
 /* Deck slot: centered below discards in portrait, hidden in landscape (rendered as 6th grid col) */
 #deck-slot{display:flex;flex-direction:column;align-items:center}
 /* Info rows: name left, score right */
-.info-row{display:flex;align-items:baseline;width:100%;padding:0 calc(var(--pad)*1.5)}
+.info-row{display:flex;align-items:center;width:100%;padding:0 calc(var(--pad)*1.5);overflow:hidden;flex-shrink:0}
 .player-label{flex:1;font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .total-score{flex:1;font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.85);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 
@@ -689,84 +689,71 @@ function cardHTML(card, extra=''){
 }
 
 function computeLayout(){
-  const oppSlot=mySlot==='player1'?'player2':'player1';
-  let maxOppStack=0, maxMyStack=0;
-  if(gameState && gameState.expeditions){
-    for(const c of COLORS){
-      maxOppStack=Math.max(maxOppStack,(gameState.expeditions[oppSlot]||{})[c]?.length||0);
-      maxMyStack=Math.max(maxMyStack,(gameState.expeditions[mySlot]||{})[c]?.length||0);
-    }
-  }
   const vh=window.innerHeight;
   const vw=window.innerWidth;
   const isLandscape=vw>vh;
 
-  // Everything is expressed as multiples of cardH (the unit).
-  // We solve for cardH directly from available viewport height.
+  // Skip if viewport hasn't changed
+  if(computeLayout._vh===vh && computeLayout._vw===vw) return computeLayout._result;
+
+  // All section heights are fractions of cardH. We solve for cardH from vh.
+  // Sections (top to bottom):
+  //   1. oppPeek     — opponent hand peek
+  //   2. infoRow     — name + score row (used for both opp and player)
+  //   3. stackRow    — expedition stacks (worst case 8 cards)
+  //   4. discardRow  — discard piles + deck
+  //   5. handArea    — player hand (cone projection)
   //
-  // Layout (vertical, all proportional to cardH):
-  //   topBar       = 0.56 * cardH  (44px at cardH=78)
-  //   oppLabel     = 0.2  * cardH
-  //   oppStack     = 1.0  * cardH + (maxOppStack-1) * stackOff
-  //   discardLabel = 0.2  * cardH
-  //   discardRow   = 1.0  * cardH
-  //   deck         = landscape ? 0 : 0.65 * cardH  (deck is cardW tall, cardW ≈ 0.615*cardH)
-  //   deckLabel    = 0.2  * cardH
-  //   myLabel      = 0.2  * cardH
-  //   myStack      = 1.0  * cardH + (maxMyStack-1) * stackOff
-  //   phaseBar     = 0.36 * cardH
-  //   hand         = 1.0  * cardH + 0.2 * cardH (arc drop + padding)
-  //   safeArea     = 0.2  * cardH
-  //
-  // Stack offset as fraction of cardH:
-  //   count<=3: 0.23, <=5: 0.18, <=7: 0.13, 8+: 0.09
+  // Fractions (of cardH):
+  const oppPeekFrac   = 0.35;       // fixed peek height
+  const infoRowFrac   = 0.25;       // name/score/hint row
+  const maxStack      = 8;
+  const stackOffFrac  = 0.10;       // per-card offset at max stack
+  const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac + 0.15; // stack + score label
+  const discardFrac   = 1.13;       // discard card slots
+  const deckFrac      = isLandscape ? 0 : 0.80; // deck below discards in portrait
+  const gapFrac       = 0.06;       // gap between sections
+  const handFrac      = 1.50;       // hand area
+  const numGaps       = 6;          // gaps between 7 sections
 
-  // Stack offset fractions (must match getStackOffset in renderBoard)
-  function offFrac(count){ return count<=3?0.24:count<=5?0.19:count<=7?0.14:0.10; }
+  const totalFrac =
+    oppPeekFrac +
+    infoRowFrac +         // opp info
+    stackFrac +           // opp stacks
+    discardFrac + deckFrac + // discards + deck
+    stackFrac +           // my stacks
+    infoRowFrac +         // my info
+    handFrac +
+    numGaps * gapFrac;
 
-  // Fixed stack height — use worst case (8 cards) so layout never shifts during game
-  const maxStack=8;
-  const oppStackFrac=1.0+Math.max(0,maxStack-1)*offFrac(maxStack)+0.13+0.15;
-  const myStackFrac=oppStackFrac;
-  const deckFrac=isLandscape?0:0.80;
-
-  // Every vertical element as fraction of cardH:
-  const totalFrac=
-    0.50+   // topBar (content + padding, scales with font-base)
-    0.21+   // board-area padding top+bottom (2 * gap-md)
-    0.14+   // opp label
-    oppStackFrac+
-    0.14+   // discard label
-    1.13+   // discard row (cardH + 10px base offset)
-    0.26+   // middle-row padding (2*gap-sm) + gaps (3*gap-sm)
-    deckFrac+
-    0.14+   // my ventures label
-    myStackFrac+
-    0.30+   // phase bar wrapper
-    1.50+   // hand (cardH + arc drop + hand-area padding)
-    0.00;   // no fixed safe area — absorbed into hand-area padding
-
-  // Account for board margin (all sides, but opp hand bleeds past top via negative margin)
   const boardMargin=Math.min(vw*0.012, vh*0.012);
-  const availH=vh-2*boardMargin; // top + bottom margin (opp hand claws back the top via neg margin)
+  const availH=vh-2*boardMargin;
 
-  // Solve: totalFrac * cardH = availH
   let cardH=Math.floor(availH/totalFrac);
-
-  // Cap at max card size (don't make cards huge on big screens)
   const maxH=vw>=768?(isLandscape?88:112):(vh<=750?68:78);
   cardH=Math.min(cardH, maxH);
-  // Floor at minimum usable size
-  cardH=Math.max(cardH, 12); // absolute floor: 12px card (practically invisible, but won't break)
+  cardH=Math.max(cardH, 12);
 
   const cardW=Math.round(cardH*0.618);
   const scale=cardH/maxH;
+  const colW=Math.round(cardW + cardH*0.13);
 
   // Derived sizing — all proportional
   const fontBase=Math.round(Math.max(8, 13*scale)*10)/10;
   const gapSm=Math.round(Math.max(2, 4*scale)*10)/10;
   const gapMd=Math.round(Math.max(3, 8*scale)*10)/10;
   const pad=Math.round(Math.max(4, 8*scale)*10)/10;
+
+  // Compute exact pixel heights for each section
+  const sectionH = {
+    oppPeek:    Math.round(cardH * oppPeekFrac),
+    infoRow:    Math.round(cardH * infoRowFrac),
+    stackRow:   Math.round(cardH * stackFrac),
+    discardRow: Math.round(cardH * discardFrac),
+    deckSlot:   Math.round(cardH * deckFrac),
+    gap:        Math.round(cardH * gapFrac),
+    hand:       Math.round(cardH * handFrac),
+  };
 
   // Set all CSS custom properties
   const root=document.documentElement.style;
@@ -777,17 +764,38 @@ function computeLayout(){
   root.setProperty('--gap-sm',gapSm+'px');
   root.setProperty('--gap-md',gapMd+'px');
   root.setProperty('--pad',pad+'px');
-  // Column width: card width + proportional buffer (same for all rows)
-  const colW=Math.round(cardW + cardH*0.13);
   root.setProperty('--col-w',colW+'px');
-  return {cardW, cardH, scale, isLandscape};
+  root.setProperty('--section-gap',sectionH.gap+'px');
+
+  // Apply fixed heights to all sections
+  const setH=(id,h)=>{const el=document.getElementById(id);if(el)el.style.height=h+'px';};
+  setH('opp-hand-row', sectionH.oppPeek);
+  setH('hand-area', sectionH.hand);
+
+  // Store for use by renderBoard/renderHand
+  const result = {cardW, cardH, scale, isLandscape, sectionH, colW, boardMargin};
+  computeLayout._vh=vh; computeLayout._vw=vw; computeLayout._result=result;
+  return result;
 }
 
 function renderGame(){
   if(!gameState)return;
 
-  // Compute and apply all layout sizing via CSS custom properties
-  computeLayout();
+  // Compute and apply all layout sizing — deterministic, only changes on resize
+  const layout=computeLayout();
+  const sH=layout.sectionH;
+
+  // Apply fixed pixel heights to all sections so nothing shifts during play
+  const oppInfoRow=document.querySelector('#game-screen .board-area .info-row');
+  const myInfoRow=document.querySelectorAll('#game-screen .board-area .info-row')[1];
+  const oppRow=document.getElementById('opp-row');
+  const myRow=document.getElementById('my-row');
+  const midSec=document.getElementById('middle-section');
+  if(oppInfoRow) oppInfoRow.style.height=sH.infoRow+'px';
+  if(myInfoRow) myInfoRow.style.height=sH.infoRow+'px';
+  if(oppRow) oppRow.style.height=sH.stackRow+'px';
+  if(myRow) myRow.style.height=sH.stackRow+'px';
+  if(midSec) midSec.style.height=(sH.discardRow+sH.deckSlot+sH.gap)+'px';
 
   // Animation snapshots handled by explicit animateMove calls
   const isMyTurn = gameState.currentTurn===mySlot;
@@ -887,10 +895,9 @@ function renderGame(){
       oppCards.push({phi,ptl,ptr,pbl,pbr});
     }
 
-    // Show only bottom ~35% of projected height (cards peeking from top, mirrored)
+    // Height is set by computeLayout — don't change it here
     const projHOpp=oMaxY-oMinY;
-    const visibleH=Math.round(projHOpp*0.50);
-    oppHandRow.style.height=visibleH+'px';
+    const visibleH=oppHandRow.offsetHeight||Math.round(oCH*0.35);
 
     // Mirror vertically: flip Y so cards appear to fan from top edge
     // Offset so the "bottom" (rim edge) of cards sits at y=0 (top of visible area)
@@ -1115,24 +1122,7 @@ function renderHand(){
 
   const projH=maxSY-minSY;
   const liftPx=cardH*0.18;
-  // Fixed hand height: compute bounding box for a full 8-card hand to prevent layout shift
-  if(!renderHand._fixedH || renderHand._fixedCardH!==cardH){
-    const ref=computeCone(8, containerW);
-    let refMinY=Infinity, refMaxY=-Infinity;
-    for(let i=0;i<8;i++){
-      const phi=(i-3.5)*ref.stepRad;
-      for(const t of [0, ref.cardHSlant]){
-        for(const dw of [-ref.cardWRad/2, ref.cardWRad/2]){
-          const p=conePoint(ref.R,ref.h,ref.slantH,phi+dw,t);
-          const pr=coneProject(p,ref.POV,ref.focalLen);
-          if(pr){if(pr.y<refMinY)refMinY=pr.y;if(pr.y>refMaxY)refMaxY=pr.y;}
-        }
-      }
-    }
-    renderHand._fixedH=Math.ceil((refMaxY-refMinY)+liftPx+cardH*0.1);
-    renderHand._fixedCardH=cardH;
-  }
-  container.style.height=renderHand._fixedH+'px';
+  // Height is set by computeLayout — don't change it here
   const offsetSY=-minSY+liftPx;
 
   container.innerHTML=sorted.map((c,idx)=>{
@@ -1253,7 +1243,7 @@ function renderBoard(){
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>`;
+      return `<div class="card-col"><div class="expedition-stack" style="height:${fixedStackH}"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards)}</div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
