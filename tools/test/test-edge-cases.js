@@ -1,5 +1,5 @@
 // Edge case tests — stress test unusual game states
-const { COLORS, calculateScore, canPlayOnExpedition, createDeck } = require('./game-rules');
+const { COLORS, calculateScore, canPlayOnExpedition, createDrawPile } = require('./game-rules');
 
 let passed = 0, failed = 0;
 function test(name, fn) {
@@ -66,18 +66,18 @@ test('nothing can be played on expedition ending with 10', () => {
   }
 });
 
-// --- Deck integrity ---
-test('createDeck has no duplicate IDs across 100 decks', () => {
+// --- Draw pile integrity ---
+test('createDrawPile has no duplicate IDs across 100 draw piles', () => {
   for (let i = 0; i < 100; i++) {
-    const deck = createDeck();
-    const ids = new Set(deck.map(c => c.id));
-    if (ids.size !== 60) throw new Error(`Deck ${i}: ${ids.size} unique IDs, expected 60`);
+    const drawPile = createDrawPile();
+    const ids = new Set(drawPile.map(c => c.id));
+    if (ids.size !== 60) throw new Error(`Draw pile ${i}: ${ids.size} unique IDs, expected 60`);
   }
 });
 
 test('all card IDs follow expected format', () => {
-  const deck = createDeck();
-  for (const card of deck) {
+  const drawPile = createDrawPile();
+  for (const card of drawPile) {
     if (card.value === 0) {
       if (!/^[a-z]+_w[012]$/.test(card.id)) throw new Error(`Bad wager ID: ${card.id}`);
     } else {

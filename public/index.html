@@ -67,8 +67,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .card-row{display:grid;grid-template-columns:repeat(var(--num-colors),var(--col-w));justify-content:center;padding:0 var(--board-margin);overflow:visible;width:100%;flex-shrink:0}
 .card-col{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .card.empty-slot{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
-/* Deck slot */
-#deck-slot{display:flex;flex-direction:column;align-items:center;margin-top:var(--slot-pad)}
+/* Draw pile slot */
+#draw-pile-slot{display:flex;flex-direction:column;align-items:center;margin-top:var(--slot-pad)}
 /* Info rows */
 .info-row{display:flex;align-items:center;width:100%;padding:0 var(--board-margin);overflow:hidden;flex-shrink:0}
 .player-label{flex:1;font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -139,10 +139,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .phase-bar{text-align:center;padding:0 var(--slot-pad);font-size:var(--text-md);line-height:var(--line-md);color:var(--parchment-dark);min-height:var(--line-md);font-family:'Crimson Text',serif;font-style:italic}
 .phase-bar.draw-phase{color:var(--gold-bright)}
 
-.deck-card{cursor:pointer;position:relative;display:inline-block}
-.deck-card .deck-num{font-size:var(--text-sm);color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
-.deck-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
-.deck-landscape{width:var(--card-h)!important;height:var(--card-w)!important;min-height:0!important}
+.draw-pile-card{cursor:pointer;position:relative;display:inline-block}
+.draw-pile-card .draw-pile-num{font-size:var(--text-sm);color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
+.draw-pile-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
+.draw-pile-landscape{width:var(--card-h)!important;height:var(--card-w)!important;min-height:0!important}
 .stack-overlay{display:none}
 
 /* SCORE SCREEN */
@@ -364,7 +364,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     <div id="middle-section" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%">
       <div class="card-row" id="discard-row"></div>
-      <div id="deck-slot" style="margin-top:var(--gap-sm)"></div>
+      <div id="draw-pile-slot" style="margin-top:var(--gap-sm)"></div>
       <div id="single-pile-area" style="display:none;margin-top:var(--gap-sm)"></div>
     </div>
 
@@ -443,7 +443,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <h3>Your Turn</h3>
     <ul>
       <li><b>Step 1: Play or Discard</b> &mdash; Tap a card in your hand. Then tap the matching color venture below to play it, or the matching color discard pile to discard it.</li>
-      <li><b>Step 2: Draw</b> &mdash; Tap the deck to draw, or tap any discard pile to take its top card.</li>
+      <li><b>Step 2: Draw</b> &mdash; Tap the draw pile to draw, or tap any discard pile to take its top card.</li>
     </ul>
     <h3>Rules</h3>
     <ul>
@@ -521,7 +521,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
     <div class="tutorial-slide" data-slide="1">
       <div class="tutorial-icon">&#x1F0CF;</div>
       <div class="tutorial-title">Your Turn</div>
-      <div class="tutorial-text"><b>Play</b> a card to a venture or <b>discard</b> it, then <b>draw</b> from the deck or a discard pile. Cards must go <b>ascending</b>. Wagers before numbers.</div>
+      <div class="tutorial-text"><b>Play</b> a card to a venture or <b>discard</b> it, then <b>draw</b> from the draw pile or a discard pile. Cards must go <b>ascending</b>. Wagers before numbers.</div>
     </div>
     <div class="tutorial-slide" data-slide="2">
       <div class="tutorial-icon">&#x2728;</div>

@@ -82,9 +82,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // Verify we're in draw phase
     const phase = await page.evaluate(() => gameState ? gameState.phase : null);
     if (phase === 'draw') {
-      // Draw from deck
-      const deck = await page.$('#deck-draw');
-      if (deck) { await deck.click(); await wait(300); }
+      // Draw from draw pile
+      const drawPileEl = await page.$('#deck-draw');
+      if (drawPileEl) { await drawPileEl.click(); await wait(300); }
     }
 
     // Wait for AI turn
@@ -114,20 +114,20 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       for (const p of ['player1', 'player2'])
         for (const c of ['red','green','blue','white','yellow'])
           expCount += ((gameState.expeditions[p] || {})[c] || []).length;
-      const deckLen = (gameState.deck || []).length;
-      return { hand1: hand1.length, hand2: hand2.length, expCount, deckLen, status: gameState.status };
+      const drawPileLen = (gameState.drawPile || []).length;
+      return { hand1: hand1.length, hand2: hand2.length, expCount, drawPileLen, status: gameState.status };
     });
     if (!state) throw new Error('No game state');
-    console.log(`        Hands: ${state.hand1}/${state.hand2}, Expeditions: ${state.expCount}, Deck: ${state.deckLen}, Status: ${state.status}`);
+    console.log(`        Hands: ${state.hand1}/${state.hand2}, Expeditions: ${state.expCount}, Draw pile: ${state.drawPileLen}, Status: ${state.status}`);
     if (state.hand1 < 0 || state.hand1 > 9) throw new Error(`P1 hand size ${state.hand1} out of range`);
     if (state.hand2 < 0 || state.hand2 > 9) throw new Error(`P2 hand size ${state.hand2} out of range`);
   });
 
-  await test('deck count decreases as game progresses', async () => {
-    const deckText = await page.$eval('#deck-count-label', el => el.textContent);
-    const deckCount = parseInt(deckText);
-    if (deckCount >= 44) throw new Error(`Deck still at ${deckCount} — no cards drawn?`);
-    console.log(`        Deck: ${deckCount} cards left`);
+  await test('draw pile count decreases as game progresses', async () => {
+    const drawPileText = await page.$eval('#deck-count-label', el => el.textContent);
+    const drawPileCount = parseInt(drawPileText);
+    if (drawPileCount >= 44) throw new Error(`Draw pile still at ${drawPileCount} — no cards drawn?`);
+    console.log(`        Draw pile: ${drawPileCount} cards left`);
   });
 
   await test('expeditions have legal card ordering', async () => {
@@ -152,7 +152,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await test('no duplicate card IDs in game state', async () => {
     const dupes = await page.evaluate(() => {
       const ids = new Set();
-      const all = [...(gameState.deck||[]), ...(gameState.hands.player1||[]), ...(gameState.hands.player2||[])];
+      const all = [...(gameState.drawPile||[]), ...(gameState.hands.player1||[]), ...(gameState.hands.player2||[])];
       for (const p of ['player1','player2'])
         for (const c of ['red','green','blue','white','yellow'])
           all.push(...((gameState.expeditions[p]||{})[c]||[]));

@@ -73,13 +73,13 @@ async function discardTo(color){
   if(!isAIGame) roomRef.child('game').update(updates);
 }
 
-async function drawFromDeck(){
+async function drawFromDrawPile(){
   if(gameState.currentTurn!==mySlot || gameState.phase!=='draw') return;
-  const deck=getCards(gameState,'deck');
-  if(deck.length===0) return;
+  const drawPile=getCards(gameState,'drawPile');
+  if(drawPile.length===0) return;
   SFX.drawCard();
-  const deckEl=document.getElementById('deck-col');
-  const card=deck.pop();
+  const drawPileEl=document.getElementById('draw-pile-col');
+  const card=drawPile.pop();
   const hand=getCards(gameState,'hands',mySlot);
   hand.push(card);
   const oppSlot=mySlot==='player1'?'player2':'player1';
@@ -88,16 +88,16 @@ async function drawFromDeck(){
   gameState.lastDiscardedColor=null;
   gameState.justDiscarded=false;
   const updates={};
-  updates['deck']=deck;
+  updates['drawPile']=drawPile;
   updates[`hands/${mySlot}`]=hand;
   updates['currentTurn']=oppSlot;
   updates['phase']='play';
   updates['lastDiscardedColor']=null;
   updates['justDiscarded']=false;
-  if(deck.length===0){ updates['status']='finished'; gameState.status='finished'; }
+  if(drawPile.length===0){ updates['status']='finished'; gameState.status='finished'; }
   lastPlayedCard=null;
   renderGame();
-  slideFromEl(deckEl, card.id);
+  slideFromEl(drawPileEl, card.id);
   if(!isAIGame) roomRef.child('game').update(updates);
 }
 
@@ -360,12 +360,12 @@ function rematch(){
 
 async function playAgain(){
   if(mySlot==='player1' && !isAIGame){
-    const deck=createDeck();
-    const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
+    const drawPile=createDrawPile();
+    const hand1=drawPile.splice(0,8),hand2=drawPile.splice(0,8);
     const exps={},discard={};
     COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
     await roomRef.child('game').set({
-      deck,hands:{player1:hand1,player2:hand2},
+      drawPile,hands:{player1:hand1,player2:hand2},
       expeditions:{player1:exps,player2:exps},
       discards:discard,currentTurn:seriesFirstPlayer,phase:'play',
       lastDiscardedColor:null,status:'playing'

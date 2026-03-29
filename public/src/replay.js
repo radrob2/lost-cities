@@ -1,8 +1,8 @@
 // ===== GAME REPLAY SYSTEM =====
 // Depends on: globals (gameState, mySlot, isAIGame, variant, selectedCard, COLORS),
 //             renderGame, showScreen, showGameOver, calcScore, toast, SFX,
-//             getCards, localUpdate, createDeck, canPlayOnExpedition
-//             playToExpedition, discardTo, discardToSingle, drawFromDeck, drawFromDiscard, drawFromSingle,
+//             getCards, localUpdate, createDrawPile, canPlayOnExpedition
+//             playToExpedition, discardTo, discardToSingle, drawFromDrawPile, drawFromDiscard, drawFromSingle,
 //             executeAIPhase1, executeAIPhase2
 
 const REPLAY_STORAGE_KEY = 'expedition-last-replay';
@@ -77,17 +77,17 @@ discardToSingle = async function() {
   return result;
 };
 
-// Wrap drawFromDeck
-const _replayOrigDrawFromDeck = drawFromDeck;
-drawFromDeck = async function() {
+// Wrap drawFromDrawPile
+const _replayOrigDrawFromDrawPile = drawFromDrawPile;
+drawFromDrawPile = async function() {
   if (_replayActive) return;
-  const deck = getCards(gameState, 'deck');
-  const topCard = deck.length > 0 ? {color: deck[deck.length-1].color, value: deck[deck.length-1].value, id: deck[deck.length-1].id} : null;
+  const drawPile = getCards(gameState, 'drawPile');
+  const topCard = drawPile.length > 0 ? {color: drawPile[drawPile.length-1].color, value: drawPile[drawPile.length-1].value, id: drawPile[drawPile.length-1].id} : null;
   const player = mySlot;
   const phaseBefore = gameState ? gameState.phase : null;
-  const result = await _replayOrigDrawFromDeck();
+  const result = await _replayOrigDrawFromDrawPile();
   if (topCard && phaseBefore === 'draw' && gameState && gameState.phase === 'play') {
-    _logReplayAction({type: 'draw', card: topCard, drawFrom: 'deck', player});
+    _logReplayAction({type: 'draw', card: topCard, drawFrom: 'drawPile', player});
   }
   return result;
 };
@@ -148,11 +148,11 @@ executeAIPhase2 = function(p2) {
       const card = pile[pile.length - 1];
       _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'discard', drawColor: p2.color, player: 'player2'});
     } else {
-      // Falls back to deck
-      const deck = getCards(gameState, 'deck');
-      if (deck.length > 0) {
-        const card = deck[deck.length - 1];
-        _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'deck', player: 'player2'});
+      // Falls back to draw pile
+      const drawPile = getCards(gameState, 'drawPile');
+      if (drawPile.length > 0) {
+        const card = drawPile[drawPile.length - 1];
+        _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'drawPile', player: 'player2'});
       }
     }
   } else if (p2.type === 'single') {
@@ -161,18 +161,18 @@ executeAIPhase2 = function(p2) {
       const card = pile[pile.length - 1];
       _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'single', player: 'player2'});
     } else {
-      const deck = getCards(gameState, 'deck');
-      if (deck.length > 0) {
-        const card = deck[deck.length - 1];
-        _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'deck', player: 'player2'});
+      const drawPile = getCards(gameState, 'drawPile');
+      if (drawPile.length > 0) {
+        const card = drawPile[drawPile.length - 1];
+        _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'drawPile', player: 'player2'});
       }
     }
   } else {
-    // Draw from deck
-    const deck = getCards(gameState, 'deck');
-    if (deck.length > 0) {
-      const card = deck[deck.length - 1];
-      _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'deck', player: 'player2'});
+    // Draw from draw pile
+    const drawPile = getCards(gameState, 'drawPile');
+    if (drawPile.length > 0) {
+      const card = drawPile[drawPile.length - 1];
+      _logReplayAction({type: 'draw', card: {color: card.color, value: card.value, id: card.id}, drawFrom: 'drawPile', player: 'player2'});
     }
   }
 
@@ -458,16 +458,16 @@ function _applyReplayAction(action) {
     // Draw card
     let card = null;
 
-    if (action.drawFrom === 'deck') {
-      const deck = getCards(gameState, 'deck');
-      // Find the specific card in the deck or pop from top
-      const deckIdx = deck.findIndex(c => c.id === action.card.id);
-      if (deckIdx !== -1) {
-        card = deck.splice(deckIdx, 1)[0];
-      } else if (deck.length > 0) {
-        card = deck.pop();
+    if (action.drawFrom === 'drawPile') {
+      const drawPile = getCards(gameState, 'drawPile');
+      // Find the specific card in the draw pile or pop from top
+      const dpIdx = drawPile.findIndex(c => c.id === action.card.id);
+      if (dpIdx !== -1) {
+        card = drawPile.splice(dpIdx, 1)[0];
+      } else if (drawPile.length > 0) {
+        card = drawPile.pop();
       }
-      if (deck.length === 0) gameState.status = 'finished';
+      if (drawPile.length === 0) gameState.status = 'finished';
 
     } else if (action.drawFrom === 'discard') {
       const pile = getCards(gameState, 'discards', action.drawColor || action.card.color);
@@ -521,7 +521,7 @@ function _highlightReplayAction(action) {
     } else if (action.type === 'discard') {
       pb.textContent = who + ' discarded ' + cardName;
     } else if (action.type === 'draw') {
-      const from = action.drawFrom === 'deck' ? 'deck' : action.drawFrom === 'single' ? 'single pile' : (action.drawColor || action.card.color) + ' discard';
+      const from = action.drawFrom === 'drawPile' ? 'draw pile' : action.drawFrom === 'single' ? 'single pile' : (action.drawColor || action.card.color) + ' discard';
       pb.textContent = who + ' drew from ' + from;
     }
   }

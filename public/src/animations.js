@@ -33,7 +33,7 @@ function slideFrom(saved){
   });
 }
 
-// For deck draws: card doesn't exist yet, so we grab the deck's position
+// For draw pile draws: card doesn't exist yet, so we grab the draw pile's position
 // and slide the new card from there
 function slideFromEl(sourceEl, cardId){
   if(!sourceEl) return;

@@ -10,7 +10,7 @@ const ACHIEVEMENTS = [
   { id: 'high_roller',     name: 'High Roller',      description: 'Score 100+ points in a single game',           icon: '\u{1F4B0}' },
   { id: 'color_master',    name: 'Color Master',     description: 'Score positive in all 5 colors in one game',   icon: '\u{1F308}' },
   { id: 'wager_king',      name: 'Wager King',       description: 'Play 3 wagers in one expedition and score positive', icon: '\u{1F451}' },
-  { id: 'speed_run',       name: 'Speed Run',        description: 'Win a game with 20+ cards left in deck',       icon: '\u26A1' },
+  { id: 'speed_run',       name: 'Speed Run',        description: 'Win a game with 20+ cards left in draw pile',  icon: '\u26A1' },
   { id: 'comeback_kid',    name: 'Comeback Kid',     description: 'Win while opponent scored 30+ more on expeditions', icon: '\u{1F4AA}' },
   { id: 'beat_seer',       name: 'Beat the Seer',    description: 'Beat The Seer boss AI',                        icon: '\u{1F441}\uFE0F' },
   { id: 'beat_oracle',     name: 'Beat the Oracle',  description: 'Beat The Oracle boss AI',                      icon: '\u{1F52E}' },
@@ -57,7 +57,7 @@ function checkAchievements(myScore, oppScore, gs, personality) {
   const won = myScore > oppScore;
   const myExpeditions = gs && gs.expeditions ? gs.expeditions[mySlot] : null;
   const myBreakdown = myExpeditions ? calcScore(myExpeditions).breakdown : null;
-  const deckLeft = (gs && gs.deck) ? gs.deck.length : 0;
+  const drawPileLeft = (gs && gs.drawPile) ? gs.drawPile.length : 0;
 
   // 1. First Victory
   if (won) {
@@ -93,8 +93,8 @@ function checkAchievements(myScore, oppScore, gs, personality) {
     }
   }
 
-  // 6. Speed Run — win with 20+ cards left in deck
-  if (won && deckLeft >= 20) {
+  // 6. Speed Run — win with 20+ cards left in draw pile
+  if (won && drawPileLeft >= 20) {
     unlock('speed_run');
   }
 

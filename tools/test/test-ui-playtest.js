@@ -177,11 +177,11 @@ async function test(name, fn) {
     if (!turnText.includes('Your Turn')) throw new Error(`Turn indicator: "${turnText}"`);
   });
 
-  await test('deck shows card count', async () => {
-    const deckLabel = await page.$eval('#deck-count-label', el => el.textContent);
-    if (!deckLabel.includes('left')) throw new Error(`Deck label: "${deckLabel}"`);
-    const count = parseInt(deckLabel);
-    if (count !== 44) throw new Error(`Expected 44 cards in deck, got ${count}`);
+  await test('draw pile shows card count', async () => {
+    const drawPileLabel = await page.$eval('#deck-count-label', el => el.textContent);
+    if (!drawPileLabel.includes('left')) throw new Error(`Draw pile label: "${drawPileLabel}"`);
+    const count = parseInt(drawPileLabel);
+    if (count !== 44) throw new Error(`Expected 44 cards in draw pile, got ${count}`);
   });
 
   await test('cards have proper color classes', async () => {
@@ -231,13 +231,13 @@ async function test(name, fn) {
     if (handCards.length !== 7) throw new Error(`Expected 7 cards after play, got ${handCards.length}`);
   });
 
-  await test('can draw from deck (draw phase)', async () => {
+  await test('can draw from draw pile (draw phase)', async () => {
     const phaseBar = await page.$eval('.phase-bar', el => el.textContent);
-    if (phaseBar.includes('Draw') || phaseBar.includes('draw') || phaseBar.includes('deck')) {
-      // Click deck
-      const deck = await page.$('#deck-draw');
-      if (deck) {
-        await deck.click();
+    if (phaseBar.includes('Draw') || phaseBar.includes('draw')) {
+      // Click draw pile
+      const drawPileEl = await page.$('#deck-draw');
+      if (drawPileEl) {
+        await drawPileEl.click();
         await new Promise(r=>setTimeout(r,500));
       }
     }

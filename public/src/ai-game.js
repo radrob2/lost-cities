@@ -23,12 +23,12 @@ function startAIGame(){
   if(!name){document.getElementById('lobby-error').textContent='Enter your name';return}
   isAIGame=true; myId=genId(); mySlot='player1'; roomRef=null; roomCode=null; humanDrawHistory=[]; humanPlayHistory=[]; humanDiscardHistory=[];
   if(typeof _statsRecordedForGame!=='undefined') _statsRecordedForGame=false;
-  const deck=createDeck();
-  const hand1=deck.splice(0,8),hand2=deck.splice(0,8);
+  const drawPile=createDrawPile();
+  const hand1=drawPile.splice(0,8),hand2=drawPile.splice(0,8);
   const exps={},discard={};
   COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
   gameState={
-    deck,hands:{player1:hand1,player2:hand2},
+    drawPile,hands:{player1:hand1,player2:hand2},
     expeditions:{player1:{...exps},player2:Object.fromEntries(COLORS.map(c=>[c,[]]))},
     discards:Object.fromEntries(COLORS.map(c=>[c,[]])),
     singlePile:[],currentTurn:seriesFirstPlayer,phase:'play',
@@ -79,19 +79,19 @@ discardTo=async function(color){
   selectedCard=null;localUpdate(u);slideFrom(saved);
 };
 
-const _origDrawFromDeck=drawFromDeck;
-drawFromDeck=async function(){
-  if(!isAIGame)return _origDrawFromDeck();
+const _origDrawFromDrawPile=drawFromDrawPile;
+drawFromDrawPile=async function(){
+  if(!isAIGame)return _origDrawFromDrawPile();
   if(gameState.currentTurn!==mySlot||gameState.phase!=='draw')return;
-  const deck=getCards(gameState,'deck');if(deck.length===0)return;
+  const drawPile=getCards(gameState,'drawPile');if(drawPile.length===0)return;
   SFX.drawCard();
-  const deckEl=document.getElementById('deck-col');
-  const card=deck.pop();
+  const drawPileEl=document.getElementById('draw-pile-col');
+  const card=drawPile.pop();
   const hand=getCards(gameState,'hands',mySlot);hand.push(card);
-  const u={};u['deck']=deck;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
-  if(deck.length===0)u['status']='finished';
+  const u={};u['drawPile']=drawPile;u[`hands/${mySlot}`]=hand;u['currentTurn']='player2';u['phase']='play';u['lastDiscardedColor']=null;u['justDiscarded']=false;
+  if(drawPile.length===0)u['status']='finished';
   lastPlayedCard=null;
-  localUpdate(u);slideFromEl(deckEl, card.id);
+  localUpdate(u);slideFromEl(drawPileEl, card.id);
   if(gameState.status!=='finished') setTimeout(aiTurn,300);
 };
 
@@ -185,8 +185,8 @@ function aiTurn(){
     expeditions:{player1:{},player2:{}},
     discards:{},
     singlePile:(gameState.singlePile||[]).map(c=>({color:c.color,value:c.value,id:c.id})),
-    deckSize:getCards(gameState,'deck').length,
-    knownDeck:aiPersonality==='oracle'?getCards(gameState,'deck').map(c=>({color:c.color,value:c.value,id:c.id})):null,
+    deckSize:getCards(gameState,'drawPile').length,
+    knownDeck:aiPersonality==='oracle'?getCards(gameState,'drawPile').map(c=>({color:c.color,value:c.value,id:c.id})):null,
     oppDrawHistory:humanDrawHistory,
     oppPlayHistory:humanPlayHistory,
     oppDiscardHistory:humanDiscardHistory
@@ -212,7 +212,7 @@ function aiTurn(){
       const d=result.debug;
       console.group(`AI Turn (${elapsed}ms, ${result.simsRan} sims)`);
       console.log(`Hand: ${d.hand}`);
-      console.log(`Deck: ${d.deckSize} cards left`);
+      console.log(`Draw pile: ${d.deckSize} cards left`);
       console.log(`Opp expeditions:`, Object.keys(d.oppExps).length?d.oppExps:'(none)');
       console.log(`CHOSE: ${d.chosen} -> draw ${d.chosenDraw} (${(result.winRate*100).toFixed(1)}% win)`);
       if(d.dangerNote) console.warn(d.dangerNote);
@@ -287,8 +287,8 @@ function executeAIPhase2(p2){
       u2[`discards/${p2.color}`]=pile;
       SFX.drawCard();
     } else {
-      // Pile empty (opponent took it) — fall back to deck
-      return drawAIFromDeck(u2,aiHand);
+      // Pile empty (opponent took it) — fall back to draw pile
+      return drawAIFromDrawPile(u2,aiHand);
     }
   } else if(p2.type==='single'){
     const pile=getCards(gameState,'singlePile');
@@ -297,11 +297,11 @@ function executeAIPhase2(p2){
       u2['singlePile']=pile;
       SFX.drawCard();
     } else {
-      return drawAIFromDeck(u2,aiHand);
+      return drawAIFromDrawPile(u2,aiHand);
     }
   } else {
     SFX.drawCard();
-    return drawAIFromDeck(u2,aiHand);
+    return drawAIFromDrawPile(u2,aiHand);
   }
 
   u2['hands/player2']=aiHand;
@@ -309,12 +309,12 @@ function executeAIPhase2(p2){
   localUpdate(u2);
 }
 
-function drawAIFromDeck(u2,aiHand){
-  const deck=getCards(gameState,'deck');
-  if(deck.length===0){u2['status']='finished';localUpdate(u2);return;}
-  const card=deck.pop();aiHand.push(card);
-  u2['deck']=deck;
-  if(deck.length===0)u2['status']='finished';
+function drawAIFromDrawPile(u2,aiHand){
+  const drawPile=getCards(gameState,'drawPile');
+  if(drawPile.length===0){u2['status']='finished';localUpdate(u2);return;}
+  const card=drawPile.pop();aiHand.push(card);
+  u2['drawPile']=drawPile;
+  if(drawPile.length===0)u2['status']='finished';
   u2['hands/player2']=aiHand;
   u2['currentTurn']='player1';u2['phase']='play';u2['lastDiscardedColor']=null;u2['justDiscarded']=false;
   localUpdate(u2);
@@ -324,7 +324,7 @@ function drawAIFromDeck(u2,aiHand){
 function aiFallbackTurn(){
   const hand=getCards(gameState,'hands','player2');
   if(hand.length===0)return;
-  // Discard first card, draw from deck
+  // Discard first card, draw from draw pile
   const card=hand[0];
   const u={};
   u['hands/player2']=hand.filter(c=>c.id!==card.id);
@@ -339,6 +339,6 @@ function aiFallbackTurn(){
   localUpdate(u);
   onAnimationsDone(()=>{
     const u2={};const aiHand=getCards(gameState,'hands','player2');
-    drawAIFromDeck(u2,aiHand);
+    drawAIFromDrawPile(u2,aiHand);
   });
 }

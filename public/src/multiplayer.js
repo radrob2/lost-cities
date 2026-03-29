@@ -1,7 +1,7 @@
 // ===== MULTIPLAYER (Firebase RTDB) =====
 // Depends on: globals (db, myId, mySlot, roomCode, roomRef, variant, gameState, listeners),
 //             COLORS, genId, genRoomCode, showScreen, renderGame, showGameOver, toast,
-//             requestNotificationPermission, createDeck, saveSession, clearSession
+//             requestNotificationPermission, createDrawPile, saveSession, clearSession
 
 function showJoin(){showScreen('join-screen');document.getElementById('room-code-input').focus()}
 function getName(screen){
@@ -47,13 +47,13 @@ async function joinRoom(){
 async function startGame(){
   showScreen('game-screen');
   if(mySlot==='player1'){
-    const deck=createDeck();
-    const hand1=deck.splice(0,8), hand2=deck.splice(0,8);
+    const drawPile=createDrawPile();
+    const hand1=drawPile.splice(0,8), hand2=drawPile.splice(0,8);
     const exps={}, discard={};
     COLORS.forEach(c=>{exps[c]=[];discard[c]=[]});
     const firstPlayer=typeof seriesFirstPlayer!=='undefined'?seriesFirstPlayer:(Math.random()<0.5?'player1':'player2');
     await roomRef.child('game').set({
-      deck, hands:{player1:hand1,player2:hand2},
+      drawPile, hands:{player1:hand1,player2:hand2},
       expeditions:{player1:exps,player2:exps},
       discards:discard, singlePile:[],
       currentTurn:firstPlayer, phase:'play',

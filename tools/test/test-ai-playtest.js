@@ -1,7 +1,7 @@
 // Comprehensive AI playtesting — exercises all AI code paths through full games
 // Tests: heuristic AI, genome AI, edge cases, illegal state detection
 
-const { COLORS, calculateScore, canPlayOnExpedition, createDeck } = require('./game-rules');
+const { COLORS, calculateScore, canPlayOnExpedition, createDrawPile } = require('./game-rules');
 
 let passed = 0, failed = 0;
 function test(name, fn) {
@@ -25,7 +25,7 @@ function heuristicTurn(sim, player) {
   const other = player === 'player1' ? 'player2' : 'player1';
   const myExps = sim.expeditions[player];
   const oppExps = sim.expeditions[other];
-  const deckSize = sim.deck.length;
+  const drawPileSize = sim.drawPile.length;
 
   const handByColor = {};
   for (const c of COLORS) handByColor[c] = [];
@@ -60,7 +60,7 @@ function heuristicTurn(sim, player) {
       if (commitment > 0 && exp.some(e => e.value > 0)) continue;
       const withoutWager = projectScore(exp, remaining);
       score = afterPlay - withoutWager > 0 ? afterPlay - withoutWager : (afterPlay - withoutWager) * 0.5;
-      if (deckSize > 35) score += 8; else if (deckSize > 25) score += 3; else score -= 5;
+      if (drawPileSize > 35) score += 8; else if (drawPileSize > 25) score += 3; else score -= 5;
       if (handCount >= 4) score += 5; else if (handCount >= 3) score += 2; else score -= 8;
     } else {
       if (commitment > 0) {
@@ -72,7 +72,7 @@ function heuristicTurn(sim, player) {
         if (card.value <= 4) score += 3;
       } else {
         if (delta > -5) score = delta * 0.5 + handCount * 3; else score = delta * 0.3;
-        if (deckSize < 15) score -= 10; else if (deckSize < 25 && handCount < 3) score -= 8;
+        if (drawPileSize < 15) score -= 10; else if (drawPileSize < 25 && handCount < 3) score -= 8;
         if (myExpCount >= 3) score -= 5; if (myExpCount >= 4) score -= 10;
         if (card.value <= 4 && handCount >= 3) score += 5;
         if (card.value >= 8 && handCount <= 2) score -= 15;
@@ -144,21 +144,21 @@ function heuristicTurn(sim, player) {
     if (ds > 6) { hand.push(sim.singlePile.pop()); drew = true; }
   }
   if (!drew) {
-    if (sim.deck.length === 0) return true;
-    hand.push(sim.deck.pop());
-    if (sim.deck.length === 0) return true;
+    if (sim.drawPile.length === 0) return true;
+    hand.push(sim.drawPile.pop());
+    if (sim.drawPile.length === 0) return true;
   }
   return false;
 }
 
 // ========== GAME STATE HELPERS ==========
 function createGameState(variant) {
-  const deck = createDeck();
-  const h1 = deck.splice(0, 8), h2 = deck.splice(0, 8);
+  const drawPile = createDrawPile();
+  const h1 = drawPile.splice(0, 8), h2 = drawPile.splice(0, 8);
   const e1 = {}, e2 = {}, dc = {};
   for (const c of COLORS) { e1[c] = []; e2[c] = []; dc[c] = []; }
   return { hands: { player1: h1, player2: h2 }, expeditions: { player1: e1, player2: e2 },
-    discards: dc, singlePile: [], deck, variant };
+    discards: dc, singlePile: [], drawPile, variant };
 }
 
 function validateGameState(gs) {
@@ -181,7 +181,7 @@ function validateGameState(gs) {
     }
   }
   // Check total card count
-  let total = gs.deck.length + gs.hands.player1.length + gs.hands.player2.length;
+  let total = gs.drawPile.length + gs.hands.player1.length + gs.hands.player2.length;
   for (const p of ['player1', 'player2'])
     for (const c of COLORS) total += (gs.expeditions[p][c] || []).length;
   if (gs.variant === 'classic')
@@ -190,7 +190,7 @@ function validateGameState(gs) {
   if (total !== 60) errors.push(`Card count ${total} != 60`);
   // Check no duplicate IDs
   const ids = new Set();
-  const allCards = [...gs.deck, ...gs.hands.player1, ...gs.hands.player2];
+  const allCards = [...gs.drawPile, ...gs.hands.player1, ...gs.hands.player2];
   for (const p of ['player1', 'player2'])
     for (const c of COLORS) allCards.push(...(gs.expeditions[p][c] || []));
   if (gs.variant === 'classic')
@@ -241,10 +241,10 @@ test('heuristic AI: 500 single-pile games without crashes', () => {
   if (stateErrors > 0) throw new Error(`${stateErrors}/500 games had illegal state`);
 });
 
-test('all games end with deck exhausted', () => {
+test('all games end with draw pile exhausted', () => {
   for (let i = 0; i < 100; i++) {
     const gs = playFullGame('classic');
-    if (gs.deck.length !== 0) throw new Error(`Game ${i}: deck has ${gs.deck.length} cards left`);
+    if (gs.drawPile.length !== 0) throw new Error(`Game ${i}: draw pile has ${gs.drawPile.length} cards left`);
   }
 });
 

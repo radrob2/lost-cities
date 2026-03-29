@@ -81,7 +81,7 @@ function renderGame(){
   }
 
   // Draw pile count (used by discard row render)
-  const deckLen = getCards(gameState,'deck').length;
+  const drawPileLen = getCards(gameState,'drawPile').length;
 
   // Live score totals (per-stack scores rendered in renderBoard via stackScoreLabelAt)
   const oppTotalEl=document.getElementById('opp-total-score');
@@ -274,7 +274,7 @@ function renderBoard(layout){
   // Undo state
   const canUndo=lastPlayedCard && inDrawPhase && isMyTurn;
 
-  const deckLen=getCards(gameState,'deck').length;
+  const drawPileLen=getCards(gameState,'drawPile').length;
 
   // Single pile
   if(variant==='single'){
@@ -399,22 +399,22 @@ function renderBoard(layout){
 
     // Render draw pile
     const isLandscapeLayout=window.innerWidth>window.innerHeight;
-    const deckSlot=document.getElementById('deck-slot');
-    const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
-    let deckCardsHTML='';
+    const drawPileSlot=document.getElementById('draw-pile-slot');
+    const drawPileTarget=isMyTurn && inDrawPhase ? 'target' : '';
+    let drawPileCardsHTML='';
     // Portrait layout: landscape cards in draw pile. Landscape layout: portrait cards (6th column)
-    const deckCardClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
-    if(deckLen>0){
-      const showCount=Math.min(deckLen,10);
+    const drawPileCardClass=isLandscapeLayout?'card card-back':'card card-back draw-pile-landscape';
+    if(drawPileLen>0){
+      const showCount=Math.min(drawPileLen,10);
       for(let i=0;i<showCount;i++){
         const h=(i*7919+i*i*31)&0xFFFF;
         const rot=((h%100)/100*6-3).toFixed(1);
         const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
         const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
-        deckCardsHTML+=`<div class="${deckCardClass}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
+        drawPileCardsHTML+=`<div class="${drawPileCardClass}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
       }
     }
-    const countLabel=`<div style="text-align:center;font-size:var(--text-sm);line-height:var(--line-sm);color:var(--parchment-dark);opacity:.5;font-family:'Cinzel',serif">${deckLen} left</div>`;
+    const countLabel=`<div style="text-align:center;font-size:var(--text-sm);line-height:var(--line-sm);color:var(--parchment-dark);opacity:.5;font-family:'Cinzel',serif">${drawPileLen} left</div>`;
 
     if(isLandscapeLayout){
       // Landscape: draw pile as 6th column, appended without shifting the 5 discard columns
@@ -433,20 +433,20 @@ function renderBoard(layout){
       const rowPad=`calc((100% - ${totalGridW}) / 2)`;
       discardRow.style.paddingLeft=rowPad;
       discardRow.style.paddingRight='0';
-      discardRow.innerHTML+=`<div class="card-col ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}${countLabel}</div>`;
-      if(deckSlot) deckSlot.style.display='none';
+      discardRow.innerHTML+=`<div class="card-col ${drawPileTarget}" id="draw-pile-col" onclick="drawFromDrawPile()" style="position:relative;width:${slotW};height:${slotH}">${drawPileLen>0?drawPileCardsHTML:emptySlot}${countLabel}</div>`;
+      if(drawPileSlot) drawPileSlot.style.display='none';
     } else {
       // Portrait: draw pile below discards, landscape oriented, centered
       discardRow.style.gridTemplateColumns='';
-      if(deckSlot){
-        deckSlot.style.display='flex';
-        deckSlot.style.flexDirection='column';
-        deckSlot.style.justifyContent='center';
-        deckSlot.style.alignItems='center';
+      if(drawPileSlot){
+        drawPileSlot.style.display='flex';
+        drawPileSlot.style.flexDirection='column';
+        drawPileSlot.style.justifyContent='center';
+        drawPileSlot.style.alignItems='center';
         const slotW='calc(var(--card-h) + var(--slot-pad))';
         const slotH='var(--col-w)';
         const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
-        deckSlot.innerHTML=`<div class="${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
+        drawPileSlot.innerHTML=`<div class="${drawPileTarget}" id="draw-pile-col" onclick="drawFromDrawPile()" style="position:relative;width:${slotW};height:${slotH}">${drawPileLen>0?drawPileCardsHTML:emptySlot}</div>${countLabel}`;
       }
     }
   }

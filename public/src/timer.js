@@ -139,11 +139,11 @@ async function autoPlayOnTimeout() {
     } else {
       await discardTo(card.color);
     }
-    // Now draw from deck
-    await drawFromDeck();
+    // Now draw from draw pile
+    await drawFromDrawPile();
   } else if (gameState.phase === 'draw') {
-    // Already in draw phase (play phase was done but draw wasn't) — just draw from deck
-    await drawFromDeck();
+    // Already in draw phase (play phase was done but draw wasn't) — just draw from draw pile
+    await drawFromDrawPile();
   }
 }
 

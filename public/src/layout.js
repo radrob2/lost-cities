@@ -62,11 +62,11 @@ function computeLayout() {
 
   // Middle section: discards + draw pile (portrait has draw pile below, landscape has it as 6th col)
   const colGapR     = 1 / Math.pow(PHI, 7);                // n=7
-  const deckCardR   = 1 / PHI;                             // n=1 (cardW, landscape-oriented)
-  const deckLabelR  = 1 / Math.pow(PHI, 4);                // n=4 (textSm line-height)
+  const drawPileCardR  = 1 / PHI;                             // n=1 (cardW, landscape-oriented)
+  const drawPileLabelR = 1 / Math.pow(PHI, 4);                // n=4 (textSm line-height)
   const midR = isLandscape
-    ? slotHR + deckLabelR
-    : slotHR + colGapR + deckCardR + deckLabelR;
+    ? slotHR + drawPileLabelR
+    : slotHR + colGapR + drawPileCardR + drawPileLabelR;
 
   // Hand area
   const liftR       = 1 / Math.pow(PHI, 4);                // n=4

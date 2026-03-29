@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { COLORS, calculateScore, canPlayOnExpedition, createDeck } = require('./game-rules');
+const { COLORS, calculateScore, canPlayOnExpedition, createDrawPile } = require('./game-rules');
 
 const NUM_GAMES = 100;
 let passed = 0;
@@ -19,24 +19,24 @@ function test(name, fn) {
 
 console.log('=== Game Simulation Tests ===\n');
 
-// --- Deck creation ---
-test('deck has exactly 60 cards', () => {
-  const deck = createDeck();
-  assert.strictEqual(deck.length, 60);
+// --- Draw pile creation ---
+test('draw pile has exactly 60 cards', () => {
+  const drawPile = createDrawPile();
+  assert.strictEqual(drawPile.length, 60);
 });
 
-test('deck has 5 colors x 12 cards each', () => {
-  const deck = createDeck();
+test('draw pile has 5 colors x 12 cards each', () => {
+  const drawPile = createDrawPile();
   for (const c of COLORS) {
-    const colorCards = deck.filter(card => card.color === c);
+    const colorCards = drawPile.filter(card => card.color === c);
     assert.strictEqual(colorCards.length, 12, `${c} should have 12 cards, got ${colorCards.length}`);
   }
 });
 
 test('each color has 3 wagers and numbers 2-10', () => {
-  const deck = createDeck();
+  const drawPile = createDrawPile();
   for (const c of COLORS) {
-    const colorCards = deck.filter(card => card.color === c);
+    const colorCards = drawPile.filter(card => card.color === c);
     const wagers = colorCards.filter(card => card.value === 0);
     assert.strictEqual(wagers.length, 3, `${c} should have 3 wagers`);
     for (let v = 2; v <= 10; v++) {
@@ -47,24 +47,24 @@ test('each color has 3 wagers and numbers 2-10', () => {
 });
 
 test('every card has a unique id', () => {
-  const deck = createDeck();
-  const ids = new Set(deck.map(c => c.id));
+  const drawPile = createDrawPile();
+  const ids = new Set(drawPile.map(c => c.id));
   assert.strictEqual(ids.size, 60);
 });
 
-test('deck is shuffled (two decks differ)', () => {
-  // Extremely unlikely two shuffled decks are identical
-  const d1 = createDeck();
-  const d2 = createDeck();
+test('draw pile is shuffled (two draw piles differ)', () => {
+  // Extremely unlikely two shuffled draw piles are identical
+  const d1 = createDrawPile();
+  const d2 = createDrawPile();
   const same = d1.every((c, i) => c.id === d2[i].id);
-  assert.strictEqual(same, false, 'Two shuffled decks should not be identical');
+  assert.strictEqual(same, false, 'Two shuffled draw piles should not be identical');
 });
 
 // --- Simulate full games ---
 
 function simulateGame() {
-  const deck = createDeck();
-  const hands = { player1: deck.splice(0, 8), player2: deck.splice(0, 8) };
+  const drawPile = createDrawPile();
+  const hands = { player1: drawPile.splice(0, 8), player2: drawPile.splice(0, 8) };
   const expeditions = {
     player1: Object.fromEntries(COLORS.map(c => [c, []])),
     player2: Object.fromEntries(COLORS.map(c => [c, []]))
@@ -75,7 +75,7 @@ function simulateGame() {
   let turnCount = 0;
   const maxTurns = 1000; // safety valve
 
-  while (deck.length > 0 && turnCount < maxTurns) {
+  while (drawPile.length > 0 && turnCount < maxTurns) {
     turnCount++;
     const hand = hands[currentTurn];
     const myExps = expeditions[currentTurn];
@@ -103,9 +103,9 @@ function simulateGame() {
       discards[card.color].push(card);
     }
 
-    // --- Draw phase: draw from deck or a discard pile ---
-    // Collect draw options (deck + any non-empty discard pile, except the one just discarded to)
-    const drawOptions = ['deck'];
+    // --- Draw phase: draw from draw pile or a discard pile ---
+    // Collect draw options (draw pile + any non-empty discard pile, except the one just discarded to)
+    const drawOptions = ['drawPile'];
     for (const c of COLORS) {
       if (discards[c].length > 0) {
         // Can't draw from the pile you just discarded to
@@ -115,8 +115,8 @@ function simulateGame() {
     }
 
     const drawChoice = drawOptions[Math.floor(Math.random() * drawOptions.length)];
-    if (drawChoice === 'deck') {
-      hand.push(deck.pop());
+    if (drawChoice === 'drawPile') {
+      hand.push(drawPile.pop());
     } else {
       hand.push(discards[drawChoice].pop());
     }
@@ -124,18 +124,18 @@ function simulateGame() {
     currentTurn = currentTurn === 'player1' ? 'player2' : 'player1';
   }
 
-  return { expeditions, turnCount, deckEmpty: deck.length === 0 };
+  return { expeditions, turnCount, drawPileEmpty: drawPile.length === 0 };
 }
 
 test(`simulate ${NUM_GAMES} random games without crashes`, () => {
   let crashes = 0;
-  let deckEmptyCount = 0;
+  let drawPileEmptyCount = 0;
   let scoreErrors = 0;
 
   for (let i = 0; i < NUM_GAMES; i++) {
     try {
       const result = simulateGame();
-      if (result.deckEmpty) deckEmptyCount++;
+      if (result.drawPileEmpty) drawPileEmptyCount++;
 
       // Verify scores calculate without error
       for (const player of ['player1', 'player2']) {
@@ -153,18 +153,18 @@ test(`simulate ${NUM_GAMES} random games without crashes`, () => {
 
   assert.strictEqual(crashes, 0, `${crashes} games crashed`);
   assert.strictEqual(scoreErrors, 0, `${scoreErrors} score calculation errors`);
-  console.log(`        (${deckEmptyCount}/${NUM_GAMES} games ended by deck exhaustion)`);
+  console.log(`        (${drawPileEmptyCount}/${NUM_GAMES} games ended by draw pile exhaustion)`);
 });
 
-test('all simulated games end with empty deck', () => {
-  // With random legal moves, games should always exhaust the deck
+test('all simulated games end with empty draw pile', () => {
+  // With random legal moves, games should always exhaust the draw pile
   // (players always draw a card each turn)
   let allEmpty = true;
   for (let i = 0; i < 20; i++) {
     const result = simulateGame();
-    if (!result.deckEmpty) { allEmpty = false; break; }
+    if (!result.drawPileEmpty) { allEmpty = false; break; }
   }
-  assert.strictEqual(allEmpty, true, 'Some games did not exhaust the deck');
+  assert.strictEqual(allEmpty, true, 'Some games did not exhaust the draw pile');
 });
 
 test('expedition cards are in legal order after simulation', () => {
