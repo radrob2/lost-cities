@@ -125,16 +125,18 @@ Translation of content relative to other content. Offsets position things within
 
 ## 3. Z-Layers
 
-Physical and virtual layers from back to front:
+Physical and virtual layers from back to front. Each layer gets a thousands digit (999 levels within each):
 
-| Layer | What | Z-order within | Examples |
-|-------|------|---------------|---------|
-| **Table** | The surface itself | Decorative element order | Background color, texture, patterns |
-| **Printed** | Markings on the table surface | Drawing order | Card spaces (dashed outlines), color indicators |
-| **Resting** | Physical objects on the table | Stack order (card N above card N-1) | Cards in stacks, cards in piles, draw pile |
-| **Floating** | Objects held above the table | Context-dependent | Player hand, selected card, spread view |
-| **Overlay** | Information projected onto the scene | Content order | Stack scores, pile counts, phase prompts, name tags, status indicators |
-| **Chrome** | UI outside the game world | Always on top | Settings gear, menus, modals, toasts |
+| Layer | z-index range | What | Examples |
+|-------|--------------|------|---------|
+| **Table** | 0-999 | The surface itself | Background color, texture, patterns |
+| **Printed** | 1000-1999 | Markings on the table surface | Card spaces (dashed outlines), color indicators |
+| **Resting** | 2000-2999 | Physical objects on the table | Cards in stacks (2000+i), hand cards (2000), hover (2002) |
+| **Floating** | 3000-3999 | Objects held above the table | Selected card (3000), spread view (3000) |
+| **Overlay** | 4000-4999 | Information projected onto the scene | Stack scores, pile counts, phase prompts, name tags |
+| **Chrome** | 5000-5999 | UI outside the game world | Gear (5000), toast (5100), modals (5200), tutorial (5300), flip animation (5999) |
+
+Within-card z-indices (0, 1) are relative to the card's stacking context and don't interact with board-level z-order.
 
 ### 3.1 Effects
 
