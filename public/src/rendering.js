@@ -319,9 +319,10 @@ function renderBoard(){
   function getStackOffset(count){
     return Math.round(stackOffset(count, curCardH));
   }
-  // Fixed stack content height for worst case (12 cards)
+  // Fixed stack height = card content + score label line, fills the full row
   const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
-  const fixedStackH=fixedStackContentH+'px';
+  const fixedStackRowH=fixedStackContentH+scoreLinePx;
+  const fixedStackH=fixedStackRowH+'px';
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
 
@@ -347,7 +348,7 @@ function renderBoard(){
     const so=isExp?18:baseSo;
     // Center cards vertically within fixed stack height
     const totalStackPx=((cards.length-1)*so)+curCardH;
-    const stackHPx=fixedStackContentH||Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
+    const stackHPx=fixedStackRowH;
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     // Score label right below the last card
@@ -461,7 +462,7 @@ function renderBoard(){
     const so=isExp?18:baseSo;
     // Center the full stack (including target slot) within fixed height
     const totalStackPx=((withPlayCount-1)*so)+curCardH;
-    const stackHPx=fixedStackContentH||Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
+    const stackHPx=fixedStackRowH;
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
