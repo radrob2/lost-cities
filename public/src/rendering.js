@@ -317,7 +317,7 @@ function renderBoard(layout){
 
   const drawPileLen=getCards(gameState,'drawPile').length;
 
-  // Single pile
+  // Single pile — same renderer as all other piles
   if(variant==='single'){
     singleContainer.style.display='inline-block';
     discardRow.style.display='none';
@@ -325,21 +325,29 @@ function renderBoard(layout){
     const topCard=pile.length>0?pile[pile.length-1]:null;
     const canDiscard=selectedCard && inPlayPhase && isMyTurn;
     const canDraw=inDrawPhase && isMyTurn && topCard && !gameState.justDiscarded;
-    let inner='';
+    const isUndoSingle=canUndo && lastPlayedCard.to==='single';
     if(!topCard){
-      const cls=canDiscard?'card target':'card empty-slot';
-      inner=`<div class="${cls}" onclick="discardToSingle()">${canDiscard?'<span class="target-label">Discard</span>':''}</div>`;
+      singleContainer.innerHTML=renderPile([], {
+        targetLabel:canDiscard?'Discard':'',
+        onclick:'discardToSingle()'
+      });
     } else {
-      const isUndoSingle=canUndo && lastPlayedCard.to==='single';
-      if(isUndoSingle){
-        inner=`<div onclick="undoLastPlay()" style="position:relative">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div>`;
-      } else {
-        const extra=canDraw?'target':(canDiscard?'target':'');
-        const handler=inDrawPhase&&isMyTurn?'drawFromSingle()':'discardToSingle()';
-        inner=`<div onclick="${handler}" style="position:relative">${cardHTML(topCard,extra)}${canDraw?'<span class="target-label">Draw</span>':''}${canDiscard?'<span class="target-label">Discard</span>':''}</div>`;
-      }
+      const colHandler=isUndoSingle?'undoLastPlay()':(inDrawPhase&&isMyTurn?'drawFromSingle()':'discardToSingle()');
+      singleContainer.innerHTML=renderPile(pile, {
+        onclick:colHandler,
+        perCard:(card,i,isTop)=>{
+          if(!isTop) return {};
+          if(isUndoSingle) return {
+            extra:'undoable',
+            handler:' onclick="event.stopPropagation();undoLastPlay()"',
+            suffix:'<span class="undo-label">undo</span>'
+          };
+          const extra=canDraw?'target':(canDiscard?'target':'');
+          const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
+          return {extra, suffix:labels};
+        }
+      });
     }
-    singleContainer.innerHTML=inner;
   } else {
     singleContainer.style.display='none';
     discardRow.style.display='flex';
@@ -396,33 +404,36 @@ function renderBoard(layout){
   // opts.colStyle:    extra inline CSS on the card-col
   //
   // When opts.side is set ('opp'|'my'), renderPile OWNS centering:
-  //   - Computes so (card offset) and origin (pile top) internally
+  //   - so defaults to cardOffset(n), origin from stackOrigin
   //   - Computes score label position internally
   //   - opts.so overrides default card offset (e.g. for expanded stacks)
-  // When opts.side is omitted (discards), card-col flex-centers the content.
+  // When opts.side is omitted (discards/single), collapsed by default:
+  //   - so defaults to 0 (only top card visible), origin=0
+  //   - Auto-height spacer since absolute children don't give card-col flow height
   function renderPile(cards, opts){
     opts=opts||{};
     const n=cards?cards.length:0;
     let inner;
 
     if(n===0){
-      // N=0: card space — centered in the same content area as cards would be
+      // N=0: card space — the empty slot. Always present, same dimensions as a card would occupy.
       const label=opts.targetLabel;
       const cls=label?'card target':'card empty-slot';
-      const border=label?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`;
-      const content=label?'<span class="target-label">'+label+'</span>':cbLabel(opts.color);
+      const border=(!label&&opts.color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`:'';
+      const content=label?'<span class="target-label">'+label+'</span>':(opts.color?cbLabel(opts.color):'');
       if(opts.side){
         // Play stack: position slot where a 1-card pile would sit (within cardContentH)
         const slotTop=stackOrigin(1, 0, opts.side);
         inner=`<div class="${cls}" style="${border};position:absolute;top:${slotTop}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
       } else {
-        // Discard: no score label budget, flex-centered by card-col
+        // Discard/single: flex-centered by card-col
         inner=`<div class="${cls}" style="${border}">${content}</div>`;
       }
     } else {
-      // N>=1: absolute-positioned cards with jitter
-      // When side is set, renderPile owns the centering computation
-      const so=opts.so!==undefined?opts.so:cardOffset(n);
+      // N>=1: absolute-positioned cards
+      // With side: spread cards, centered via stackOrigin
+      // Without side: collapsed (so=0), top-aligned, auto-height
+      const so=opts.so!==undefined?opts.so:(opts.side?cardOffset(n):0);
       const origin=opts.side?stackOrigin(n, so, opts.side):0;
       const zBase=opts.zBase||0;
       const perCard=opts.perCard;
@@ -437,6 +448,11 @@ function renderBoard(layout){
           const labelTop=opts.side==='my'?origin-scoreLineH:origin+(n-1)*so+curCardH;
           inner+=stackScoreLabelAt(real, labelTop);
         }
+      }
+      // Auto-height spacer: absolute children don't give card-col flow height
+      if(!opts.height){
+        const ph=pileH(n, so);
+        inner=`<div style="height:${Math.max(ph,curCardH)}px"></div>`+inner;
       }
     }
 
@@ -476,26 +492,25 @@ function renderBoard(layout){
         return renderPile([], {color:c, targetLabel:canDiscard?'Discard':'', onclick:"discardTo('"+c+"')"});
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
-      if(isUndoDiscard){
-        return `<div class="card-col" onclick="undoLastPlay()" style="position:relative">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div>`;
-      }
-      const extra=canDraw?'target':(canDiscard?'target':'');
-      const hasAction=canDraw||canDiscard;
-      const handler=hasAction?(inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`):(pile.length>1?`toggleExpand('discard','${c}')`:'');
       const isExp=expandedStack && expandedStack.who==='discard' && expandedStack.color===c;
-      // Show all cards in pile with jitter; expand on tap if no action
-      const baseSo=cardOffset(pile.length);
-      let stackHTML='';
-      for(let i=0;i<pile.length-1;i++){
-        const card=pile[i];
-        const so=isExp?spreadOffset:0;
-        stackHTML+=`<div style="position:absolute;top:${i*so}px;left:calc(var(--slot-pad) / 2);transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
-      }
-      // Top card (interactive)
-      const topSo=isExp?(pile.length-1)*spreadOffset:0;
-      stackHTML+=`<div style="position:relative;top:${topSo}px;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
-      const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
-      return `<div class="card-col" style="position:relative;${isExp?'z-index:3000':''}" onclick="${handler}">${stackHTML}${labels}</div>`;
+      const hasAction=canDraw||canDiscard;
+      const colHandler=hasAction?(inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`):(pile.length>1?`toggleExpand('discard','${c}')`:'');
+      return renderPile(pile, {color:c, so:isExp?spreadOffset:undefined,
+        colStyle:isExp?'z-index:3000':'',
+        onclick:colHandler,
+        perCard:(card,i,isTop)=>{
+          if(isTop&&isUndoDiscard) return {
+            extra:'undoable',
+            handler:' onclick="event.stopPropagation();undoLastPlay()"',
+            suffix:'<span class="undo-label">undo</span>'
+          };
+          if(isTop) return {
+            extra:canDraw?'target':(canDiscard?'target':''),
+            suffix:(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'')
+          };
+          return {};
+        }
+      });
     }).join('');
 
     // Render draw pile
