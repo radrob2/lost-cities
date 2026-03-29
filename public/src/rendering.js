@@ -385,13 +385,10 @@ function renderBoard(layout){
     return { h, so };
   }
 
-  // Stack origin: centers pile within cardContentH, then offsets for score line position
-  // opponent: score line at bottom → pile centered in top portion of section
-  // player: score line at top → pile centered in bottom portion of section
-  function stackOrigin(n, co, side){
+  // Stack origin: centers pile within full sectionH
+  function stackOrigin(n, co){
     const ph = pileH(n, co);
-    const center = Math.max(0, Math.round((cardContentH - ph) / 2));
-    return side === 'opp' ? center : stackScoreH + center;
+    return Math.max(0, Math.round((sectionH - ph) / 2));
   }
 
   // Spread view uses card offset at N=2 (max readable spacing)
@@ -431,8 +428,7 @@ function renderBoard(layout){
     const isExp=spreadPile&&spreadPile.who==='opp'&&spreadPile.color===c;
     const {h:ph, so}=pileLayout(cards.length, isExp?2:true);
     const n=cards.length;
-    const contentH=sectionH-stackScoreH;
-    const top=centerTop(n>0?ph:curCardH, contentH);
+    const top=centerTop(n>0?ph:curCardH, sectionH);
     let inner=pileSpaceHTML(top, c, '');
     for(let i=0;i<n;i++){
       inner+=positionedCardHTML(cards[i], top+i*so, (isExp?100:0)+i, '', '', '');
@@ -530,16 +526,14 @@ function renderBoard(layout){
     const ghost=canPlay?{color:c, value:-1, id:'ghost-'+c, ghost:true}:null;
     const cards=ghost?[...realCards, ghost]:realCards;
     if(cards.length===0){
-      const contentH=sectionH-stackScoreH;
-      const top=stackScoreH+centerTop(curCardH, contentH);
+      const top=centerTop(curCardH, sectionH);
       let inner=pileSpaceHTML(top, c, '');
       return `<div class="card-col" style="height:${sectionH}px" onclick="playToExpedition('${c}')">${inner}</div>`;
     }
     const isExp=spreadPile&&spreadPile.who==='my'&&spreadPile.color===c;
     const {h:ph, so}=pileLayout(cards.length, isExp?2:true);
     const n=cards.length;
-    const contentH=sectionH-stackScoreH;
-    const top=stackScoreH+centerTop(ph, contentH);
+    const top=centerTop(ph, sectionH);
     let inner=pileSpaceHTML(top, c, '');
     for(let i=0;i<n;i++){
       const card=cards[i];
