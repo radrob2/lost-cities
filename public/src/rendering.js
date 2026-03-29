@@ -231,7 +231,7 @@ function renderHand(){
     if(sel){
       // Selected: flat, same X center as cone position, lifted, on top of everything
       const x=cd.centerSX+centerX-cardW/2;
-      return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:0;z-index:100">${cardHTML(c,sel)}</div>`;
+      return `<div onclick="selectCard('${c.id}')" style="left:${x.toFixed(1)}px;top:0;z-index:3000">${cardHTML(c,sel)}</div>`;
     }
 
     // Unselected: cone perspective via homography matrix3d
@@ -394,7 +394,7 @@ function renderBoard(layout){
       const topSo=isExp?(pile.length-1)*spreadOffset:0;
       stackHTML+=`<div style="position:relative;top:${topSo}px;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
       const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
-      return `<div class="card-col" style="position:relative;${isExp?'z-index:50':''}" onclick="${handler}">${stackHTML}${labels}</div>`;
+      return `<div class="card-col" style="position:relative;${isExp?'z-index:3000':''}" onclick="${handler}">${stackHTML}${labels}</div>`;
     }).join('');
 
     // Render draw pile
