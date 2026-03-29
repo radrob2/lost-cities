@@ -337,7 +337,7 @@ function renderBoard(layout){
   // Spread view uses card offset at N=2 (max readable spacing)
   const spreadOffset = cardOffset(2);
 
-  const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
+  const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);line-height:var(--line-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
   function stackScoreLabelAt(cards, topPx){
     const hasCards=cards&&cards.length>0;
     const show=liveScoreEnabled&&hasCards;
@@ -388,7 +388,7 @@ function renderBoard(layout){
       for(let i=0;i<pile.length-1;i++){
         const card=pile[i];
         const so=isExp?spreadOffset:0;
-        stackHTML+=`<div style="position:absolute;top:${i*so}px;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
+        stackHTML+=`<div style="position:absolute;top:${i*so}px;left:calc(var(--slot-pad) / 2);transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
       }
       // Top card (interactive)
       const topSo=isExp?(pile.length-1)*spreadOffset:0;
