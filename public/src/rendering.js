@@ -385,18 +385,21 @@ function renderBoard(layout){
   // Like renderText always pairs font-size with line-height, renderPile always pairs pile with space.
   //
   // opts.color:       expedition color (for border tint on N=0)
-  // opts.side:        'opp' | 'my' — positions content within cardContentH, respects scoreLineH.
+  // opts.side:        'opp' | 'my' — owns centering: computes origin, so, score label.
   //                   Omit for discard/draw (no score label budget, flex-centered).
   // opts.height:      section height in px (for play stacks). Omit for auto-height.
   // opts.targetLabel: label for N=0 target ('Play', 'Discard', etc.)
-  // opts.origin:      top px of first card (from stackOrigin)
-  // opts.so:          card offset in px
+  // opts.so:          override card offset in px (e.g. spreadOffset for expanded). Default: cardOffset(n).
   // opts.zBase:       z-index base (0 normal, 100+ for expanded)
   // opts.perCard:     fn(card, i, isTop) => {extra, handler, suffix}
-  // opts.scoreLabel:  topPx for score label, or undefined to skip
-  // opts.append:      extra HTML after cards (e.g. play target slot)
   // opts.onclick:     column click handler string
   // opts.colStyle:    extra inline CSS on the card-col
+  //
+  // When opts.side is set ('opp'|'my'), renderPile OWNS centering:
+  //   - Computes so (card offset) and origin (pile top) internally
+  //   - Computes score label position internally
+  //   - opts.so overrides default card offset (e.g. for expanded stacks)
+  // When opts.side is omitted (discards), card-col flex-centers the content.
   function renderPile(cards, opts){
     opts=opts||{};
     const n=cards?cards.length:0;
@@ -418,14 +421,23 @@ function renderBoard(layout){
       }
     } else {
       // N>=1: absolute-positioned cards with jitter
+      // When side is set, renderPile owns the centering computation
+      const so=opts.so!==undefined?opts.so:cardOffset(n);
+      const origin=opts.side?stackOrigin(n, so, opts.side):0;
       const zBase=opts.zBase||0;
       const perCard=opts.perCard;
       inner=cards.map((card,i)=>{
         const pc=perCard?perCard(card,i,i===cards.length-1):{};
-        return `<div style="position:absolute;top:${opts.origin+i*opts.so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${card.ghost?'':jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
+        return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${card.ghost?'':jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
       }).join('');
-      if(opts.scoreLabel!==undefined) inner+=stackScoreLabelAt(cards, opts.scoreLabel);
-      if(opts.append) inner+=opts.append;
+      // Score label: renderPile computes position when side is set
+      if(opts.side){
+        const real=cards.filter(c=>!c.ghost);
+        if(real.length>0){
+          const labelTop=opts.side==='my'?origin-scoreLineH:origin+(n-1)*so+curCardH;
+          inner+=stackScoreLabelAt(real, labelTop);
+        }
+      }
     }
 
     // Card-col wrapper (the space) — always present, inseparable from pile content
@@ -444,16 +456,12 @@ function renderBoard(layout){
     return renderText(show?score:'', 5, {align:'center', color:scoreColor||undefined, opacity:show?.7:0, tabular:true, tag:'div', extraStyle:`position:absolute;top:${topPx}px;left:0;right:0;pointer-events:none`});
   }
 
-  // Opponent row — stack score floats below actual cards
+  // Opponent row — renderPile owns centering when side is set
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
-    const baseSo=cardOffset(cards.length);
-    const so=isExp?spreadOffset:baseSo;
-    const origin=stackOrigin(cards.length, so, 'opp');
-    const labelTop=cards.length>0?origin+(cards.length-1)*so+curCardH:0;
-    return renderPile(cards, {color:c, side:'opp', height:sectionH, origin, so, zBase:isExp?100:0,
-      scoreLabel:cards.length>0?labelTop:undefined,
+    return renderPile(cards, {color:c, side:'opp', height:sectionH,
+      so:isExp?spreadOffset:undefined, zBase:isExp?100:0,
       onclick:cards.length>0?"toggleExpand('opp','"+c+"')":undefined});
   }).join('');
 
@@ -544,9 +552,8 @@ function renderBoard(layout){
     }
   }
 
-  // My expedition row — stack score floats above actual cards
-  // Ghost card: play target is a pile member, not a separate element.
-  // This makes centering natural — renderPile handles N cards including the ghost.
+  // My expedition row — renderPile owns centering when side is set.
+  // Ghost card: play target is a pile member, included in N count.
   myRow.innerHTML=COLORS.map(c=>{
     const realCards=getCards(gameState,'expeditions',mySlot,c);
     const canPlay=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn && canPlayOnExpedition(selectedCard,realCards);
@@ -558,14 +565,11 @@ function renderBoard(layout){
         onclick:"playToExpedition('"+c+"')"});
     }
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
-    const baseSo=cardOffset(cards.length);
-    const so=isExp?spreadOffset:baseSo;
-    const origin=stackOrigin(cards.length, so, 'my');
-    const labelTop=realCards.length>0?origin-scoreLineH:undefined;
     const stackClick=canPlay||isUndoTarget?"playToExpedition('"+c+"')":"toggleExpand('my','"+c+"')";
     return renderPile(cards, {
-      color:c, side:'my', height:sectionH, origin, so, zBase:isExp?100:0,
-      scoreLabel:labelTop, onclick:stackClick,
+      color:c, side:'my', height:sectionH,
+      so:isExp?spreadOffset:undefined, zBase:isExp?100:0,
+      onclick:stackClick,
       perCard:(card,i,isTop)=>{
         if(card.ghost) return {
           extra:'target',
