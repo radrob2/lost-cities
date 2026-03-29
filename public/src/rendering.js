@@ -6,6 +6,9 @@ let idleShown=false;  // whether overlay is currently visible
 const IDLE_MS=30000;  // 30 seconds
 
 function cardHTML(card, extra=''){
+  if(card.ghost){
+    return `<div class="card color-${card.color} ${extra}" data-id="${card.id}" style="background:transparent;border-style:dashed;opacity:0.5"></div>`;
+  }
   const isWager = card.value===0;
   const valText = isWager ? '&#x1F91D;' : card.value;
   const corner = isWager ? '&#x1F91D;' : card.value;
@@ -419,7 +422,7 @@ function renderBoard(layout){
       const perCard=opts.perCard;
       inner=cards.map((card,i)=>{
         const pc=perCard?perCard(card,i,i===cards.length-1):{};
-        return `<div style="position:absolute;top:${opts.origin+i*opts.so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
+        return `<div style="position:absolute;top:${opts.origin+i*opts.so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${card.ghost?'':jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
       }).join('');
       if(opts.scoreLabel!==undefined) inner+=stackScoreLabelAt(cards, opts.scoreLabel);
       if(opts.append) inner+=opts.append;
@@ -433,10 +436,11 @@ function renderBoard(layout){
   }
 
   function stackScoreLabelAt(cards, topPx){
-    const hasCards=cards&&cards.length>0;
+    const real=cards.filter(c=>!c.ghost);
+    const hasCards=real.length>0;
     const show=liveScoreEnabled&&hasCards;
     let score=0,scoreColor='';
-    if(hasCards){let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(cards.length>=8?20:0);scoreColor=score>=0?'var(--gold-bright)':'#e07060';}
+    if(hasCards){let w=0,s=0;for(const c of real){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(real.length>=8?20:0);scoreColor=score>=0?'var(--gold-bright)':'#e07060';}
     return renderText(show?score:'', 5, {align:'center', color:scoreColor||undefined, opacity:show?.7:0, tabular:true, tag:'div', extraStyle:`position:absolute;top:${topPx}px;left:0;right:0;pointer-events:none`});
   }
 
@@ -541,32 +545,41 @@ function renderBoard(layout){
   }
 
   // My expedition row — stack score floats above actual cards
+  // Ghost card: play target is a pile member, not a separate element.
+  // This makes centering natural — renderPile handles N cards including the ghost.
   myRow.innerHTML=COLORS.map(c=>{
-    const cards=getCards(gameState,'expeditions',mySlot,c);
-    const canPlay=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn && canPlayOnExpedition(selectedCard,cards);
+    const realCards=getCards(gameState,'expeditions',mySlot,c);
+    const canPlay=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn && canPlayOnExpedition(selectedCard,realCards);
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
+    const ghost=canPlay?{color:c, value:-1, id:'ghost-'+c, ghost:true}:null;
+    const cards=ghost?[...realCards, ghost]:realCards;
     if(cards.length===0){
       return renderPile([], {color:c, side:'my', height:sectionH,
-        targetLabel:canPlay?'Play':'', onclick:"playToExpedition('"+c+"')"});
+        onclick:"playToExpedition('"+c+"')"});
     }
-    const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
-    // Always compute offset as if card is already played (so highlight matches final position)
-    const withPlayCount=nextIdx+1;
-    const baseSo=cardOffset(withPlayCount);
+    const baseSo=cardOffset(cards.length);
     const so=isExp?spreadOffset:baseSo;
-    const origin=stackOrigin(withPlayCount, so, 'my');
-    const labelTop=origin-scoreLineH;
-    const playTarget=canPlay?`<div style="position:absolute;top:${origin+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`:'';
+    const origin=stackOrigin(cards.length, so, 'my');
+    const labelTop=realCards.length>0?origin-scoreLineH:undefined;
     const stackClick=canPlay||isUndoTarget?"playToExpedition('"+c+"')":"toggleExpand('my','"+c+"')";
     return renderPile(cards, {
       color:c, side:'my', height:sectionH, origin, so, zBase:isExp?100:0,
-      scoreLabel:labelTop, append:playTarget, onclick:stackClick,
-      perCard:(card,i,isTop)=>({
-        extra:isTop&&isUndoTarget?'undoable':'',
-        handler:isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'',
-        suffix:isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''
-      })
+      scoreLabel:labelTop, onclick:stackClick,
+      perCard:(card,i,isTop)=>{
+        if(card.ghost) return {
+          extra:'target',
+          handler:` onclick="event.stopPropagation();playToExpedition('${c}')"`,
+          suffix:'<span class="target-label">Play</span>'
+        };
+        const isTopReal=!ghost?isTop:i===realCards.length-1;
+        if(isTopReal&&isUndoTarget) return {
+          extra:'undoable',
+          handler:` onclick="event.stopPropagation();undoLastPlay()"`,
+          suffix:'<span class="undo-label">undo</span>'
+        };
+        return {};
+      }
     });
   }).join('');
 }
