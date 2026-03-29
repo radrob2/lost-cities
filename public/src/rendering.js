@@ -321,11 +321,12 @@ function renderBoard(){
   }
   // Score label line height: n=4 (one step above text at n=5)
   const scoreLinePx=Math.round(lvl(4, curCardH));
-  // Fixed stack height = actual row height (read from DOM, set by renderGame)
-  // Cards center within this; score label floats at card edge
+  // Section height for stack rows. Pile centers within cardContentH (excluding score line).
+  // Score line is budgeted in the section but ignored for centering.
   const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
-  const fixedStackRowH=oppRow.offsetHeight||myRow.offsetHeight||(fixedStackContentH+scoreLinePx);
-  const fixedStackH=fixedStackRowH+'px';
+  const sectionH=fixedStackContentH+scoreLinePx;
+  const cardContentH=fixedStackContentH; // centering reference: section minus score line
+  const fixedStackH=sectionH+'px';
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
   function stackScoreLabelAt(cards, topPx){
@@ -345,10 +346,9 @@ function renderBoard(){
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
     const so=isExp?18:baseSo;
-    // Center cards vertically within fixed stack height
+    // Center pile in card content area (top portion of section, score line at bottom)
     const totalStackPx=((cards.length-1)*so)+curCardH;
-    const stackHPx=fixedStackRowH;
-    const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
+    const topOffset=Math.max(0,Math.round((cardContentH-totalStackPx)/2));
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     // Score label right below the last card
     const scoreLabelTop=topOffset+(cards.length-1)*so+curCardH;
@@ -459,10 +459,9 @@ function renderBoard(){
     const withPlayCount=nextIdx+1;
     const baseSo=getStackOffset(withPlayCount);
     const so=isExp?18:baseSo;
-    // Center the full stack (including target slot) within fixed height
+    // Center pile in card content area (bottom portion of section, score line at top)
     const totalStackPx=((withPlayCount-1)*so)+curCardH;
-    const stackHPx=fixedStackRowH;
-    const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
+    const topOffset=Math.max(0,scoreLinePx+Math.round((cardContentH-totalStackPx)/2));
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
