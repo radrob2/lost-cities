@@ -163,22 +163,35 @@ Objects can move between layers:
 
 ### 4.1 Card Collections
 
-| Term | What | Card offset | Visibility | Examples |
-|------|------|-------------|-----------|---------|
-| **Stack** | Ordered ascending cards in an expedition | > 0 (fanned, all cards visible) | All cards visible | Player/opponent expedition stacks |
-| **Pile** | Collection where only the top matters | = 0 (not fanned) | Top card only (or face-down) | Discard piles, draw pile |
-| **Hand** | Cards held by a player | Perspective-projected (cone geometry) | Face-up for owner, face-down for opponent | Player hand, opponent hand |
+**Pile** is the universal term for any collection of cards in a location on the board. All piles share the same data structure (array of cards) and flow through the same rendering code. The only parameter that differs is the card offset.
 
-A pile is effectively a stack where card offset = 0. They share the same data structure (array of cards) but render differently.
+A **stack** is a pile where card offset > 0 (cards are fanned/visible). "Stack" and "pile" are not distinct in code — a stack is just a pile rendered with offset.
 
-**Spread view**: tapping a stack or pile to see all cards fanned out. Uses card offset at N=2 (the maximum readable spacing) for consistent visual language.
+| Kind | Full name | Card offset | Visibility | Examples |
+|------|-----------|-------------|-----------|---------|
+| **Play** | Play pile / play stack | > 0 (fanned) | All cards visible | Player/opponent expedition cards |
+| **Discard** | Discard pile | = 0 (not fanned) | Top card only | Per-color discard piles (classic), shared pile (single variant) |
+| **Draw** | Draw pile | = 0 (not fanned) | Face-down | The face-down draw pile |
 
-### 4.2 Named Piles
+**Hand** is separate — cards held by a player, rendered via cone perspective projection. Not a pile.
 
-| Name | What | Replaces |
-|------|------|---------|
-| **Draw pile** | Face-down cards to draw from | "deck" (too generic) |
-| **Discard pile** | Face-up discarded cards per color (classic) or shared (single-pile variant) | "discard" (same, just clarified) |
+**Spread view**: tapping a pile to see all cards fanned out. Uses card offset at N=2 (the maximum readable spacing) for consistent visual language.
+
+### 4.2 Unified Pile Rendering (DRY)
+
+All piles render through the same code path. The pile renderer takes:
+- Cards array
+- Card offset (0 for discard/draw, computed for play stacks)
+- Position within the column
+- Whether cards are face-up or face-down
+
+This ensures:
+- Adding offset to discards = changing one parameter
+- Visual consistency across all pile types = guaranteed
+- One centering formula = no alignment mismatches
+- Card spaces (empty pile placeholders) also flow through the same path (N=0 case)
+
+This principle applies broadly: any elements with similar structure (text labels, card spaces, info rows) should flow through shared rendering functions parameterized by their differences.
 
 ### 4.3 Board Markings
 
@@ -248,19 +261,34 @@ Both opponent and player stacks currently grow downward (card 0 at top, newest a
 
 ---
 
-## 7. φ Layout System Summary
+## 7. Phi-Scale (φ-scale)
 
-Every measurement derives from `cardH / φ^n` for integer n.
+The **phi-scale** is the hierarchical sizing system based on the golden ratio. Every measurement derives from `cardH / φ^n` for integer n. The tier number is n.
 
-| n | Role | Used for |
-|---|------|----------|
-| 0 | Base unit | cardH |
-| 1 | Object minor | cardW |
-| 2 | Major content space | Peek height, card overlap visible strip |
-| 3 | Primary | text-lg, board margin, big section spacing minimum |
-| 4 | Standard | text-md, card padding, small section spacing minimum |
-| 5 | Secondary | text-sm (floor: 9px) |
-| 7 | Micro | (available, formerly column gap) |
-| 9 | Hairline | Border width |
+In conversation: "phi-scale 4" means tier n=4. In code/docs: φ-scale or `n=4`.
+
+| Tier | Size = cardH / φ^n | Role | Used for |
+|------|-------------------|------|----------|
+| 0 | cardH | Base unit | Card height |
+| 1 | cardH / φ | Object minor | Card width |
+| 2 | cardH / φ² | Major content space | Peek height, card overlap visible strip |
+| 3 | cardH / φ³ | Primary | text-lg, board margin, big section spacing minimum |
+| 4 | cardH / φ⁴ | Standard | text-md, card padding, small section spacing minimum |
+| 5 | cardH / φ⁵ | Secondary | text-sm (floor: 9px) |
+| 7 | cardH / φ⁷ | Micro | --space-micro |
+| 9 | cardH / φ⁹ | Hairline | Border width |
+
+**Text convention:** text at tier n gets line-height at tier n-1. The text centers within its line-height; the extra space is leading.
 
 **cardH** is solved from viewport dimensions to guarantee all sections fit. It's the minimum of vertical and horizontal constraints. No hardcoded pixel caps except an absolute usability floor of 12px.
+
+### 7.1 Unified Rendering Principle
+
+Elements with similar structure should flow through shared code parameterized by their differences. This enforces phi-scale consistency and follows DRY:
+
+| Element type | Shared renderer | Parameters |
+|-------------|----------------|------------|
+| All piles (play, discard, draw) | Pile renderer | cards, card offset, face-up/down |
+| All text labels | Text renderer | content, tier, position |
+| All card spaces | Pile renderer (N=0 case) | color, interactivity |
+| All info rows | Info row renderer | name, status/hint, score |
