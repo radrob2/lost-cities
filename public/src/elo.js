@@ -131,7 +131,7 @@ renderStats = function() {
 
   if (elo.history.length > 0) {
     html += `<div style="margin-top:var(--gap-sm);font-size:var(--text-sm);color:var(--parchment-dark)">Recent</div>
-    <div style="margin-top:var(--gap-col);display:flex;flex-direction:column;gap:var(--gap-col)">`;
+    <div style="margin-top:var(--space-micro);display:flex;flex-direction:column;gap:var(--space-micro)">`;
     // Show last 10 entries, most recent first
     const recent = elo.history.slice(-10).reverse();
     for (const entry of recent) {
@@ -139,7 +139,7 @@ renderStats = function() {
       const color = entry.change >= 0 ? '#4caf50' : '#e07060';
       const resultLabel = entry.result === 1 ? 'W' : entry.result === 0 ? 'L' : 'D';
       const resultColor = entry.result === 1 ? '#4caf50' : entry.result === 0 ? '#e07060' : 'var(--parchment-dark)';
-      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--text-md);padding:var(--gap-col) 0">
+      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--text-md);padding:var(--space-micro) 0">
         <span style="color:${resultColor};font-weight:700;width:var(--text-lg)">${resultLabel}</span>
         <span style="color:var(--parchment-dark);flex:1;text-align:center;font-size:var(--text-sm)">vs ${entry.opp}</span>
         <span style="color:${color};font-family:'Cinzel',serif;font-weight:700;width:calc(var(--text-lg) * 2.8);text-align:right">${sign}${entry.change}</span>

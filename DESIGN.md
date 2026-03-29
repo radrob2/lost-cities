@@ -399,6 +399,28 @@ All board elements follow these conventions:
 - Incentivizes head-to-head competition on colors
 - Could be a toggle in game settings
 
+### 5.5 User Identity & Data Persistence
+- **Type:** Feature (infrastructure, integrated)
+- **Depends on:** Firebase Auth (or similar)
+- **Effort:** Medium-Large
+- **Problem:** Currently data (stats, ELO, achievements) lives in localStorage only. It's device-specific, tied to browser, lost on clear/reinstall. The name input is a display name with no account behind it.
+
+**Identity layers:**
+- **Username** — unique account identifier, persistent across devices. Created once, used for login.
+- **Display name** — what other players see. Defaults to username but can be changed.
+- **Session name** — optional override for a specific game (e.g., silly name in friendly mode). Not saved.
+
+**Mode enforcement:**
+- **Competitive mode** — requires account, uses official display name/username. Stats and ELO count.
+- **Friendly mode / AI mode** — can use any display name. Stats still track if logged in.
+
+**Data persistence:**
+- With account: stats, ELO, achievements, preferences sync across devices via Firebase
+- Without account: localStorage only (current behavior), prompt to create account periodically
+- Migration: when creating an account, offer to import existing localStorage data
+
+**Current state:** The name input is just a display name stored in localStorage. No account system. All data is device-local.
+
 ---
 
 ## 6. AI Improvements

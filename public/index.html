@@ -17,7 +17,7 @@
   --card-h:78px;--card-w:48px;--col-w:60px;
   --text-sm:7px;--text-md:11px;--text-lg:18px;
   --line-sm:11px;--line-md:18px;--line-lg:30px;
-  --gap-lg:18px;--gap-sm:11px;--gap-col:3px;
+  --gap-lg:18px;--gap-sm:11px;--space-micro:3px;
   --slot-pad:11px;--lift:11px;--border-w:1px;
   --board-margin:18px;
   --anim-dur:0.5s;--anim-ease:cubic-bezier(.2,.8,.3,1);
@@ -149,12 +149,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .score-board{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:var(--border-w) solid var(--gold);border-radius:var(--gap-sm);padding:var(--gap-lg);width:90%;max-width:360px}
 .score-board h2{font-family:'Cinzel',serif;color:var(--gold);text-align:center;margin-bottom:var(--gap-lg)}
 .score-table{width:100%;border-collapse:collapse}
-.score-table th,.score-table td{padding:var(--gap-col) var(--gap-sm);text-align:center;font-size:var(--text-md)}
+.score-table th,.score-table td{padding:var(--space-micro) var(--gap-sm);text-align:center;font-size:var(--text-md)}
 .score-table th{color:var(--gold);border-bottom:var(--border-w) solid rgba(201,168,76,.3);font-family:'Cinzel',serif;font-size:var(--text-sm)}
 .score-table td{color:var(--parchment)}
 .score-table .total-row td{border-top:var(--border-w) solid var(--gold);font-weight:700;font-size:var(--text-lg);color:var(--gold-bright);padding-top:var(--gap-sm)}
 .score-table .winner{text-shadow:0 0 10px rgba(201,168,76,.5)}
-.color-dot{display:inline-block;width:var(--text-md);height:var(--text-md);border-radius:50%;vertical-align:middle;margin-right:var(--gap-col)}
+.color-dot{display:inline-block;width:var(--text-md);height:var(--text-md);border-radius:50%;vertical-align:middle;margin-right:var(--space-micro)}
 .r-winner{text-shadow:0 0 10px rgba(201,168,76,.5)}
 
 /* RULES MODAL */
@@ -181,8 +181,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* SCORE TABLE */
 .r-line{display:flex;align-items:baseline;padding:var(--border-w) 0;font-family:'Crimson Text',serif;font-size:var(--text-md);line-height:1.6;font-variant-numeric:tabular-nums}
-.r-sep-color{border-top:var(--border-w) solid rgba(201,168,76,.18);margin:var(--gap-sm) 0 var(--gap-col)}
-.r-sep-breakdown{border-top:var(--border-w) solid rgba(201,168,76,.1);margin:var(--gap-col) 0}
+.r-sep-color{border-top:var(--border-w) solid rgba(201,168,76,.18);margin:var(--gap-sm) 0 var(--space-micro)}
+.r-sep-breakdown{border-top:var(--border-w) solid rgba(201,168,76,.1);margin:var(--space-micro) 0}
 .sc-row>span:first-child{padding-left:var(--gap-sm)}
 .sc-row>span:last-child{padding-right:var(--gap-sm)}
 .sc-sign{display:inline-block;width:var(--text-md);text-align:center;margin-left:calc(-1 * var(--text-md))}
@@ -198,14 +198,14 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .stats-header{font-family:'Cinzel',serif;font-size:clamp(22px,6vw,32px);font-weight:900;color:var(--gold);text-align:center;margin-bottom:16px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
 .stats-section{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:var(--border-w) solid rgba(201,168,76,.3);border-radius:var(--gap-sm);padding:var(--gap-lg);margin-bottom:var(--gap-sm)}
 .stats-section h3{font-family:'Cinzel',serif;color:var(--gold);font-size:var(--text-md);margin-bottom:var(--gap-sm);text-transform:uppercase;letter-spacing:1px}
-.stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:var(--gap-col) 0;font-size:var(--text-md)}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:var(--space-micro) 0;font-size:var(--text-md)}
 .stat-label{color:var(--parchment-dark)}
 .stat-value{color:var(--parchment);font-family:'Cinzel',serif;font-weight:700;font-variant-numeric:tabular-nums}
 .stat-value.gold{color:var(--gold-bright)}
 .stat-value.positive{color:#4caf50}
 .stat-value.negative{color:#e07060}
-.stats-personality-grid,.stats-variant-grid{display:flex;flex-direction:column;gap:var(--gap-col)}
-.stats-record-row{display:flex;align-items:center;gap:var(--gap-sm);padding:var(--gap-col) 0;font-size:var(--text-md)}
+.stats-personality-grid,.stats-variant-grid{display:flex;flex-direction:column;gap:var(--space-micro)}
+.stats-record-row{display:flex;align-items:center;gap:var(--gap-sm);padding:var(--space-micro) 0;font-size:var(--text-md)}
 .stats-record-row .rec-name{color:var(--parchment);min-width:80px;font-family:'Cinzel',serif;font-size:var(--text-sm)}
 .stats-record-row .rec-bar{flex:1;display:flex;gap:var(--gap-sm);color:var(--parchment-dark);font-variant-numeric:tabular-nums}
 .stats-record-row .rec-wr{color:var(--gold);font-family:'Cinzel',serif;font-size:var(--text-sm);min-width:44px;text-align:right}
@@ -490,7 +490,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <div class="game-menu-overlay" id="ai-personality-modal" onclick="if(event.target===this)closeAIPersonalityModal()">
   <div class="game-menu" style="max-width:320px">
     <h2>Choose Your Opponent</h2>
-    <div style="display:flex;gap:var(--gap-col);flex-wrap:wrap;justify-content:center;margin-bottom:var(--gap-col)">
+    <div style="display:flex;gap:var(--space-micro);flex-wrap:wrap;justify-content:center;margin-bottom:var(--space-micro)">
       <button class="variant-btn" id="pbtn-explorer" onclick="SFX.select();setPersonality('explorer')">&#x1F5E1;&#xFE0F; Explorer</button>
       <button class="variant-btn" id="pbtn-scholar" onclick="SFX.select();setPersonality('scholar')">&#x1F6E1;&#xFE0F; Scholar</button>
       <button class="variant-btn" id="pbtn-collector" onclick="SFX.select();setPersonality('collector')">&#x1F3DB;&#xFE0F; Collector</button>
@@ -498,12 +498,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       <button class="variant-btn" id="pbtn-gambler" onclick="SFX.select();setPersonality('gambler')">&#x23F1;&#xFE0F; Gambler</button>
       <button class="variant-btn active" id="pbtn-heuristic" onclick="SFX.select();setPersonality('heuristic')">&#x1F9E0; Strategist</button>
     </div>
-    <div style="font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--gap-col);opacity:.5">Boss AI</div>
-    <div style="display:flex;gap:var(--gap-col);flex-wrap:wrap;justify-content:center">
+    <div style="font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--space-micro);opacity:.5">Boss AI</div>
+    <div style="display:flex;gap:var(--space-micro);flex-wrap:wrap;justify-content:center">
       <button class="variant-btn" id="pbtn-seer" onclick="SFX.select();setPersonality('seer')">&#x1F441;&#xFE0F; The Seer</button>
       <button class="variant-btn" id="pbtn-oracle" onclick="SFX.select();setPersonality('oracle')">&#x1F52E; The Oracle</button>
     </div>
-    <div id="boss-warn" style="font-size:var(--text-sm);color:#e07060;text-align:center;min-height:var(--gap-lg);margin-top:var(--gap-col)"></div>
+    <div id="boss-warn" style="font-size:var(--text-sm);color:#e07060;text-align:center;min-height:var(--gap-lg);margin-top:var(--space-micro)"></div>
     <button class="btn" style="margin-top:8px;width:100%" onclick="SFX.select();closeAIPersonalityModal();startAIGame()">Start Game</button>
     <button class="btn" style="width:100%;border-color:rgba(201,168,76,.3);font-size:13px" onclick="SFX.select();closeAIPersonalityModal()">Back</button>
   </div>

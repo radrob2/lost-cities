@@ -12,7 +12,7 @@ const PHI = 1.6180339887;
 //   n=3: textLg, board margin, big section spacing minimum
 //   n=4: textMd (fontBase), slotPad, lift, small section spacing minimum
 //   n=5: textSm (small labels)
-//   n=7: small UI spacing (internal use)
+//   n=7: --space-micro (small UI spacing)
 //   n=9: border width
 function lvl(n, cardH) {
   return cardH / Math.pow(PHI, n);
