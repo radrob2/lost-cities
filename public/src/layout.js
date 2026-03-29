@@ -12,7 +12,7 @@ const PHI = 1.6180339887;
 //   n=3: textLg, board margin, big gap minimum
 //   n=4: textMd (fontBase), slotPad, lift, small gap minimum
 //   n=5: textSm (small labels)
-//   n=7: column gap
+//   n=7: small UI spacing (internal use)
 //   n=9: border width
 function lvl(n, cardH) {
   return cardH / Math.pow(PHI, n);
@@ -86,10 +86,10 @@ function computeLayout() {
                + totalMinGapR + 2 * marginR;
   const cardH_v = Math.floor(vh / totalR);
 
-  // Horizontal constraint
-  const colWR = 1 / PHI + slotPadR;  // cardW + slotPad
-  const totalWR = numColors * colWR + (numColors - 1) * colGapR + 2 * marginR;
-  const totalWR_land = totalWR + colGapR + colWR; // 6th col for deck in landscape
+  // Horizontal constraint — no column gap, column width IS the content space
+  const colWR = 1 / PHI + slotPadR;  // cardW + card padding
+  const totalWR = numColors * colWR + 2 * marginR;
+  const totalWR_land = totalWR + colWR; // 6th col for draw pile in landscape
   const cardH_h = Math.floor(vw / (isLandscape ? totalWR_land : totalWR));
 
   // Take the smaller — no hardcoded pixel caps
@@ -154,7 +154,6 @@ function computeLayout() {
   root.setProperty('--line-lg', lineLg.toFixed(1) + 'px');
   root.setProperty('--gap-lg', bigGapPx + 'px');
   root.setProperty('--gap-sm', smallGapPx + 'px');
-  root.setProperty('--gap-col', gapCol + 'px');
   root.setProperty('--slot-pad', slotPad + 'px');
   root.setProperty('--lift', lift + 'px');
   root.setProperty('--border-w', borderW + 'px');
@@ -169,7 +168,7 @@ function computeLayout() {
   // --- Store result ---
   const result = {
     cardW, cardH, isLandscape, sH, colW, boardMargin,
-    bigGapPx, smallGapPx, gapCol, slotPad, lift, borderW,
+    bigGapPx, smallGapPx, slotPad, lift, borderW,
     textSm, textMd, textLg, lineSm, lineMd, lineLg,
     stackContentR, scoreLabelR, slotHR,
     numColors, peekR, infoRowR, stackRowR, midR, handR,
