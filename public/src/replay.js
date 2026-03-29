@@ -583,28 +583,28 @@ rematch = function() {
       right: 0;
       z-index: 100;
       background: rgba(0, 0, 0, 0.92);
-      border-bottom: 1px solid var(--gold);
-      padding: max(env(safe-area-inset-top), 6px) 12px 6px;
+      border-bottom: var(--border-w) solid var(--gold);
+      padding: max(env(safe-area-inset-top), var(--space-micro)) var(--gap-sm) var(--space-micro);
       display: flex;
       justify-content: center;
     }
     .replay-controls-inner {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--gap-sm);
       max-width: 400px;
       width: 100%;
       justify-content: center;
     }
     .replay-ctrl-btn {
       font-family: 'Cinzel', serif;
-      font-size: 16px;
+      font-size: var(--text-md);
       width: 36px;
       height: 36px;
-      border: 1px solid var(--gold);
+      border: var(--border-w) solid var(--gold);
       background: rgba(255, 255, 255, 0.06);
       color: var(--gold);
-      border-radius: 6px;
+      border-radius: var(--space-micro);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -620,18 +620,18 @@ rematch = function() {
     .replay-ctrl-btn.replay-play {
       width: 44px;
       height: 44px;
-      font-size: 20px;
+      font-size: var(--text-lg);
       border-radius: 50%;
       border-width: 2px;
     }
     .replay-speed-select {
       font-family: 'Cinzel', serif;
-      font-size: 12px;
-      padding: 4px 6px;
-      border: 1px solid rgba(212, 168, 67, 0.4);
+      font-size: var(--text-sm);
+      padding: var(--space-micro);
+      border: var(--border-w) solid rgba(212, 168, 67, 0.4);
       background: rgba(255, 255, 255, 0.06);
       color: var(--gold);
-      border-radius: 4px;
+      border-radius: var(--space-micro);
       cursor: pointer;
       -webkit-appearance: none;
       appearance: none;
@@ -644,14 +644,14 @@ rematch = function() {
     }
     .replay-info {
       font-family: 'Crimson Text', serif;
-      font-size: 12px;
+      font-size: var(--text-sm);
       color: var(--parchment-dark);
       white-space: nowrap;
       min-width: 50px;
       text-align: center;
     }
     .replay-highlight {
-      box-shadow: 0 0 12px 4px rgba(240, 200, 80, 0.8), 0 0 24px 8px rgba(240, 200, 80, 0.4) !important;
+      box-shadow: 0 0 var(--gap-sm) var(--space-micro) rgba(240, 200, 80, 0.8), 0 0 calc(var(--gap-sm) * 2) var(--gap-sm) rgba(240, 200, 80, 0.4) !important;
       border-color: var(--gold-bright) !important;
       z-index: 5;
     }
