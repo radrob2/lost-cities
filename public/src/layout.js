@@ -9,8 +9,8 @@ const PHI = 1.6180339887;
 //   n=0: cardH (the card, the base unit)
 //   n=1: cardW (card minor dimension)
 //   n=2: peek height, card overlap visible strip
-//   n=3: textLg, board margin, big gap minimum
-//   n=4: textMd (fontBase), slotPad, lift, small gap minimum
+//   n=3: textLg, board margin, big section spacing minimum
+//   n=4: textMd (fontBase), slotPad, lift, small section spacing minimum
 //   n=5: textSm (small labels)
 //   n=7: small UI spacing (internal use)
 //   n=9: border width
@@ -60,7 +60,7 @@ function computeLayout() {
   const slotPadR    = 1 / Math.pow(PHI, 4);                // n=4
   const slotHR      = 1 + slotPadR;
 
-  // Middle section: discards + deck (portrait has deck below, landscape has it as 6th col)
+  // Middle section: discards + draw pile (portrait has draw pile below, landscape has it as 6th col)
   const colGapR     = 1 / Math.pow(PHI, 7);                // n=7
   const deckCardR   = 1 / PHI;                             // n=1 (cardW, landscape-oriented)
   const deckLabelR  = 1 / Math.pow(PHI, 4);                // n=4 (textSm line-height)
@@ -75,9 +75,9 @@ function computeLayout() {
   // Board margin
   const marginR     = 1 / (PHI * PHI * PHI);               // n=3
 
-  // --- Gap minimums ---
-  const bigGapMinR  = 1 / (PHI * PHI * PHI);               // n=3 (2 gaps)
-  const smallGapMinR = 1 / Math.pow(PHI, 4);               // n=4 (4 gaps)
+  // --- Section spacing minimums ---
+  const bigGapMinR  = 1 / (PHI * PHI * PHI);               // n=3 (2 big section spacings)
+  const smallGapMinR = 1 / Math.pow(PHI, 4);               // n=4 (4 small section spacings)
   const totalMinGapR = 2 * bigGapMinR + 4 * smallGapMinR;
 
   // --- Solve for cardH ---
@@ -126,15 +126,15 @@ function computeLayout() {
     hand:     Math.round(cardH * handR),
   };
 
-  // --- Elastic gap distribution ---
-  // Fixed content + min gaps
+  // --- Elastic section spacing distribution ---
+  // Fixed content + min section spacings
   const fixedH = sH.oppPeek + 2 * sH.infoRow + 2 * sH.stackRow + sH.mid + sH.hand + 2 * boardMargin;
   const bigGapMin = Math.round(lvl(3, cardH));
   const smallGapMin = Math.round(lvl(4, cardH));
   const totalMinGapPx = 2 * bigGapMin + 4 * smallGapMin;
   const spareH = vh - fixedH - totalMinGapPx;
 
-  // Distribute surplus proportionally (big gaps get φ× weight)
+  // Distribute surplus proportionally (big section spacings get φ× weight)
   const bigW = PHI, smallW = 1;
   const totalWeight = 2 * bigW + 4 * smallW;
   const surplus = Math.max(0, spareH);

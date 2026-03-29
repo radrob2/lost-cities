@@ -21,7 +21,7 @@ function renderGame(){
   const layout=computeLayout();
   const sH=layout.sH;
 
-  // Apply fixed pixel heights + gap hierarchy to all sections
+  // Apply fixed pixel heights + section spacing hierarchy to all sections
   const oppHandRow=document.getElementById('opp-hand-row');
   const oppInfoRow=document.querySelector('#game-screen .board-area .info-row');
   const myInfoRow=document.querySelectorAll('#game-screen .board-area .info-row')[1];
@@ -34,7 +34,7 @@ function renderGame(){
   if(oppRow) oppRow.style.height=sH.stackRow+'px';
   if(myRow) myRow.style.height=sH.stackRow+'px';
   if(midSec) midSec.style.height=sH.mid+'px';
-  // Gap hierarchy: peek[sm]info[sm]stacks[BIG]mid[BIG]stacks[sm]info[sm]hand
+  // Section spacing: peek[sm]info[sm]stacks[BIG]mid[BIG]stacks[sm]info[sm]hand
   if(oppHandRow) oppHandRow.style.marginBottom=layout.smallGapPx+'px';
   if(oppInfoRow) oppInfoRow.style.marginBottom=layout.smallGapPx+'px';
   if(oppRow) oppRow.style.marginBottom=layout.bigGapPx+'px';
@@ -80,7 +80,7 @@ function renderGame(){
     notifyTurn();
   }
 
-  // Deck count (used by discard row render)
+  // Draw pile count (used by discard row render)
   const deckLen = getCards(gameState,'deck').length;
 
   // Live score totals (per-stack scores rendered in renderBoard via stackScoreLabelAt)
@@ -105,8 +105,7 @@ function renderGame(){
 
   // Phase bar handled above in turn state section
 
-  // Deck draw target highlight
-  // Deck target highlight handled in renderBoard discard row
+  // Draw pile target highlight handled in renderBoard discard row
 
   renderHand();
   renderBoard(layout);
@@ -347,7 +346,7 @@ function renderBoard(layout){
     return `<div style="position:absolute;top:${topPx}px;left:0;right:0;text-align:center;font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-sm);${cls};opacity:${show?.7:0};font-variant-numeric:tabular-nums;pointer-events:none">${show?score:''}</div>`;
   }
 
-  // Opponent row — score label floats below actual cards
+  // Opponent row — stack score floats below actual cards
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
@@ -358,7 +357,7 @@ function renderBoard(layout){
     const so=isExp?spreadOffset:baseSo;
     const origin=stackOrigin(cards.length, so, 'opp');
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    // Stack score below last card (toward middle of board)
+    // Stack score below last card (toward the middle of the board)
     const labelTop=origin+(cards.length-1)*so+curCardH;
     inner+=stackScoreLabelAt(cards, labelTop);
     return `<div class="card-col" style="height:${sectionH}px" onclick="toggleExpand('opp','${c}')">${inner}</div>`;
@@ -398,12 +397,12 @@ function renderBoard(layout){
       return `<div class="card-col" style="position:relative;${isExp?'z-index:50':''}" onclick="${handler}">${stackHTML}${labels}</div>`;
     }).join('');
 
-    // Render deck
+    // Render draw pile
     const isLandscapeLayout=window.innerWidth>window.innerHeight;
     const deckSlot=document.getElementById('deck-slot');
     const deckTarget=isMyTurn && inDrawPhase ? 'target' : '';
     let deckCardsHTML='';
-    // Portrait layout: landscape cards in deck. Landscape layout: portrait cards (6th column)
+    // Portrait layout: landscape cards in draw pile. Landscape layout: portrait cards (6th column)
     const deckCardClass=isLandscapeLayout?'card card-back':'card card-back deck-landscape';
     if(deckLen>0){
       const showCount=Math.min(deckLen,10);
@@ -418,26 +417,26 @@ function renderBoard(layout){
     const countLabel=`<div style="text-align:center;font-size:var(--text-sm);line-height:var(--line-sm);color:var(--parchment-dark);opacity:.5;font-family:'Cinzel',serif">${deckLen} left</div>`;
 
     if(isLandscapeLayout){
-      // Landscape: deck as 6th column, appended without shifting the 5 discard columns
+      // Landscape: draw pile as 6th column, appended without shifting the 5 discard columns
       // Don't change grid-template-columns — keep same 5-col layout as other rows
-      // Instead, add deck as an absolutely positioned element to the right
+      // Instead, add draw pile as an absolutely positioned element to the right
       discardRow.style.gridTemplateColumns='';
       discardRow.style.position='relative';
       const slotW='var(--col-w)';
       const slotH='calc(var(--card-h) + var(--slot-pad))';
       const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
-      // Append deck inline as 6th grid item but keep grid at 6 cols with same justify
+      // Append draw pile inline as 6th grid item but keep grid at 6 cols with same justify
       discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},var(--col-w)) var(--col-w)`;
       discardRow.style.justifyContent='start';
-      // Calculate left padding to keep 5 discard cols centered with the other rows
-      const totalGridW=`calc(${COLORS.length} * var(--col-w) + ${COLORS.length-1} * var(--gap-sm))`;
+      // Calculate left padding to keep 5 discard columns centered with the other rows
+      const totalGridW=`calc(${COLORS.length} * var(--col-w))`;
       const rowPad=`calc((100% - ${totalGridW}) / 2)`;
       discardRow.style.paddingLeft=rowPad;
       discardRow.style.paddingRight='0';
       discardRow.innerHTML+=`<div class="card-col ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}${countLabel}</div>`;
       if(deckSlot) deckSlot.style.display='none';
     } else {
-      // Portrait: deck below discards, landscape oriented, centered
+      // Portrait: draw pile below discards, landscape oriented, centered
       discardRow.style.gridTemplateColumns='';
       if(deckSlot){
         deckSlot.style.display='flex';
@@ -452,7 +451,7 @@ function renderBoard(layout){
     }
   }
 
-  // My expedition row — score label floats above actual cards
+  // My expedition row — stack score floats above actual cards
   myRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',mySlot,c);
     const canPlay=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn && canPlayOnExpedition(selectedCard,cards);
