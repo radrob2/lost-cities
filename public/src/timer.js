@@ -57,7 +57,7 @@ function getOrCreateTimerDisplay() {
   if (!el) {
     el = document.createElement('span');
     el.id = 'turn-timer-display';
-    el.style.cssText = 'font-family:Cinzel,serif;font-weight:700;font-size:calc(var(--font-base) * 0.85);margin-left:6px;font-variant-numeric:tabular-nums;display:none;transition:color 0.3s;';
+    el.style.cssText = 'font-family:Cinzel,serif;font-weight:700;font-size:var(--text-md);margin-left:var(--gap-col);font-variant-numeric:tabular-nums;display:none;transition:color 0.3s;';
     const ti = document.getElementById('turn-indicator');
     if (ti && ti.parentNode) {
       ti.parentNode.insertBefore(el, ti.nextSibling);

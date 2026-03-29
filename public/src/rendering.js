@@ -323,9 +323,9 @@ function renderBoard(){
   const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
   const fixedStackH=fixedStackContentH+'px';
 
-  const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
+  const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
 
-  // Per-stack score label — positioned absolutely so it doesn't affect stack layout
+  // Per-stack score label — in normal flow, reserves height
   // Score label — in normal flow, height = line-sm (n=4), always reserves space
   function stackScoreLabel(cards){
     const hasCards=cards&&cards.length>0;
@@ -339,7 +339,7 @@ function renderBoard(){
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards)}</div>`;
+      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards)}</div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
@@ -348,7 +348,7 @@ function renderBoard(){
     const totalStackPx=((cards.length-1)*so)+curCardH;
     const stackHPx=fixedStackContentH||Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
+    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:var(--gap-col);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}</div>`;
   }).join('');
 
@@ -361,7 +361,7 @@ function renderBoard(){
       const canDraw=inDrawPhase && isMyTurn && topCard && c!==gameState.lastDiscardedColor;
       if(!topCard){
         const cls=canDiscard?'card target':'card empty-slot';
-        return `<div class="card-col"><div class="${cls}" style="${canDiscard?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`}" onclick="discardTo('${c}')">${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+        return `<div class="card-col"><div class="${cls}" style="${canDiscard?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`}" onclick="discardTo('${c}')">${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
       if(isUndoDiscard){
@@ -413,7 +413,7 @@ function renderBoard(){
       discardRow.style.position='relative';
       const slotW='var(--col-w)';
       const slotH='calc(var(--card-h) + var(--slot-pad))';
-      const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
+      const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
       // Append deck inline as 6th grid item but keep grid at 6 cols with same justify
       discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},var(--col-w)) var(--col-w)`;
       discardRow.style.justifyContent='start';
@@ -434,7 +434,7 @@ function renderBoard(){
         deckSlot.style.alignItems='center';
         const slotW='calc(var(--card-h) + var(--slot-pad))';
         const slotH='var(--col-w)';
-        const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
+        const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
         deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
       }
     }
@@ -447,7 +447,7 @@ function renderBoard(){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col" style="position:relative">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="position:relative">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
@@ -463,9 +463,9 @@ function renderBoard(){
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${topOffset+i*so}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      return `<div style="position:absolute;top:${topOffset+i*so}px;left:var(--gap-col);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
+    if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:var(--gap-col);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
     let html=`<div class="card-col" style="position:relative" onclick="${stackClick}">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
     return html+`</div>`;
