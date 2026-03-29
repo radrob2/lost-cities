@@ -171,6 +171,8 @@ function computeLayout() {
     bigGapPx, smallGapPx, slotPad, lift, borderW,
     textSm, textMd, textLg, lineSm, lineMd, lineLg,
     stackContentR, scoreLabelR, slotHR,
+    stackContentH: Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, cardH)),
+    scoreLineH: Math.round(lineSm),
     numColors, peekR, infoRowR, stackRowR, midR, handR,
   };
   computeLayout._vh = vh;

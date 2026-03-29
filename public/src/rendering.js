@@ -109,7 +109,7 @@ function renderGame(){
   // Deck target highlight handled in renderBoard discard row
 
   renderHand();
-  renderBoard();
+  renderBoard(layout);
 
   // Opponent hand: cone perspective mirrored, clipped to peek height
   if(oppHandRow){
@@ -259,10 +259,10 @@ function toggleExpand(who,color){
   } else {
     expandedStack={who,color};
   }
-  renderBoard();
+  renderBoard(computeLayout());
 }
 
-function renderBoard(){
+function renderBoard(layout){
   const oppSlot=mySlot==='player1'?'player2':'player1';
   const isMyTurn=gameState.currentTurn===mySlot;
   const inPlayPhase=gameState.phase==='play';
@@ -314,19 +314,14 @@ function renderBoard(){
     return `rotate(${rot}deg) translate(${dx}px,${dy}px)`;
   }
 
-  // Continuous stack offset: cardH × 0.367 / N^0.613 (3× ratio N=2 to N=12)
-  const curCardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'))||78;
-  function getStackOffset(count){
+  // Layout values — single source of truth from computeLayout()
+  const curCardH = layout.cardH;
+  const scoreLineH = layout.scoreLineH;
+  const cardContentH = layout.stackContentH; // centering reference: excludes score line
+  const sectionH = layout.sH.stackRow;       // full section height: includes score line budget
+  function cardOffset(count){
     return Math.round(stackOffset(count, curCardH));
   }
-  // Score label line height: n=4 (one step above text at n=5)
-  const scoreLinePx=Math.round(lvl(4, curCardH));
-  // Section height for stack rows. Pile centers within cardContentH (excluding score line).
-  // Score line is budgeted in the section but ignored for centering.
-  const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
-  const sectionH=fixedStackContentH+scoreLinePx;
-  const cardContentH=fixedStackContentH; // centering reference: section minus score line
-  const fixedStackH=sectionH+'px';
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
   function stackScoreLabelAt(cards, topPx){
@@ -341,10 +336,10 @@ function renderBoard(){
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${sectionH}px;display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div></div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
-    const baseSo=getStackOffset(cards.length);
+    const baseSo=cardOffset(cards.length);
     const so=isExp?18:baseSo;
     // Center pile in card content area (top portion of section, score line at bottom)
     const totalStackPx=((cards.length-1)*so)+curCardH;
@@ -353,7 +348,7 @@ function renderBoard(){
     // Score label right below the last card
     const scoreLabelTop=topOffset+(cards.length-1)*so+curCardH;
     inner+=stackScoreLabelAt(cards, scoreLabelTop);
-    return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div></div>`;
+    return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${sectionH}px;overflow:visible">${inner}</div></div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -376,7 +371,7 @@ function renderBoard(){
       const handler=hasAction?(inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`):(pile.length>1?`toggleExpand('discard','${c}')`:'');
       const isExp=expandedStack && expandedStack.who==='discard' && expandedStack.color===c;
       // Show all cards in pile with jitter; expand on tap if no action
-      const baseSo=getStackOffset(pile.length);
+      const baseSo=cardOffset(pile.length);
       let stackHTML='';
       for(let i=0;i<pile.length-1;i++){
         const card=pile[i];
@@ -451,17 +446,17 @@ function renderBoard(){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${sectionH}px;display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
     // Always compute offset as if card is already played (so highlight matches final position)
     const withPlayCount=nextIdx+1;
-    const baseSo=getStackOffset(withPlayCount);
+    const baseSo=cardOffset(withPlayCount);
     const so=isExp?18:baseSo;
     // Center pile in card content area (bottom portion of section, score line at top)
     const totalStackPx=((withPlayCount-1)*so)+curCardH;
-    const topOffset=Math.max(0,scoreLinePx+Math.round((cardContentH-totalStackPx)/2));
+    const topOffset=Math.max(0,scoreLineH+Math.round((cardContentH-totalStackPx)/2));
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
@@ -470,10 +465,10 @@ function renderBoard(){
     }).join('');
     if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     // Score label right above the first card
-    const scoreLabelTop=topOffset-scoreLinePx;
+    const scoreLabelTop=topOffset-scoreLineH;
     inner+=stackScoreLabelAt(cards, scoreLabelTop);
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" style="position:relative" onclick="${stackClick}"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
+    let html=`<div class="card-col" style="position:relative" onclick="${stackClick}"><div class="expedition-stack" style="height:${sectionH}px;overflow:visible">${inner}</div>`;
     return html+`</div>`;
   }).join('');
 }
