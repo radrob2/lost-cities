@@ -323,6 +323,21 @@ function renderBoard(layout){
     return Math.round(stackOffset(count, curCardH));
   }
 
+  // Pile height for N cards with given card offset
+  function pileH(n, co){ return n <= 0 ? 0 : curCardH + Math.max(0, n-1) * co; }
+
+  // Stack origin: centers pile within cardContentH, then offsets for score line position
+  // opponent: score line at bottom → pile centered in top portion of section
+  // player: score line at top → pile centered in bottom portion of section
+  function stackOrigin(n, co, side){
+    const ph = pileH(n, co);
+    const center = Math.max(0, Math.round((cardContentH - ph) / 2));
+    return side === 'opp' ? center : scoreLineH + center;
+  }
+
+  // Spread view uses card offset at N=2 (max readable spacing)
+  const spreadOffset = cardOffset(2);
+
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
   function stackScoreLabelAt(cards, topPx){
     const hasCards=cards&&cards.length>0;
@@ -340,14 +355,12 @@ function renderBoard(layout){
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=cardOffset(cards.length);
-    const so=isExp?18:baseSo;
-    // Center pile in card content area (top portion of section, score line at bottom)
-    const totalStackPx=((cards.length-1)*so)+curCardH;
-    const topOffset=Math.max(0,Math.round((cardContentH-totalStackPx)/2));
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    // Score label right below the last card
-    const scoreLabelTop=topOffset+(cards.length-1)*so+curCardH;
-    inner+=stackScoreLabelAt(cards, scoreLabelTop);
+    const so=isExp?spreadOffset:baseSo;
+    const origin=stackOrigin(cards.length, so, 'opp');
+    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
+    // Stack score below last card (toward middle of board)
+    const labelTop=origin+(cards.length-1)*so+curCardH;
+    inner+=stackScoreLabelAt(cards, labelTop);
     return `<div class="card-col" style="height:${sectionH}px" onclick="toggleExpand('opp','${c}')">${inner}</div>`;
   }).join('');
 
@@ -375,11 +388,11 @@ function renderBoard(layout){
       let stackHTML='';
       for(let i=0;i<pile.length-1;i++){
         const card=pile[i];
-        const so=isExp?18:0;
+        const so=isExp?spreadOffset:0;
         stackHTML+=`<div style="position:absolute;top:${i*so}px;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;transform:${jitter(card,i)};pointer-events:none">${cardHTML(card)}</div>`;
       }
       // Top card (interactive)
-      const topSo=isExp?(pile.length-1)*18:0;
+      const topSo=isExp?(pile.length-1)*spreadOffset:0;
       stackHTML+=`<div style="position:relative;top:${topSo}px;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
       const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
       return `<div class="card-col" style="position:relative;${isExp?'z-index:50':''}" onclick="${handler}">${stackHTML}${labels}</div>`;
@@ -453,20 +466,18 @@ function renderBoard(layout){
     // Always compute offset as if card is already played (so highlight matches final position)
     const withPlayCount=nextIdx+1;
     const baseSo=cardOffset(withPlayCount);
-    const so=isExp?18:baseSo;
-    // Center pile in card content area (bottom portion of section, score line at top)
-    const totalStackPx=((withPlayCount-1)*so)+curCardH;
-    const topOffset=Math.max(0,scoreLineH+Math.round((cardContentH-totalStackPx)/2));
+    const so=isExp?spreadOffset:baseSo;
+    const origin=stackOrigin(withPlayCount, so, 'my');
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${topOffset+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
+    if(canPlay) inner+=`<div style="position:absolute;top:${origin+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     // Score label right above the first card
-    const scoreLabelTop=topOffset-scoreLineH;
-    inner+=stackScoreLabelAt(cards, scoreLabelTop);
+    const labelTop=origin-scoreLineH;
+    inner+=stackScoreLabelAt(cards, labelTop);
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
     return `<div class="card-col" style="height:${sectionH}px" onclick="${stackClick}">${inner}</div>`;
   }).join('');
