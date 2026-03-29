@@ -70,12 +70,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:2000;gap:0}
 .card-row{display:grid;grid-template-columns:repeat(var(--num-colors),var(--col-w));justify-content:center;padding:0 var(--board-margin);overflow:visible;width:100%;flex-shrink:0}
 .card-col{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.card.empty-slot{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
+.card.pile-space{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
 /* Draw pile slot */
 #draw-pile-slot{display:flex;flex-direction:column;align-items:center;margin-top:var(--slot-pad)}
 /* Info rows */
 .info-row{display:flex;align-items:center;width:100%;padding:0 var(--board-margin);overflow:hidden;flex-shrink:0}
-.player-label{flex:1;font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-md);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name-tag{flex:1;font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-md);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .total-score{flex:1;font-family:'Cinzel',serif;font-size:var(--text-md);line-height:var(--line-lg);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 
 /* CARDS */
@@ -115,8 +115,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .flip-inner .flip-front,.flip-inner .flip-back{position:absolute;inset:0;backface-visibility:hidden}
 .flip-inner .flip-back{transform:rotateY(180deg)}
 
-/* EMPTY SLOTS & TARGETS */
-.card.empty-slot{background:rgba(255,255,255,.02);border:var(--border-w) dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
+/* PILE SPACES & TARGETS */
+.card.pile-space{background:rgba(255,255,255,.02);border:var(--border-w) dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
 .card.target{border:calc(var(--border-w) * 2) solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 calc(var(--card-h)*.15) rgba(212,168,67,.25)}
 .card-col>.card.target{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad));margin:0}
 .target-label{position:absolute;bottom:calc(-1 * var(--lift));left:50%;transform:translateX(-50%);font-size:var(--text-sm);line-height:var(--line-md);font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 var(--text-sm) rgba(212,168,67,.5);z-index:1}
@@ -139,15 +139,15 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .hand-cards>div:hover{z-index:2002}
 .hand-cards>div:has(.selected){z-index:3000}
 
-/* PHASE BAR */
-.phase-bar{text-align:center;padding:0 var(--slot-pad);font-size:var(--text-md);line-height:var(--line-md);color:var(--parchment-dark);min-height:var(--line-md);font-family:'Crimson Text',serif;font-style:italic}
-.phase-bar.draw-phase{color:var(--gold-bright)}
+/* PHASE PROMPT */
+.phase-prompt{text-align:center;padding:0 var(--slot-pad);font-size:var(--text-md);line-height:var(--line-md);color:var(--parchment-dark);min-height:var(--line-md);font-family:'Crimson Text',serif;font-style:italic}
+.phase-prompt.draw-phase{color:var(--gold-bright)}
 
 .draw-pile-card{cursor:pointer;position:relative;display:inline-block}
 .draw-pile-card .draw-pile-num{font-size:var(--text-sm);color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
 .draw-pile-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
 .draw-pile-landscape{width:var(--card-h)!important;height:var(--card-w)!important;min-height:0!important}
-.stack-overlay{display:none}
+.spread-view{display:none}
 
 /* SCORE SCREEN */
 .score-board{background:linear-gradient(135deg,#2a1f14,#1a0f0a);border:var(--border-w) solid var(--gold);border-radius:var(--gap-sm);padding:var(--gap-lg);width:90%;max-width:360px}
@@ -283,10 +283,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .high-contrast .card-value{color:#ffffff;font-weight:900;font-size:calc(var(--card-h) * .33);text-shadow:0 2px 6px rgba(0,0,0,1),0 0 var(--gap-sm) rgba(0,0,0,.8)}
 .high-contrast .card-corner{color:#ffffff;background:rgba(0,0,0,.7);font-size:calc(var(--card-h)*.154);padding:calc(var(--card-h)*.026) calc(var(--card-w)*.1);font-weight:900}
 .high-contrast .card.selected{box-shadow:0 0 20px rgba(255,215,0,1),0 0 40px rgba(255,215,0,.4);border-color:#ffd700!important;border-width:4px}
-.high-contrast .card.empty-slot{border:3px dashed rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
+.high-contrast .card.pile-space{border:3px dashed rgba(255,255,255,.35);background:rgba(255,255,255,.08)}
 .high-contrast .card.target{border-width:3px;box-shadow:0 0 24px rgba(255,215,0,.7)}
 .high-contrast .card.undoable{border-width:3px;box-shadow:0 0 12px rgba(255,100,50,.4)}
-.high-contrast .phase-bar{font-weight:700;color:#ffffff}
+.high-contrast .phase-prompt{font-weight:700;color:#ffffff}
 .high-contrast .toast{border:2px solid rgba(255,215,0,.7);color:#ffd700}
 .high-contrast .score-table td{color:#ffffff}
 .high-contrast .target-label{font-size:var(--text-sm);line-height:var(--line-md);color:#ffd700;font-weight:900;text-shadow:0 0 var(--gap-sm) rgba(255,215,0,.8)}
@@ -359,12 +359,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
     <!-- Opponent info row: name left, status center, score right -->
     <div class="info-row">
-      <span id="opp-name-label" class="player-label"></span>
-      <span id="opp-status" class="phase-bar" style="flex:1;text-align:center"></span>
+      <span id="opp-name-tag" class="name-tag"></span>
+      <span id="opp-status" class="phase-prompt" style="flex:1;text-align:center"></span>
       <span id="opp-total-score" class="total-score"></span>
     </div>
 
-    <div class="card-row" id="opp-row"></div>
+    <div class="card-row" id="opp-stacks"></div>
 
     <div id="middle-section" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%">
       <div class="card-row" id="discard-row"></div>
@@ -372,12 +372,12 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
       <div id="single-pile-area" style="display:none;margin-top:var(--gap-sm)"></div>
     </div>
 
-    <div class="card-row" id="my-row"></div>
+    <div class="card-row" id="my-stacks"></div>
 
-    <!-- Player info row: name left, hint center, score right -->
+    <!-- Player info row: name left, phase prompt center, score right -->
     <div class="info-row">
-      <span id="my-name-label" class="player-label"></span>
-      <span id="phase-bar" class="phase-bar" style="flex:1;text-align:center">Tap a card in your hand</span>
+      <span id="my-name-tag" class="name-tag"></span>
+      <span id="phase-prompt" class="phase-prompt" style="flex:1;text-align:center">Tap a card in your hand</span>
       <span id="my-total-score" class="total-score"></span>
     </div>
 
@@ -390,8 +390,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <!-- Floating gear menu button -->
   <button class="floating-menu-btn" onclick="SFX.select();showGameMenu()">&#x2699;&#xFE0E;</button>
 
-  <div id="stack-overlay" class="stack-overlay" onclick="expandedStack=null;document.getElementById('stack-overlay').classList.remove('active');renderBoard()">
-    <div class="stack-overlay-cards" id="stack-overlay-cards" onclick="event.stopPropagation()"></div>
+  <div id="spread-view" class="spread-view" onclick="spreadPile=null;document.getElementById('spread-view').classList.remove('active');renderBoard()">
+    <div class="spread-view-cards" id="spread-view-cards" onclick="event.stopPropagation()"></div>
   </div>
   <div id="back-to-scores" style="display:none;position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:5000">
     <button class="btn" onclick="SFX.select();backToScores()">Back to Scores</button>

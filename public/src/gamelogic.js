@@ -10,7 +10,7 @@ function canPlayOnExpedition(card, expedition){
 function selectCard(cardId){
   if(gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
   SFX.select();
-  expandedStack=null; // Collapse any expanded stack when selecting a card
+  spreadPile=null; // Collapse any spread pile when selecting a card
   const hand=getCards(gameState,'hands',mySlot);
   const card=hand.find(c=>c.id===cardId);
   if(!card) return;
@@ -345,7 +345,7 @@ function viewFinalBoard(){
   showScreen('game-screen');
   renderGame();
   document.getElementById('back-to-scores').style.display='block';
-  document.getElementById('phase-bar').textContent='Game Over — Final Board';
+  document.getElementById('phase-prompt').textContent='Game Over — Final Board';
 }
 function backToScores(){
   document.getElementById('back-to-scores').style.display='none';

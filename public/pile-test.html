@@ -26,7 +26,7 @@ h2{font-family:'Cinzel',serif;color:var(--gold);margin:24px 0 8px;font-size:16px
 
 /* Card styles from main game */
 .card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;position:relative;border:var(--border-w) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
-.card.empty-slot{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
+.card.pile-space{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
 .card.target{border-color:var(--gold-bright);box-shadow:0 0 12px rgba(212,168,67,.5)}
 .card-col{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .card-value{font-size:calc(var(--card-h) * .282);text-shadow:0 1px 3px rgba(0,0,0,.8);line-height:1;font-weight:400;z-index:1}
@@ -65,7 +65,7 @@ let colorblindMode = false;
 computeLayout();
 const layout = computeLayout();
 const curCardH = layout.cardH;
-const scoreLineH = layout.scoreLineH;
+const stackScoreH = layout.stackScoreH;
 const cardContentH = layout.stackContentH;
 const sectionH = layout.sH.stackRow;
 
@@ -105,7 +105,7 @@ function renderPile(cards, opts){
   let inner;
   if(n===0){
     const label=opts.targetLabel;
-    const cls=label?'card target':'card empty-slot';
+    const cls=label?'card target':'card pile-space';
     const border=(!label&&opts.color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`:'';
     const content=label?'<span class="target-label">'+label+'</span>':(opts.color?cbLabel(opts.color):'');
     inner=`<div class="${cls}" style="${border};position:absolute;top:${origin}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
@@ -145,8 +145,8 @@ function addTest(title, items){
 
 // =================== TEST CASES ===================
 
-// 1. Empty slots (N=0)
-addTest('N=0 — Empty slots', [
+// 1. Pile spaces (N=0)
+addTest('N=0 — Pile spaces', [
   { label:'Minimal',
     html: renderPile([], {}),
     params:'cards: []\nopts: {}' },
@@ -160,8 +160,8 @@ addTest('N=0 — Empty slots', [
     html: renderPile([], {color:'yellow', targetLabel:'Discard'}),
     params:'cards: []\nopts: {\n  color:"yellow"\n  targetLabel:"Discard"\n}' },
   { label:'Expedition space',
-    html: renderPile([], {color:'blue', spaceH:sectionH, padTop:scoreLineH}),
-    params:`cards: []\nopts: {\n  color:"blue"\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n}` },
+    html: renderPile([], {color:'blue', spaceH:sectionH, padTop:stackScoreH}),
+    params:`cards: []\nopts: {\n  color:"blue"\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n}` },
 ]);
 
 // 2. Single card (N=1)
@@ -174,8 +174,8 @@ addTest('N=1 — Single card', [
     html: renderPile(oneRed, {so:cardOffset(1)}),
     params:`cards: [{red,5}]\nopts: {so:${cardOffset(1)}}` },
   { label:'In expedition space',
-    html: renderPile(oneRed, {spaceH:sectionH, padTop:scoreLineH, so:cardOffset(1)}),
-    params:`cards: [{red,5}]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${cardOffset(1)}\n}` },
+    html: renderPile(oneRed, {spaceH:sectionH, padTop:stackScoreH, so:cardOffset(1)}),
+    params:`cards: [{red,5}]\nopts: {\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n  so:${cardOffset(1)}\n}` },
 ]);
 
 // 3. Three cards
@@ -189,11 +189,11 @@ addTest('N=3 — Wager + 3 + 7', [
     html: renderPile(threeBlue, {}),
     params:'cards: [{blue,W},{blue,3},{blue,7}]\nopts: {}' },
   { label:'Opp expedition',
-    html: renderPile(threeBlue, {spaceH:sectionH, padBot:scoreLineH, so:so3}),
-    params:`cards: [3 blue]\nopts: {\n  spaceH:${sectionH}\n  padBot:${scoreLineH}\n  so:${so3}\n}` },
+    html: renderPile(threeBlue, {spaceH:sectionH, padBot:stackScoreH, so:so3}),
+    params:`cards: [3 blue]\nopts: {\n  spaceH:${sectionH}\n  padBot:${stackScoreH}\n  so:${so3}\n}` },
   { label:'My expedition',
-    html: renderPile(threeBlue, {spaceH:sectionH, padTop:scoreLineH, so:so3}),
-    params:`cards: [3 blue]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so3}\n}` },
+    html: renderPile(threeBlue, {spaceH:sectionH, padTop:stackScoreH, so:so3}),
+    params:`cards: [3 blue]\nopts: {\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n  so:${so3}\n}` },
 ]);
 
 // 4. Eight cards (bonus territory)
@@ -204,11 +204,11 @@ addTest('N=8 — Bonus territory', [
     html: renderPile(eightGreen, {so:so8}),
     params:`cards: [8 green]\nopts: {so:${so8}}` },
   { label:'Opp expedition',
-    html: renderPile(eightGreen, {spaceH:sectionH, padBot:scoreLineH, so:so8}),
-    params:`cards: [8 green]\nopts: {\n  spaceH:${sectionH}\n  padBot:${scoreLineH}\n  so:${so8}\n}` },
+    html: renderPile(eightGreen, {spaceH:sectionH, padBot:stackScoreH, so:so8}),
+    params:`cards: [8 green]\nopts: {\n  spaceH:${sectionH}\n  padBot:${stackScoreH}\n  so:${so8}\n}` },
   { label:'My expedition',
-    html: renderPile(eightGreen, {spaceH:sectionH, padTop:scoreLineH, so:so8}),
-    params:`cards: [8 green]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so8}\n}` },
+    html: renderPile(eightGreen, {spaceH:sectionH, padTop:stackScoreH, so:so8}),
+    params:`cards: [8 green]\nopts: {\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n  so:${so8}\n}` },
 ]);
 
 // 5. Max pile (12)
@@ -219,8 +219,8 @@ addTest('N=12 — Maximum pile', [
     html: renderPile(twelveYellow, {so:so12}),
     params:`cards: [12 yellow]\nopts: {so:${so12}}` },
   { label:'Expedition (should fill)',
-    html: renderPile(twelveYellow, {spaceH:sectionH, padTop:scoreLineH, so:so12}),
-    params:`cards: [12 yellow]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so12}\n}` },
+    html: renderPile(twelveYellow, {spaceH:sectionH, padTop:stackScoreH, so:so12}),
+    params:`cards: [12 yellow]\nopts: {\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n  so:${so12}\n}` },
 ]);
 
 // 6. Ghost card (play target in pile)
@@ -233,8 +233,8 @@ addTest('Ghost card — play target as pile member', [
     html: renderPile([...makeCards('white', [0, 4]), ghost], {so:cardOffset(3)}),
     params:`cards: [{W,W},{W,4},{ghost}]\nopts: {so:${cardOffset(3)}}` },
   { label:'In expedition space',
-    html: renderPile([...makeCards('white', [0, 4]), ghost], {spaceH:sectionH, padTop:scoreLineH, so:cardOffset(3)}),
-    params:`cards: [{W,W},{W,4},{ghost}]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${cardOffset(3)}\n}` },
+    html: renderPile([...makeCards('white', [0, 4]), ghost], {spaceH:sectionH, padTop:stackScoreH, so:cardOffset(3)}),
+    params:`cards: [{W,W},{W,4},{ghost}]\nopts: {\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n  so:${cardOffset(3)}\n}` },
 ]);
 
 // 7. Draw pile (face-down)
@@ -254,11 +254,11 @@ const fiveRed = makeCards('red', [0, 2, 5, 8, 10]);
 const so5 = cardOffset(5);
 addTest('Opp vs My — same cards, different padding', [
   { label:'Opp (padBot)',
-    html: renderPile(fiveRed, {spaceH:sectionH, padBot:scoreLineH, so:so5}),
-    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  padBot:${scoreLineH}\n  so:${so5}\n}` },
+    html: renderPile(fiveRed, {spaceH:sectionH, padBot:stackScoreH, so:so5}),
+    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  padBot:${stackScoreH}\n  so:${so5}\n}` },
   { label:'My (padTop)',
-    html: renderPile(fiveRed, {spaceH:sectionH, padTop:scoreLineH, so:so5}),
-    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so5}\n}` },
+    html: renderPile(fiveRed, {spaceH:sectionH, padTop:stackScoreH, so:so5}),
+    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  padTop:${stackScoreH}\n  so:${so5}\n}` },
   { label:'No padding',
     html: renderPile(fiveRed, {spaceH:sectionH, so:so5}),
     params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  so:${so5}\n}` },
@@ -272,9 +272,9 @@ cardH = ${layout.cardH}px<br>
 cardW = ${layout.cardW}px<br>
 colW = ${layout.colW}px<br>
 slotPad = ${layout.slotPad}px<br>
-scoreLineH = ${scoreLineH}px<br>
+stackScoreH = ${stackScoreH}px<br>
 cardContentH = ${cardContentH}px (max pile height for 12 cards)<br>
-sectionH = ${sectionH}px (cardContentH + scoreLineH)<br>
+sectionH = ${sectionH}px (cardContentH + stackScoreH)<br>
 <br>
 <div style="color:var(--gold)">cardOffset(N)</div>
 ${[1,2,3,4,5,6,8,10,12].map(n=>`N=${n}: ${cardOffset(n)}px`).join('<br>')}

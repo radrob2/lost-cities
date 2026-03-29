@@ -14,7 +14,7 @@ let seriesFirstPlayer='player1'; // alternates each rematch
 
 let myId=null, mySlot=null, roomCode=null, roomRef=null, gameState=null;
 let selectedCard=null, listeners=[];
-let expandedStack=null; // {who:'my'|'opp', color:'red'} — which stack is fanned out
+let spreadPile=null; // {who:'my'|'opp', color:'red'} — which pile is spread out
 let variant='classic'; // 'classic' or 'single'
 let isAIGame=false;
 let aiPersonality='heuristic'; // default AI personality — Strategist beats all evolved genomes

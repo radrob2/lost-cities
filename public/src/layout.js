@@ -18,7 +18,7 @@ function lvl(n, cardH) {
   return cardH / Math.pow(PHI, n);
 }
 
-// Stack offset: continuous function with 3× ratio between N=2 and N=12
+// Card offset: continuous function with 3× ratio between N=2 and N=12
 // offset(N) = cardH × 0.367 / N^0.613
 const STACK_K = 0.367;
 const STACK_EXP = 0.613;
@@ -27,7 +27,7 @@ function stackOffset(N, cardH) {
   return cardH * STACK_K / Math.pow(N, STACK_EXP);
 }
 
-// Stack content height for N cards
+// Pile content height for N cards
 function stackContentHeight(N, cardH) {
   return cardH + Math.max(0, N - 1) * stackOffset(N, cardH);
 }
@@ -53,8 +53,8 @@ function computeLayout() {
   const infoRowR    = 1 / (PHI * PHI * PHI);               // n=3: 0.236
   const maxN        = MAX_CARDS_PER_COLOR;
   const stackContentR = 1 + (maxN - 1) * STACK_K / Math.pow(maxN, STACK_EXP);
-  const scoreLabelR = 1 / Math.pow(PHI, 4);                // n=4: textSm line-height, in normal flow
-  const stackRowR   = stackContentR + scoreLabelR;
+  const stackScoreR = 1 / Math.pow(PHI, 4);                // n=4: textSm line-height, in normal flow
+  const stackRowR   = stackContentR + stackScoreR;
 
   // Slot height = card + slotPad
   const slotPadR    = 1 / Math.pow(PHI, 4);                // n=4
@@ -170,9 +170,9 @@ function computeLayout() {
     cardW, cardH, isLandscape, sH, colW, boardMargin,
     bigGapPx, smallGapPx, slotPad, lift, borderW,
     textSm, textMd, textLg, lineSm, lineMd, lineLg,
-    stackContentR, scoreLabelR, slotHR,
+    stackContentR, stackScoreR, slotHR,
     stackContentH: Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, cardH)),
-    scoreLineH: Math.round(lineSm),
+    stackScoreH: Math.round(lineSm),
     numColors, peekR, infoRowR, stackRowR, midR, handR,
   };
   computeLayout._vh = vh;

@@ -74,10 +74,10 @@ Column
 When the column has no cards:
 ```
 Column
-└── Card space            printed placeholder (dashed outline)
+└── Pile space            printed placeholder (dashed outline)
 ```
 
-- **Card space**: the dashed-outline placeholder printed on the table surface showing where cards can be played. Visible when no cards are present. This is a board marking, not a card.
+- **Pile space**: the dashed-outline placeholder printed on the table surface showing where cards can be played. Visible when no cards are present. This is a board marking, not a card.
 - **Stack score**: text displaying the live score for that stack. Positioned at the pile edge, toward the middle of the board.
 
 ---
@@ -130,7 +130,7 @@ Physical and virtual layers from back to front. Each layer gets a thousands digi
 | Layer | z-index range | What | Examples |
 |-------|--------------|------|---------|
 | **Table** | 0-999 | The surface itself | Background color, texture, patterns |
-| **Printed** | 1000-1999 | Markings on the table surface | Card spaces (dashed outlines), color indicators |
+| **Printed** | 1000-1999 | Markings on the table surface | Pile spaces (dashed outlines), color indicators |
 | **Resting** | 2000-2999 | Physical objects on the table | Cards in stacks (2000+i), hand cards (2000), hover (2002) |
 | **Floating** | 3000-3999 | Objects held above the table | Selected card (3000), spread view (3000) |
 | **Overlay** | 4000-4999 | Information projected onto the scene | Stack scores, pile counts, phase prompts, name tags |
@@ -145,7 +145,7 @@ Visual modifications applied to objects in any layer. Effects are not a layer �
 | Effect | Applied to | What it does |
 |--------|-----------|-------------|
 | **Highlight** | A card (resting or floating) | Modified border/glow indicating selection or interactivity |
-| **Pulse** | A card space or card | Animated glow indicating a valid target |
+| **Pulse** | A pile space or card | Animated glow indicating a valid target |
 | **Shadow** | Floating objects | Elevation cue (e.g., selected card shadow on table) |
 | **Edge glow** | Board edge | Turn indicator, screen-level visual cue |
 
@@ -189,15 +189,15 @@ This ensures:
 - Adding offset to discards = changing one parameter
 - Visual consistency across all pile types = guaranteed
 - One centering formula = no alignment mismatches
-- Card spaces (empty pile placeholders) also flow through the same path (N=0 case)
+- Pile spaces (empty pile placeholders) also flow through the same path (N=0 case)
 
-This principle applies broadly: any elements with similar structure (text labels, card spaces, info rows) should flow through shared rendering functions parameterized by their differences.
+This principle applies broadly: any elements with similar structure (text labels, pile spaces, info rows) should flow through shared rendering functions parameterized by their differences.
 
 ### 4.3 Board Markings
 
 | Term | What | Layer |
 |------|------|-------|
-| **Card space** | Dashed-outline placeholder where cards can be played | Printed |
+| **Pile space** | Dashed-outline placeholder where cards can be played | Printed |
 
 ---
 
@@ -240,10 +240,10 @@ All text uses the φ tier system. Text at size n has line-height at n-1. The tex
 | Situation | Method | Why |
 |-----------|--------|-----|
 | Overlapping cards in a stack (N ≥ 1) | JS absolute positioning with computed card offsets | Cards overlap, need exact pixel positions |
-| Single elements (card spaces, single discard top cards) | CSS flex centering | No overlap, simpler, same visual result |
+| Single elements (pile spaces, single discard top cards) | CSS flex centering | No overlap, simpler, same visual result |
 | Text in line-height | CSS (text naturally centers in its line-height) | Standard typography |
 
-N=0 (empty column) shows the card space marker, centered via flex. N=1 through N=12 use the same JS positioning formula. No special cases.
+N=0 (empty column) shows the pile space marker, centered via flex. N=1 through N=12 use the same JS positioning formula. No special cases.
 
 ### 6.3 Score Label Positioning
 
@@ -290,5 +290,5 @@ Elements with similar structure should flow through shared code parameterized by
 |-------------|----------------|------------|
 | All piles (play, discard, draw) | Pile renderer | cards, card offset, face-up/down |
 | All text labels | Text renderer | content, tier, position |
-| All card spaces | Pile renderer (N=0 case) | color, interactivity |
+| All pile spaces | Pile renderer (N=0 case) | color, interactivity |
 | All info rows | Info row renderer | name, status/hint, score |

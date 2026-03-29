@@ -293,7 +293,7 @@ function startReplayPlayback() {
   _updateReplayInfo();
 
   // Update phase bar
-  const pb = document.getElementById('phase-bar');
+  const pb = document.getElementById('phase-prompt');
   if (pb) pb.textContent = 'Replay — Press Play to start';
 }
 
@@ -383,7 +383,7 @@ function _replayTick() {
     _replayPlaying = false;
     if (_replayTimer) { clearInterval(_replayTimer); _replayTimer = null; }
     _updatePlayButton();
-    const pb = document.getElementById('phase-bar');
+    const pb = document.getElementById('phase-prompt');
     if (pb) pb.textContent = 'Replay complete';
     return;
   }
@@ -512,7 +512,7 @@ function _highlightReplayAction(action) {
   }
 
   // Update phase bar with action description
-  const pb = document.getElementById('phase-bar');
+  const pb = document.getElementById('phase-prompt');
   if (pb) {
     const who = action.player === (_replayData.mySlot) ? 'You' : 'Opponent';
     const cardName = action.card ? (action.card.value === 0 ? 'Wager' : action.card.value) + ' ' + (action.card.color || '') : '';
