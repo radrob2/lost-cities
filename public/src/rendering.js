@@ -321,9 +321,10 @@ function renderBoard(){
   }
   // Score label line height: n=4 (one step above text at n=5)
   const scoreLinePx=Math.round(lvl(4, curCardH));
-  // Fixed stack height = card content + score label line, fills the full row
+  // Fixed stack height = actual row height (read from DOM, set by renderGame)
+  // Cards center within this; score label floats at card edge
   const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
-  const fixedStackRowH=fixedStackContentH+scoreLinePx;
+  const fixedStackRowH=oppRow.offsetHeight||myRow.offsetHeight||(fixedStackContentH+scoreLinePx);
   const fixedStackH=fixedStackRowH+'px';
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
