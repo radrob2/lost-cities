@@ -1,5 +1,10 @@
 // rendering.js — Card rendering, hand display (cone perspective), board layout, scoring display
 
+let yourTurnUntil=0;
+let idleStart=0;     // timestamp when idle began
+let idleShown=false;  // whether overlay is currently visible
+const IDLE_MS=30000;  // 30 seconds
+
 function cardHTML(card, extra=''){
   const isWager = card.value===0;
   const valText = isWager ? '&#x1F91D;' : card.value;
@@ -52,23 +57,55 @@ function renderGame(){
   const oppStatus=document.getElementById('opp-status');
   const gameScreenEl=document.getElementById('game-screen');
   const wasMyTurn=gameScreenEl&&gameScreenEl.classList.contains('your-turn-glow');
-  if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
+  if(isMyTurn && !wasMyTurn && gameState.phase==='play'){
+    SFX.yourTurn();
+    yourTurnUntil=Date.now()+2000;
+  }
   // Player hint (center of my info row)
   if(phaseBar){
+    const showYourTurn=isMyTurn&&inPlayPhase&&Date.now()<yourTurnUntil;
     let phaseText='';
-    if(!isMyTurn) phaseText='Waiting...';
+    if(showYourTurn) phaseText='YOUR TURN';
+    else if(!isMyTurn) phaseText='Waiting...';
     else if(inPlayPhase) phaseText=selectedCard?'Play or discard':'Select a card';
     else phaseText='Draw a card';
-    const phaseColor=(isMyTurn&&inDrawPhase)?'var(--gold-bright)':'var(--parchment-dark)';
-    const phaseOpacity=isMyTurn?undefined:0.4;
-    const phaseStyle=isMyTurn?undefined:'font-style:italic';
-    phaseBar.innerHTML=renderText(phaseText,4,{font:'crimson',color:phaseColor,opacity:phaseOpacity,extraStyle:phaseStyle});
+    if(showYourTurn){
+      phaseBar.innerHTML=renderText(phaseText,3,{font:'cinzel',color:'var(--gold-bright)',weight:700,uppercase:true,cls:'your-turn-announce'});
+    } else {
+      const phaseColor=(isMyTurn&&inDrawPhase)?'var(--gold-bright)':'var(--parchment-dark)';
+      const phaseOpacity=isMyTurn?undefined:0.4;
+      const phaseStyle=isMyTurn?undefined:'font-style:italic';
+      phaseBar.innerHTML=renderText(phaseText,4,{font:'crimson',color:phaseColor,opacity:phaseOpacity,extraStyle:phaseStyle});
+    }
   }
   // Opponent status (center of opp info row)
   if(oppStatus){
     if(isMyTurn) oppStatus.innerHTML='';
     else oppStatus.innerHTML=renderText('thinking...',4,{font:'crimson',color:'var(--parchment-dark)',opacity:0.4,extraStyle:'font-style:italic'});
   }
+  // Idle overlay — 30s of inactivity during play phase
+  const idleOverlay=document.getElementById('idle-overlay');
+  if(idleOverlay){
+    if(isMyTurn && inPlayPhase && !selectedCard){
+      if(!idleStart) idleStart=Date.now();
+      if(!idleShown && Date.now()-idleStart>=IDLE_MS){
+        idleShown=true;
+        idleOverlay.classList.add('visible');
+        idleOverlay.innerHTML=
+          renderText('YOUR TURN',3,{font:'cinzel',color:'var(--gold-bright)',weight:700,uppercase:true,block:true,align:'center',extraStyle:'animation:idlePulse 2s ease-in-out infinite'})+
+          renderText('tap anywhere',5,{font:'crimson',color:'var(--parchment)',opacity:0.6,block:true,align:'center',extraStyle:'margin-top:1em'});
+        SFX.yourTurn();
+      }
+    } else {
+      idleStart=0;
+      if(idleShown){
+        idleShown=false;
+        idleOverlay.classList.remove('visible');
+        idleOverlay.innerHTML='';
+      }
+    }
+  }
+
   // Screen edge glow
   if(gameScreenEl){
     gameScreenEl.classList.toggle('your-turn-glow',isMyTurn);
@@ -553,3 +590,20 @@ function calcScore(expeditions){
   });
   return {total,breakdown};
 }
+
+// Idle overlay dismiss — click anywhere on page
+document.addEventListener('click',function(){
+  if(idleShown){
+    idleShown=false;
+    idleStart=0;
+    const ov=document.getElementById('idle-overlay');
+    if(ov){ov.classList.remove('visible');ov.innerHTML='';}
+  }
+});
+
+// Periodic idle check — renderGame only fires on state changes, so poll to trigger overlay
+setInterval(function(){
+  if(idleStart && !idleShown && Date.now()-idleStart>=IDLE_MS){
+    if(typeof renderGame==='function') renderGame();
+  }
+},5000);

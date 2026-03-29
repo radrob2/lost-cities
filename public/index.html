@@ -61,6 +61,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .hand-peek{position:relative;overflow:hidden;width:calc(100% + 2*var(--board-margin));margin-left:calc(-1*var(--board-margin));margin-right:calc(-1*var(--board-margin));margin-top:calc(-1*var(--board-margin))}
 /* Screen edge glow when it's your turn */
 .your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.382) rgba(212,168,67,.7)}
+#idle-overlay.visible{display:flex}
+@keyframes idlePulse{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes yourTurnFlash{0%{opacity:0;transform:scale(.85)}50%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+.your-turn-announce{animation:yourTurnFlash .5s ease-out}
 
 /* BOARD LAYOUT */
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:2000;gap:0}
@@ -392,6 +396,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
   <div id="back-to-scores" style="display:none;position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:5000">
     <button class="btn" onclick="SFX.select();backToScores()">Back to Scores</button>
   </div>
+  <div id="idle-overlay" style="display:none;position:absolute;inset:0;z-index:4500;background:rgba(0,0,0,.75);align-items:center;justify-content:center;flex-direction:column;cursor:pointer"></div>
 </div>
 
 <!-- GAME OVER -->
