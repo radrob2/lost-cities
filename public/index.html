@@ -13,10 +13,14 @@
 :root{
   --bg:#120c07;--parchment:#f0e0c0;--parchment-dark:#b8a888;
   --gold:#d4a843;--gold-bright:#f0c850;
-  --card-w:48px;--card-h:78px;
-  --ui-scale:1;--font-base:13px;--gap-sm:4px;--gap-md:8px;--pad:8px;
+  /* φ-derived layout — all overridden by computeLayout(), these are fallbacks */
+  --card-h:78px;--card-w:48px;--col-w:60px;
+  --text-sm:7px;--text-md:11px;--text-lg:18px;
+  --line-sm:11px;--line-md:18px;--line-lg:30px;
+  --gap-lg:18px;--gap-sm:11px;--gap-col:3px;
+  --slot-pad:11px;--lift:11px;--border-w:1px;
+  --board-margin:18px;
   --anim-dur:0.5s;--anim-ease:cubic-bezier(.2,.8,.3,1);
-  --board-margin:min(1.2vw, 1.2vh);
 }
 html,body{height:100%;overflow:hidden;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment)}
 body{display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -50,35 +54,33 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 
 /* GAME BOARD */
 #game-screen{padding:var(--board-margin);flex-direction:column;justify-content:space-between;background:var(--bg);position:relative}
-/* Floating gear menu */
-.floating-menu-btn{position:absolute;top:max(var(--board-margin),env(safe-area-inset-top));right:max(var(--board-margin),env(safe-area-inset-right));z-index:20;background:none;border:none;color:var(--gold);font-size:calc(var(--font-base)*3.4);cursor:pointer;padding:var(--board-margin);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6);font-family:sans-serif}
+/* Floating gear menu — pins to screen edges */
+.floating-menu-btn{position:absolute;top:max(var(--board-margin),env(safe-area-inset-top));right:max(var(--board-margin),env(safe-area-inset-right));z-index:20;background:none;border:none;color:var(--gold);font-size:var(--text-lg);cursor:pointer;padding:var(--board-margin);line-height:1;opacity:.7;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.6);font-family:sans-serif}
 .floating-menu-btn:active{opacity:1}
-/* Hand peek: clipped opponent hand at top — bleeds past board margin on all three sides */
+/* Hand peek: clipped opponent hand at top — bleeds past board margin */
 .hand-peek{position:relative;overflow:hidden;width:calc(100% + 2*var(--board-margin));margin-left:calc(-1*var(--board-margin));margin-right:calc(-1*var(--board-margin));margin-top:calc(-1*var(--board-margin))}
 /* Screen edge glow when it's your turn */
 .your-turn-glow{box-shadow:inset 0 0 calc(var(--card-h)*0.4) rgba(212,168,67,.7)}
-/* Hand-peek has its own full-bleed width; hand-area needs gear clearance */
-.hand-area{padding-left:var(--pad);padding-right:calc(var(--pad) + var(--font-base)*2.5)}
 
 /* BOARD LAYOUT */
-.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10;gap:var(--section-gap,4px)}
-.card-row{display:grid;grid-template-columns:repeat(var(--num-colors,5),var(--col-w,1fr));justify-content:center;align-content:center;gap:var(--gap-sm);padding:0 calc(var(--pad) * 1.5);overflow:visible;width:100%;flex-shrink:0}
+.board-area{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;overflow:visible;width:100%;padding:0;position:relative;z-index:10;gap:0}
+.card-row{display:grid;grid-template-columns:repeat(var(--num-colors),var(--col-w));justify-content:center;align-content:center;gap:var(--gap-col);padding:0 var(--board-margin);overflow:visible;width:100%;flex-shrink:0}
 .card-col{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .expedition-stack{position:relative;width:var(--col-w);overflow:visible}
 .expedition-stack .card{position:static}
-.card.empty-slot{width:var(--col-w);height:calc(var(--card-h)*1.13)}
-.card-slot{width:var(--col-w);height:calc(var(--card-h)*1.13);display:flex;align-items:center;justify-content:center;position:relative}
-/* Deck slot: centered below discards in portrait, hidden in landscape (rendered as 6th grid col) */
-#deck-slot{display:flex;flex-direction:column;align-items:center}
-/* Info rows: name left, score right */
-.info-row{display:flex;align-items:center;width:100%;padding:0 calc(var(--pad)*1.5);overflow:hidden;flex-shrink:0}
-.player-label{flex:1;font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.total-score{flex:1;font-family:'Cinzel',serif;font-size:calc(var(--font-base)*.85);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.card.empty-slot{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
+.card-slot{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad));display:flex;align-items:center;justify-content:center;position:relative}
+/* Deck slot */
+#deck-slot{display:flex;flex-direction:column;align-items:center;margin-top:var(--gap-col)}
+/* Info rows */
+.info-row{display:flex;align-items:center;width:100%;padding:0 var(--board-margin);overflow:hidden;flex-shrink:0}
+.player-label{flex:1;font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);opacity:.5;text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.total-score{flex:1;font-family:'Cinzel',serif;font-size:var(--text-md);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
 
 /* CARDS */
-.card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:calc(var(--card-h)*.02) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
+.card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:var(--border-w) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
 .card:active{transform:scale(.95)}
-.card.selected{transform:translateY(calc(var(--card-h)*-0.18));box-shadow:0 calc(var(--card-h)*.1) calc(var(--card-h)*.36) rgba(212,168,67,.7);border-color:var(--gold-bright)!important;z-index:5}
+.card.selected{transform:translateY(calc(-1 * var(--lift)));box-shadow:0 calc(var(--card-h)*.1) calc(var(--card-h)*.36) rgba(212,168,67,.7);border-color:var(--gold-bright)!important;z-index:5}
 .card-value{font-size:calc(var(--card-h) * .282);text-shadow:0 1px 3px rgba(0,0,0,.8),0 0 6px rgba(0,0,0,.4);line-height:1;font-weight:400;z-index:1}
 .card-corner{font-size:calc(var(--card-h) * .128);position:absolute;top:calc(var(--card-h)*.013);left:calc(var(--card-w)*.02);z-index:1;font-weight:700;line-height:1;background:rgba(0,0,0,.35);border-radius:calc(var(--card-h)*.04);padding:calc(var(--card-h)*.013) calc(var(--card-w)*.06);text-shadow:0 1px 2px rgba(0,0,0,.9)}
 .wager .card-corner{top:calc(var(--card-h)*.026)}
@@ -113,10 +115,10 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .flip-inner .flip-back{transform:rotateY(180deg)}
 
 /* EMPTY SLOTS & TARGETS */
-.card.empty-slot{background:rgba(255,255,255,.02);border:calc(var(--card-h)*.02) dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
-.card.target{border:calc(var(--card-h)*.026) solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 calc(var(--card-h)*.15) rgba(212,168,67,.25)}
-.card-col>.card.target{width:var(--col-w);height:calc(var(--card-h) * 1.13);margin:0}
-.target-label{position:absolute;bottom:calc(var(--card-h)*-0.18);left:50%;transform:translateX(-50%);font-size:calc(var(--card-h)*.077);font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 calc(var(--card-h)*.077) rgba(212,168,67,.5);z-index:1}
+.card.empty-slot{background:rgba(255,255,255,.02);border:var(--border-w) dashed rgba(255,255,255,.06);cursor:default;box-shadow:none}
+.card.target{border:calc(var(--border-w) * 2) solid var(--gold-bright)!important;cursor:pointer;animation:target-pulse .8s ease-in-out infinite alternate;box-shadow:0 0 calc(var(--card-h)*.15) rgba(212,168,67,.25)}
+.card-col>.card.target{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad));margin:0}
+.target-label{position:absolute;bottom:calc(-1 * var(--lift));left:50%;transform:translateX(-50%);font-size:var(--text-sm);font-family:'Cinzel',serif;color:var(--gold-bright);white-space:nowrap;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-shadow:0 0 var(--text-sm) rgba(212,168,67,.5);z-index:1}
 @keyframes card-pop{
   0%{transform:scale(0.8);opacity:.5}
   50%{transform:scale(1.05)}
@@ -124,8 +126,8 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 }
 .card-pop{animation:card-pop .25s ease-out}
 @keyframes target-pulse{from{box-shadow:0 0 6px rgba(212,168,67,.2)}to{box-shadow:0 0 16px rgba(212,168,67,.4)}}
-.card.undoable{border:calc(var(--card-h)*.026) dashed var(--gold)!important;cursor:pointer;animation:undo-pulse .8s ease-in-out infinite alternate}
-.undo-label{position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);font-size:6px;font-family:'Cinzel',serif;color:var(--gold);white-space:nowrap;letter-spacing:1px;text-transform:uppercase;opacity:.7}
+.card.undoable{border:calc(var(--border-w) * 2) dashed var(--gold)!important;cursor:pointer;animation:undo-pulse .8s ease-in-out infinite alternate}
+.undo-label{position:absolute;bottom:calc(-1 * var(--lift));left:50%;transform:translateX(-50%);font-size:var(--text-sm);font-family:'Cinzel',serif;color:var(--gold);white-space:nowrap;letter-spacing:1px;text-transform:uppercase;opacity:.7}
 @keyframes undo-pulse{from{opacity:.7}to{opacity:1}}
 
 /* HAND */
@@ -137,11 +139,11 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 .hand-cards>div:has(.selected){z-index:5}
 
 /* PHASE BAR */
-.phase-bar{text-align:center;padding:calc(var(--pad) * .38) calc(var(--pad) * 1.06);font-size:calc(var(--font-base) * .85);color:var(--parchment-dark);min-height:calc(var(--font-base) * 1.7);font-family:'Crimson Text',serif;font-style:italic}
+.phase-bar{text-align:center;padding:0 var(--slot-pad);font-size:var(--text-md);line-height:var(--line-md);color:var(--parchment-dark);min-height:var(--line-md);font-family:'Crimson Text',serif;font-style:italic}
 .phase-bar.draw-phase{color:var(--gold-bright);font-style:normal;font-weight:600}
 
 .deck-card{cursor:pointer;position:relative;display:inline-block}
-.deck-card .deck-num{font-size:calc(var(--font-base) * .69);color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
+.deck-card .deck-num{font-size:var(--text-sm);color:var(--parchment-dark);font-family:'Cinzel',serif;text-align:center;margin-top:2px;opacity:.5}
 .deck-card.target .card{border-color:var(--gold-bright)!important;animation:target-pulse .8s ease-in-out infinite alternate}
 .deck-landscape{width:var(--card-h)!important;height:var(--card-w)!important;min-height:0!important}
 .stack-overlay{display:none}
@@ -550,6 +552,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:cente
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="src/sound.js"></script>
 <script src="src/animations.js"></script>
+<script src="src/layout.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyCS6rxbyuvgg66RCd1WmrDg0UR9RMiAuBQ",
@@ -688,116 +691,35 @@ function cardHTML(card, extra=''){
   </div>`;
 }
 
-function computeLayout(){
-  const vh=window.innerHeight;
-  const vw=window.innerWidth;
-  const isLandscape=vw>vh;
-
-  // Skip if viewport hasn't changed
-  if(computeLayout._vh===vh && computeLayout._vw===vw) return computeLayout._result;
-
-  // All section heights are fractions of cardH. We solve for cardH from vh.
-  // Sections (top to bottom):
-  //   1. oppPeek     — opponent hand peek
-  //   2. infoRow     — name + score row (used for both opp and player)
-  //   3. stackRow    — expedition stacks (worst case 8 cards)
-  //   4. discardRow  — discard piles + deck
-  //   5. handArea    — player hand (cone projection)
-  //
-  // Fractions (of cardH):
-  const oppPeekFrac   = 0.35;       // fixed peek height
-  const infoRowFrac   = 0.28;       // name/score/hint row (needs to fit font-base text)
-  const maxStack      = 8;
-  const stackOffFrac  = 0.10;       // per-card offset at max stack
-  const stackFrac     = 1.13 + (maxStack-1)*stackOffFrac; // stack (score labels are absolutely positioned, don't add height)
-  const discardFrac   = 1.13;       // discard card slots
-  const deckFrac      = isLandscape ? 0 : 0.95; // deck (landscape card = ~0.75*cardH) + "N left" label + gap
-  const gapFrac       = 0.18;       // gap between sections (needs to fit abs-positioned score labels ~12px)
-  const handFrac      = 1.50;       // hand area (cone projection for 8 cards + lift)
-  const numGaps       = 6;          // gaps between 7 sections
-
-  const totalFrac =
-    oppPeekFrac +
-    infoRowFrac +         // opp info
-    stackFrac +           // opp stacks
-    discardFrac + deckFrac + // discards + deck
-    stackFrac +           // my stacks
-    infoRowFrac +         // my info
-    handFrac +
-    numGaps * gapFrac;
-
-  const boardMargin=Math.min(vw*0.012, vh*0.012);
-  const availH=vh-2*boardMargin;
-
-  let cardH=Math.floor(availH/totalFrac);
-  const maxH=vw>=768?(isLandscape?88:112):(vh<=750?68:78);
-  cardH=Math.min(cardH, maxH);
-  cardH=Math.max(cardH, 12);
-
-  const cardW=Math.round(cardH*0.618);
-  const scale=cardH/maxH;
-  const colW=Math.round(cardW + cardH*0.13);
-
-  // Derived sizing — all proportional
-  const fontBase=Math.round(Math.max(8, 13*scale)*10)/10;
-  const gapSm=Math.round(Math.max(2, 4*scale)*10)/10;
-  const gapMd=Math.round(Math.max(3, 8*scale)*10)/10;
-  const pad=Math.round(Math.max(4, 8*scale)*10)/10;
-
-  // Compute exact pixel heights for each section
-  const sectionH = {
-    oppPeek:    Math.round(cardH * oppPeekFrac),
-    infoRow:    Math.round(cardH * infoRowFrac),
-    stackRow:   Math.round(cardH * stackFrac),
-    discardRow: Math.round(cardH * discardFrac),
-    deckSlot:   Math.round(cardH * deckFrac),
-    gap:        Math.round(cardH * gapFrac),
-    hand:       Math.round(cardH * handFrac),
-  };
-
-  // Set all CSS custom properties
-  const root=document.documentElement.style;
-  root.setProperty('--card-w',cardW+'px');
-  root.setProperty('--card-h',cardH+'px');
-  root.setProperty('--ui-scale',scale.toFixed(3));
-  root.setProperty('--font-base',fontBase+'px');
-  root.setProperty('--gap-sm',gapSm+'px');
-  root.setProperty('--gap-md',gapMd+'px');
-  root.setProperty('--pad',pad+'px');
-  root.setProperty('--col-w',colW+'px');
-  root.setProperty('--section-gap',sectionH.gap+'px');
-
-  // Apply fixed heights to all sections
-  const setH=(id,h)=>{const el=document.getElementById(id);if(el)el.style.height=h+'px';};
-  setH('opp-hand-row', sectionH.oppPeek);
-  setH('hand-area', sectionH.hand);
-
-  // Store for use by renderBoard/renderHand
-  const result = {cardW, cardH, scale, isLandscape, sectionH, colW, boardMargin};
-  computeLayout._vh=vh; computeLayout._vw=vw; computeLayout._result=result;
-  return result;
-}
+// computeLayout() is now in src/layout.js
 
 function renderGame(){
   if(!gameState)return;
 
-  // Compute and apply all layout sizing — deterministic, only changes on resize
+  // Compute layout — φ-derived, deterministic, only changes on resize
   const layout=computeLayout();
-  const sH=layout.sectionH;
+  const sH=layout.sH;
 
-  // Apply fixed pixel heights to all sections so nothing shifts during play
+  // Apply fixed pixel heights + gap hierarchy to all sections
+  const oppHandRow=document.getElementById('opp-hand-row');
   const oppInfoRow=document.querySelector('#game-screen .board-area .info-row');
   const myInfoRow=document.querySelectorAll('#game-screen .board-area .info-row')[1];
   const oppRow=document.getElementById('opp-row');
   const myRow=document.getElementById('my-row');
   const midSec=document.getElementById('middle-section');
+  // Section heights
   if(oppInfoRow) oppInfoRow.style.height=sH.infoRow+'px';
   if(myInfoRow) myInfoRow.style.height=sH.infoRow+'px';
   if(oppRow) oppRow.style.height=sH.stackRow+'px';
   if(myRow) myRow.style.height=sH.stackRow+'px';
-  if(midSec) midSec.style.height=(sH.discardRow+sH.deckSlot+sH.gap)+'px';
-  const deckSlotEl=document.getElementById('deck-slot');
-  if(deckSlotEl && sH.deckSlot>0) deckSlotEl.style.height=sH.deckSlot+'px';
+  if(midSec) midSec.style.height=sH.mid+'px';
+  // Gap hierarchy: peek[sm]info[sm]stacks[BIG]mid[BIG]stacks[sm]info[sm]hand
+  if(oppHandRow) oppHandRow.style.marginBottom=layout.smallGapPx+'px';
+  if(oppInfoRow) oppInfoRow.style.marginBottom=layout.smallGapPx+'px';
+  if(oppRow) oppRow.style.marginBottom=layout.bigGapPx+'px';
+  if(midSec) midSec.style.marginBottom=layout.bigGapPx+'px';
+  if(myRow) myRow.style.marginBottom=layout.smallGapPx+'px';
+  if(myInfoRow) myInfoRow.style.marginBottom=layout.smallGapPx+'px';
 
   // Animation snapshots handled by explicit animateMove calls
   const isMyTurn = gameState.currentTurn===mySlot;
@@ -868,8 +790,7 @@ function renderGame(){
   renderHand();
   renderBoard();
 
-  // Opponent hand: cone perspective mirrored, clipped to show ~35% peeking from top
-  const oppHandRow=document.getElementById('opp-hand-row');
+  // Opponent hand: cone perspective mirrored, clipped to peek height
   if(oppHandRow){
     const oppSlotN=mySlot==='player1'?'player2':'player1';
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
@@ -1077,8 +998,9 @@ function computeCone(n, containerW) {
     stepRad = 0;
   } else {
     stepRad = (maxArcRad - cardWRad) / (n - 1);
-    // Max step < cardWRad so cards always overlap (0.8 = at least 20% overlap)
-    stepRad = Math.min(stepRad, cardWRad * 0.8);
+    // Max step: visible strip = n=2 tier (cardH/φ²). Cards always overlap.
+    const maxStepPx = lvl(2, cardH);
+    stepRad = Math.min(stepRad, maxStepPx / R);
     // Min step for very full hands
     stepRad = Math.max(stepRad, cardWRad * 0.3);
   }
@@ -1123,7 +1045,7 @@ function renderHand(){
   }
 
   const projH=maxSY-minSY;
-  const liftPx=cardH*0.18;
+  const liftPx=lvl(4, cardH); // n=4: same as fontBase, slotPad
   // Set hand-cards height to actual content size so flex centering in hand-area works
   container.style.height=Math.ceil(projH+liftPx)+'px';
   const offsetSY=-minSY+liftPx;
@@ -1218,47 +1140,42 @@ function renderBoard(){
     return `rotate(${rot}deg) translate(${dx}px,${dy}px)`;
   }
 
-  // Dynamic stack offset: compress as stacks grow
-  // Stack offset scales with card height — same fractions as computeLayout's offFrac
+  // Continuous stack offset: cardH × 0.367 / N^0.613 (3× ratio N=2 to N=12)
   const curCardH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-h'))||78;
   function getStackOffset(count){
-    if(count<=3) return Math.round(curCardH*0.24);
-    if(count<=5) return Math.round(curCardH*0.19);
-    if(count<=7) return Math.round(curCardH*0.14);
-    return Math.round(curCardH*0.10);
+    return Math.round(stackOffset(count, curCardH));
   }
-  // Fixed stack height: worst case 8 cards so stacks never shift the layout
-  const fixedStackH=`calc(var(--card-h) * 1.13 + ${7*getStackOffset(8)}px)`;
+  // Fixed stack content height for worst case (12 cards)
+  const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
+  const fixedStackH=fixedStackContentH+'px';
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
 
   // Per-stack score label — positioned absolutely so it doesn't affect stack layout
-  function stackScoreLabel(cards, position){
+  // Score label — in normal flow, height = line-sm (n=4), always reserves space
+  function stackScoreLabel(cards){
     const hasCards=cards&&cards.length>0;
     const show=liveScoreEnabled&&hasCards;
     let score=0,cls='';
     if(hasCards){let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(cards.length>=8?20:0);cls=score>=0?'color:var(--gold-bright)':'color:#e07060';}
-    const posStyle=position==='above'
-      ? 'bottom:100%;margin-bottom:1px'
-      : 'top:100%;margin-top:1px';
-    return `<div style="position:absolute;left:0;right:0;${posStyle};text-align:center;font-family:'Cinzel',serif;font-size:calc(var(--font-base) * .69);${cls};opacity:${show?.7:0};font-variant-numeric:tabular-nums;pointer-events:none">${show?score:'&nbsp;'}</div>`;
+    return `<div style="text-align:center;font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-sm);height:var(--line-sm);${cls};opacity:${show?.7:0};font-variant-numeric:tabular-nums;pointer-events:none">${show?score:'&nbsp;'}</div>`;
   }
 
   // Opponent row
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards,'below')}</div>`;
+      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div>${stackScoreLabel(cards)}</div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=getStackOffset(cards.length);
     const so=isExp?18:baseSo;
     // Center cards vertically within fixed stack height
     const totalStackPx=((cards.length-1)*so)+curCardH;
-    const stackHPx=parseInt(fixedStackH)||curCardH*1.13+7*getStackOffset(8);
+    const stackHPx=fixedStackContentH||Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
     let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:5px;z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>${stackScoreLabel(cards,'below')}</div>`;
+    return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}</div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -1312,7 +1229,7 @@ function renderBoard(){
         deckCardsHTML+=`<div class="${deckCardClass}" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
       }
     }
-    const countLabel=`<div style="text-align:center;font-size:calc(var(--font-base)*.69);color:var(--parchment-dark);opacity:.5;margin-top:calc(var(--gap-sm)*.5);font-family:'Cinzel',serif">${deckLen} left</div>`;
+    const countLabel=`<div style="text-align:center;font-size:var(--text-sm);line-height:var(--line-sm);color:var(--parchment-dark);opacity:.5;font-family:'Cinzel',serif">${deckLen} left</div>`;
 
     if(isLandscapeLayout){
       // Landscape: deck as 6th column, appended without shifting the 5 discard columns
@@ -1321,7 +1238,7 @@ function renderBoard(){
       discardRow.style.gridTemplateColumns='';
       discardRow.style.position='relative';
       const slotW='var(--col-w)';
-      const slotH='calc(var(--card-h)*1.13)';
+      const slotH='calc(var(--card-h) + var(--slot-pad))';
       const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
       // Append deck inline as 6th grid item but keep grid at 6 cols with same justify
       discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},var(--col-w)) var(--col-w)`;
@@ -1341,7 +1258,7 @@ function renderBoard(){
         deckSlot.style.flexDirection='column';
         deckSlot.style.justifyContent='center';
         deckSlot.style.alignItems='center';
-        const slotW='calc(var(--card-h)*1.13)';
+        const slotW='calc(var(--card-h) + var(--slot-pad))';
         const slotH='var(--col-w)';
         const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:calc(var(--card-h)*.026) solid rgba(212,168,67,.2)"></div>`;
         deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
@@ -1356,7 +1273,7 @@ function renderBoard(){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col" style="position:relative">${stackScoreLabel(cards,'above')}<div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="position:relative">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:calc(var(--card-h)*.026) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
@@ -1366,7 +1283,7 @@ function renderBoard(){
     const so=isExp?18:baseSo;
     // Center the full stack (including target slot) within fixed height
     const totalStackPx=((withPlayCount-1)*so)+curCardH;
-    const stackHPx=parseInt(fixedStackH)||curCardH*1.13+7*getStackOffset(8);
+    const stackHPx=fixedStackContentH||Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
     let inner=cards.map((card,i)=>{
       const isTop=i===cards.length-1;
@@ -1376,7 +1293,7 @@ function renderBoard(){
     }).join('');
     if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:5px;z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" style="position:relative" onclick="${stackClick}">${stackScoreLabel(cards,'above')}<div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
+    let html=`<div class="card-col" style="position:relative" onclick="${stackClick}">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
     return html+`</div>`;
   }).join('');
 }
