@@ -6,9 +6,6 @@ let idleShown=false;  // whether overlay is currently visible
 const IDLE_MS=30000;  // 30 seconds
 
 function cardHTML(card, extra=''){
-  if(card.ghost){
-    return `<div class="card color-${card.color} ${extra}" data-id="${card.id}" style="background:transparent;border-style:dashed;opacity:0.5"></div>`;
-  }
   if(card.back){
     return `<div class="card card-back ${card.extraClass||''} ${extra}" data-id="${card.id||''}"></div>`;
   }
@@ -391,72 +388,62 @@ function renderBoard(layout){
 
   const cbLabel=c=>colorblindMode?renderText(COLOR_SYMBOLS[c], 5, {opacity:.4, extraStyle:'position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%)'}):'';
 
-  // renderPile — N cards centered in a space. That's all it does.
+  // renderPile — N cards centered in a pile space. One path, no branches.
   //
-  // Cards in, card-col out. The pile is vertically centered in the space.
-  // Board-specific logic (stackOrigin, scoreLineH, side) belongs in callers.
-  //
-  // opts.so:          card offset in px between cards (default 0 = stacked)
-  // opts.spaceH:      space height in px. If omitted, auto-sized to fit pile.
-  // opts.contentH:    centering reference height in px. If omitted, equals spaceH or pileH.
-  //                   Pile is centered within contentH, positioned at padTop from space top.
-  // opts.padTop:      px from top of space to top of content area (default 0)
-  // opts.color:       expedition color (for border tint on N=0 empty slot)
-  // opts.targetLabel: label for N=0 target ('Play', 'Discard', etc.)
-  // opts.zBase:       z-index base (default 0)
+  // opts.so:          px between cards (default 0 = stacked on top of each other)
+  // opts.spaceH:      pile space height in px (default: auto-fit to pile)
+  // opts.padTop:      reserved px at top of space before centering area (default 0)
+  // opts.padBot:      reserved px at bottom of space after centering area (default 0)
+  // opts.color:       color for N=0 empty slot border tint
+  // opts.targetLabel: label for N=0 slot ('Play', 'Discard', 'Draw')
+  // opts.zBase:       starting z-index (default 0)
   // opts.perCard:     fn(card, i, isTop) => {extra, handler, suffix}
-  // opts.onclick:     click handler string on the space
-  // opts.colStyle:    extra inline CSS on the space
-  // opts.after:       extra HTML after the pile inside the space (e.g. score label)
+  // opts.onclick:     click handler on the pile space
+  // opts.colStyle:    extra inline CSS on the pile space
+  // opts.after:       extra HTML inside the space after the pile (e.g. score label)
   function renderPile(cards, opts){
     opts=opts||{};
     const n=cards?cards.length:0;
     const so=opts.so||0;
-    let inner;
+    const padTop=opts.padTop||0;
+    const padBot=opts.padBot||0;
 
+    // Pile height and space height — one path
+    const ph=n>0?pileH(n, so):curCardH;  // N=0 uses card height as reference
+    const spaceH=opts.spaceH||Math.round(ph+padTop+padBot);
+    const centerH=spaceH-padTop-padBot;   // available height for centering
+    const origin=padTop+Math.max(0,Math.round((centerH-ph)/2));
+
+    let inner;
     if(n===0){
-      // Empty slot — centered in the space
+      // Empty slot — positioned like a card would be
       const label=opts.targetLabel;
       const cls=label?'card target':'card empty-slot';
       const border=(!label&&opts.color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`:'';
       const content=label?'<span class="target-label">'+label+'</span>':(opts.color?cbLabel(opts.color):'');
-      if(opts.contentH){
-        // Fixed content area: position slot at vertical center
-        const slotTop=(opts.padTop||0)+Math.max(0,Math.round((opts.contentH-curCardH)/2));
-        inner=`<div class="${cls}" style="${border};position:absolute;top:${slotTop}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
-      } else {
-        // Auto-height: flex-centered by card-col
-        inner=`<div class="${cls}" style="${border}">${content}</div>`;
-      }
+      inner=`<div class="${cls}" style="${border};position:absolute;top:${origin}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
     } else {
-      // N>=1: absolute-positioned cards, pile centered in space
-      const ph=pileH(n, so);
-      let origin;
-      if(opts.contentH){
-        // Center pile within contentH, offset by padTop
-        origin=(opts.padTop||0)+Math.max(0,Math.round((opts.contentH-ph)/2));
-      } else {
-        // Auto-height: pile starts at top
-        origin=0;
-      }
+      // N>=1: cards at origin, origin+so, origin+2*so...
       const zBase=opts.zBase||0;
       const perCard=opts.perCard;
       inner=cards.map((card,i)=>{
         const pc=perCard?perCard(card,i,i===cards.length-1):{};
-        return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${card.ghost?'':jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
+        const isGhost=card.ghost;
+        // Ghost: render as target slot at this position, not as a card
+        if(isGhost){
+          const ghostCls='card target';
+          const ghostContent='<span class="target-label">'+(pc.suffix||'')+'</span>';
+          return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i}"${pc.handler||''}><div class="${ghostCls}" style="border-color:var(--gold-bright);border-style:dashed">${ghostContent}</div></div>`;
+        }
+        return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
       }).join('');
-      // Auto-height spacer when no fixed space height
-      if(!opts.spaceH){
-        inner=`<div style="height:${Math.max(ph,curCardH)}px"></div>`+inner;
-      }
     }
     if(opts.after) inner+=opts.after;
 
-    // The space — always present, inseparable from the pile
-    const hStyle=opts.spaceH?'height:'+opts.spaceH+'px;':'';
+    // Pile space — always has explicit height, cards always absolute
     const extra=opts.colStyle||'';
     const onclick=opts.onclick?' onclick="'+opts.onclick+'"':'';
-    return `<div class="card-col" style="${hStyle}${extra}"${onclick}>${inner}</div>`;
+    return `<div class="card-col" style="height:${spaceH}px;${extra}"${onclick}>${inner}</div>`;
   }
 
   function stackScoreLabelAt(cards, topPx){

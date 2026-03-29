@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>renderPile visual test</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#120c07;--parchment:#f0e0c0;--parchment-dark:#b8a888;
+  --gold:#d4a843;--gold-bright:#f0c850;
+  --card-h:78px;--card-w:48px;--col-w:60px;
+  --text-sm:7px;--text-md:11px;--text-lg:18px;
+  --line-sm:11px;--line-md:18px;--line-lg:30px;
+  --slot-pad:11px;--lift:11px;--border-w:1px;
+  --board-margin:18px;
+}
+html,body{min-height:100%;font-family:'Crimson Text',serif;background:var(--bg);color:var(--parchment);padding:20px}
+h2{font-family:'Cinzel',serif;color:var(--gold);margin:24px 0 8px;font-size:16px}
+.test-row{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+.test-item{display:flex;flex-direction:column;align-items:center}
+.test-item .card-col{border:1px dashed rgba(212,168,67,.4);background:rgba(255,255,255,.03)}
+.params{font-size:10px;color:var(--parchment-dark);margin-top:6px;max-width:120px;text-align:center;line-height:1.4;font-family:monospace;white-space:pre-wrap}
+.desc{font-size:12px;color:var(--gold-bright);margin-bottom:4px;font-family:'Cinzel',serif}
+
+/* Card styles from main game */
+.card{width:var(--card-w);height:var(--card-h);border-radius:calc(var(--card-h)*.05);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;cursor:pointer;position:relative;border:var(--border-w) solid rgba(255,255,255,.15);flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.4);overflow:hidden}
+.card.empty-slot{width:var(--col-w);height:calc(var(--card-h) + var(--slot-pad))}
+.card.target{border-color:var(--gold-bright);box-shadow:0 0 12px rgba(212,168,67,.5)}
+.card-col{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.card-value{font-size:calc(var(--card-h) * .282);text-shadow:0 1px 3px rgba(0,0,0,.8);line-height:1;font-weight:400;z-index:1}
+.card-corner{font-size:calc(var(--card-h) * .128);position:absolute;top:calc(var(--card-h)*.013);left:calc(var(--card-w)*.02);z-index:1;font-weight:700;line-height:1;background:rgba(0,0,0,.35);border-radius:calc(var(--card-h)*.04);padding:calc(var(--card-h)*.013) calc(var(--card-w)*.06)}
+.wager .card-corner{top:calc(var(--card-h)*.026)}
+.target-label{position:absolute;bottom:calc(var(--card-h)*.08);left:0;right:0;text-align:center;font-size:calc(var(--card-h)*.15);color:var(--gold-bright);font-weight:700;text-transform:uppercase;letter-spacing:1px;pointer-events:none}
+.card-back{background:#2a1a0e;border-color:rgba(212,168,67,.4)}
+.card-back::before{content:'✦';position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;font-size:calc(var(--card-h)*.36);color:rgba(212,168,67,.3)}
+.card-back::after{content:'';position:absolute;inset:calc(var(--card-h)*.05);border:1px solid rgba(212,168,67,.2);border-radius:calc(var(--card-h)*.04);z-index:0}
+.draw-pile-landscape{width:var(--card-h)!important;height:var(--card-w)!important}
+
+/* Color styles */
+.color-red{background:linear-gradient(180deg,#8b2500 0%,#c0392b 40%,#e74c3c 100%);color:#fff}
+.color-green{background:linear-gradient(180deg,#2d5a1e 0%,#27ae60 40%,#2ecc71 100%);color:#fff}
+.color-blue{background:linear-gradient(180deg,#1a3a5c 0%,#2980b9 40%,#3498db 100%);color:#fff}
+.color-white{background:linear-gradient(180deg,#c8c8c8 0%,#ecf0f1 40%,#fff 100%);color:#333}
+.color-yellow{background:linear-gradient(180deg,#8a6d00 0%,#f1c40f 40%,#f9e04b 100%);color:#333}
+</style>
+</head>
+<body>
+<h1 style="font-family:Cinzel,serif;color:var(--gold-bright);margin-bottom:4px">renderPile visual test</h1>
+<p style="color:var(--parchment-dark);margin-bottom:16px;font-size:13px">Dashed box = pile space. Cards should be vertically centered within it. One code path for all cases.</p>
+
+<div id="tests"></div>
+
+<script>
+// Minimal globals
+const COLORS = ['red','green','blue','white','yellow'];
+const COLOR_HEX = {red:'#e74c3c',green:'#2ecc71',blue:'#3498db',white:'#ecf0f1',yellow:'#f1c40f'};
+const COLOR_SYMBOLS = {red:'R',green:'G',blue:'B',white:'W',yellow:'Y'};
+let colorblindMode = false;
+</script>
+<script src="src/text.js"></script>
+<script src="src/layout.js"></script>
+<script>
+computeLayout();
+const layout = computeLayout();
+const curCardH = layout.cardH;
+const scoreLineH = layout.scoreLineH;
+const cardContentH = layout.stackContentH;
+const sectionH = layout.sH.stackRow;
+
+function jitter(card, i){
+  const h = ((card.color||'x').charCodeAt(0)*31 + (card.value||0)*97 + i*53) & 0xFFFF;
+  const rot = ((h%100)/100*6-3).toFixed(1);
+  const dx = ((((h>>4)%100)/100*5-2.5)).toFixed(1);
+  const dy = ((((h>>8)%100)/100*5-2.5)).toFixed(1);
+  return `rotate(${rot}deg) translate(${dx}px,${dy}px)`;
+}
+function cardOffset(count){ return Math.round(stackOffset(count, curCardH)); }
+function pileH(n, co){ return n <= 0 ? 0 : curCardH + Math.max(0, n-1) * co; }
+const cbLabel = c => '';
+
+function cardHTML(card, extra=''){
+  if(card.back) return `<div class="card card-back ${card.extraClass||''} ${extra}" data-id="${card.id||''}"></div>`;
+  const isWager = card.value===0;
+  const valText = isWager ? '\u{1F91D}' : card.value;
+  const corner = isWager ? '\u{1F91D}' : card.value;
+  return `<div class="card color-${card.color} ${isWager?'wager':''} ${extra}" data-id="${card.id}">
+    <div class="card-corner">${corner}</div>
+    <div class="card-value">${valText}</div>
+  </div>`;
+}
+
+// renderPile — exact copy of the one code path
+function renderPile(cards, opts){
+  opts=opts||{};
+  const n=cards?cards.length:0;
+  const so=opts.so||0;
+  const padTop=opts.padTop||0;
+  const padBot=opts.padBot||0;
+  const ph=n>0?pileH(n, so):curCardH;
+  const spaceH=opts.spaceH||Math.round(ph+padTop+padBot);
+  const centerH=spaceH-padTop-padBot;
+  const origin=padTop+Math.max(0,Math.round((centerH-ph)/2));
+  let inner;
+  if(n===0){
+    const label=opts.targetLabel;
+    const cls=label?'card target':'card empty-slot';
+    const border=(!label&&opts.color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`:'';
+    const content=label?'<span class="target-label">'+label+'</span>':(opts.color?cbLabel(opts.color):'');
+    inner=`<div class="${cls}" style="${border};position:absolute;top:${origin}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
+  } else {
+    const zBase=opts.zBase||0;
+    const perCard=opts.perCard;
+    inner=cards.map((card,i)=>{
+      const pc=perCard?perCard(card,i,i===cards.length-1):{};
+      if(card.ghost){
+        const ghostContent='<span class="target-label">'+(pc.suffix||'')+'</span>';
+        return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i}"${pc.handler||''}><div class="card target" style="border-color:var(--gold-bright);border-style:dashed">${ghostContent}</div></div>`;
+      }
+      return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
+    }).join('');
+  }
+  if(opts.after) inner+=opts.after;
+  const extra=opts.colStyle||'';
+  const onclick=opts.onclick?' onclick="'+opts.onclick+'"':'';
+  return `<div class="card-col" style="height:${spaceH}px;${extra}"${onclick}>${inner}</div>`;
+}
+
+// Helpers
+function makeCards(color, values){ return values.map((v,i)=>({color, value:v, id:color+'-'+v+'-'+i})); }
+const tests = document.getElementById('tests');
+
+function addTest(title, items){
+  const h = document.createElement('h2');
+  h.textContent = title;
+  tests.appendChild(h);
+  const row = document.createElement('div');
+  row.className = 'test-row';
+  row.innerHTML = items.map(item =>
+    `<div class="test-item"><div class="desc">${item.label}</div>${item.html}<div class="params">${item.params}</div></div>`
+  ).join('');
+  tests.appendChild(row);
+}
+
+// =================== TEST CASES ===================
+
+// 1. Empty slots (N=0)
+addTest('N=0 — Empty slots', [
+  { label:'Minimal',
+    html: renderPile([], {}),
+    params:'cards: []\nopts: {}' },
+  { label:'With color',
+    html: renderPile([], {color:'red'}),
+    params:'cards: []\nopts: {color:"red"}' },
+  { label:'"Play" target',
+    html: renderPile([], {color:'green', targetLabel:'Play'}),
+    params:'cards: []\nopts: {\n  color:"green"\n  targetLabel:"Play"\n}' },
+  { label:'"Discard" target',
+    html: renderPile([], {color:'yellow', targetLabel:'Discard'}),
+    params:'cards: []\nopts: {\n  color:"yellow"\n  targetLabel:"Discard"\n}' },
+  { label:'Expedition space',
+    html: renderPile([], {color:'blue', spaceH:sectionH, padTop:scoreLineH}),
+    params:`cards: []\nopts: {\n  color:"blue"\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n}` },
+]);
+
+// 2. Single card (N=1)
+const oneRed = makeCards('red', [5]);
+addTest('N=1 — Single card', [
+  { label:'Auto-size',
+    html: renderPile(oneRed, {}),
+    params:'cards: [{red,5}]\nopts: {}' },
+  { label:'With so',
+    html: renderPile(oneRed, {so:cardOffset(1)}),
+    params:`cards: [{red,5}]\nopts: {so:${cardOffset(1)}}` },
+  { label:'In expedition space',
+    html: renderPile(oneRed, {spaceH:sectionH, padTop:scoreLineH, so:cardOffset(1)}),
+    params:`cards: [{red,5}]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${cardOffset(1)}\n}` },
+]);
+
+// 3. Three cards
+const threeBlue = makeCards('blue', [0, 3, 7]);
+const so3 = cardOffset(3);
+addTest('N=3 — Wager + 3 + 7', [
+  { label:'Auto, spread',
+    html: renderPile(threeBlue, {so:so3}),
+    params:`cards: [{blue,W},{blue,3},{blue,7}]\nopts: {so:${so3}}` },
+  { label:'Collapsed (so=0)',
+    html: renderPile(threeBlue, {}),
+    params:'cards: [{blue,W},{blue,3},{blue,7}]\nopts: {}' },
+  { label:'Opp expedition',
+    html: renderPile(threeBlue, {spaceH:sectionH, padBot:scoreLineH, so:so3}),
+    params:`cards: [3 blue]\nopts: {\n  spaceH:${sectionH}\n  padBot:${scoreLineH}\n  so:${so3}\n}` },
+  { label:'My expedition',
+    html: renderPile(threeBlue, {spaceH:sectionH, padTop:scoreLineH, so:so3}),
+    params:`cards: [3 blue]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so3}\n}` },
+]);
+
+// 4. Eight cards (bonus territory)
+const eightGreen = makeCards('green', [0, 0, 2, 3, 5, 6, 8, 9]);
+const so8 = cardOffset(8);
+addTest('N=8 — Bonus territory', [
+  { label:'Auto-size',
+    html: renderPile(eightGreen, {so:so8}),
+    params:`cards: [8 green]\nopts: {so:${so8}}` },
+  { label:'Opp expedition',
+    html: renderPile(eightGreen, {spaceH:sectionH, padBot:scoreLineH, so:so8}),
+    params:`cards: [8 green]\nopts: {\n  spaceH:${sectionH}\n  padBot:${scoreLineH}\n  so:${so8}\n}` },
+  { label:'My expedition',
+    html: renderPile(eightGreen, {spaceH:sectionH, padTop:scoreLineH, so:so8}),
+    params:`cards: [8 green]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so8}\n}` },
+]);
+
+// 5. Max pile (12)
+const twelveYellow = makeCards('yellow', [0, 0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+const so12 = cardOffset(12);
+addTest('N=12 — Maximum pile', [
+  { label:'Auto-size',
+    html: renderPile(twelveYellow, {so:so12}),
+    params:`cards: [12 yellow]\nopts: {so:${so12}}` },
+  { label:'Expedition (should fill)',
+    html: renderPile(twelveYellow, {spaceH:sectionH, padTop:scoreLineH, so:so12}),
+    params:`cards: [12 yellow]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so12}\n}` },
+]);
+
+// 6. Ghost card (play target in pile)
+const ghost = {color:'white', value:-1, id:'ghost', ghost:true};
+addTest('Ghost card — play target as pile member', [
+  { label:'Ghost alone (canPlay, empty exp)',
+    html: renderPile([ghost], {color:'white'}),
+    params:'cards: [{ghost:true}]\nopts: {color:"white"}' },
+  { label:'2 cards + ghost',
+    html: renderPile([...makeCards('white', [0, 4]), ghost], {so:cardOffset(3)}),
+    params:`cards: [{W,W},{W,4},{ghost}]\nopts: {so:${cardOffset(3)}}` },
+  { label:'In expedition space',
+    html: renderPile([...makeCards('white', [0, 4]), ghost], {spaceH:sectionH, padTop:scoreLineH, so:cardOffset(3)}),
+    params:`cards: [{W,W},{W,4},{ghost}]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${cardOffset(3)}\n}` },
+]);
+
+// 7. Draw pile (face-down)
+const drawCards = [];
+for(let i=0;i<8;i++) drawCards.push({back:true, id:'draw-'+i});
+addTest('Draw pile — face-down cards', [
+  { label:'8 cards (so=0)',
+    html: renderPile(drawCards, {}),
+    params:'cards: [8x {back:true}]\nopts: {}' },
+  { label:'Empty draw',
+    html: renderPile([], {targetLabel:'Draw'}),
+    params:'cards: []\nopts: {targetLabel:"Draw"}' },
+]);
+
+// 8. Side-by-side: opp vs my
+const fiveRed = makeCards('red', [0, 2, 5, 8, 10]);
+const so5 = cardOffset(5);
+addTest('Opp vs My — same cards, different padding', [
+  { label:'Opp (padBot)',
+    html: renderPile(fiveRed, {spaceH:sectionH, padBot:scoreLineH, so:so5}),
+    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  padBot:${scoreLineH}\n  so:${so5}\n}` },
+  { label:'My (padTop)',
+    html: renderPile(fiveRed, {spaceH:sectionH, padTop:scoreLineH, so:so5}),
+    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  padTop:${scoreLineH}\n  so:${so5}\n}` },
+  { label:'No padding',
+    html: renderPile(fiveRed, {spaceH:sectionH, so:so5}),
+    params:`cards: [5 red]\nopts: {\n  spaceH:${sectionH}\n  so:${so5}\n}` },
+]);
+
+// 9. Computed values reference
+const info = document.createElement('div');
+info.style.cssText = 'margin-top:30px;padding:16px;border:1px solid rgba(212,168,67,.3);border-radius:8px;font-family:monospace;font-size:11px;line-height:1.6;color:var(--parchment-dark)';
+info.innerHTML = `<div style="color:var(--gold);font-family:Cinzel,serif;font-size:14px;margin-bottom:8px">Computed Layout Values</div>
+cardH = ${layout.cardH}px<br>
+cardW = ${layout.cardW}px<br>
+colW = ${layout.colW}px<br>
+slotPad = ${layout.slotPad}px<br>
+scoreLineH = ${scoreLineH}px<br>
+cardContentH = ${cardContentH}px (max pile height for 12 cards)<br>
+sectionH = ${sectionH}px (cardContentH + scoreLineH)<br>
+<br>
+<div style="color:var(--gold)">cardOffset(N)</div>
+${[1,2,3,4,5,6,8,10,12].map(n=>`N=${n}: ${cardOffset(n)}px`).join('<br>')}
+<br>
+<div style="color:var(--gold)">pileH(N, cardOffset(N))</div>
+${[1,2,3,4,5,6,8,10,12].map(n=>`N=${n}: ${Math.round(pileH(n, cardOffset(n)))}px`).join('<br>')}`;
+tests.appendChild(info);
+</script>
+</body>
+</html>
