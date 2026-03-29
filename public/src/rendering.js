@@ -319,16 +319,14 @@ function renderBoard(){
   function getStackOffset(count){
     return Math.round(stackOffset(count, curCardH));
   }
+  // Score label line height: n=4 (one step above text at n=5)
+  const scoreLinePx=Math.round(lvl(4, curCardH));
   // Fixed stack height = card content + score label line, fills the full row
   const fixedStackContentH=Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
   const fixedStackRowH=fixedStackContentH+scoreLinePx;
   const fixedStackH=fixedStackRowH+'px';
 
   const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
-
-  // Score label — absolutely positioned, floats at actual card edge
-  // Text at n=5 (--text-sm), line-height at n=4 (--line-sm) = one step up
-  const scoreLinePx=Math.round(lvl(4, curCardH));
   function stackScoreLabelAt(cards, topPx){
     const hasCards=cards&&cards.length>0;
     const show=liveScoreEnabled&&hasCards;
