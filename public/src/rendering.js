@@ -9,6 +9,9 @@ function cardHTML(card, extra=''){
   if(card.ghost){
     return `<div class="card color-${card.color} ${extra}" data-id="${card.id}" style="background:transparent;border-style:dashed;opacity:0.5"></div>`;
   }
+  if(card.back){
+    return `<div class="card card-back ${card.extraClass||''} ${extra}" data-id="${card.id||''}"></div>`;
+  }
   const isWager = card.value===0;
   const valText = isWager ? '&#x1F91D;' : card.value;
   const corner = isWager ? '&#x1F91D;' : card.value;
@@ -388,76 +391,69 @@ function renderBoard(layout){
 
   const cbLabel=c=>colorblindMode?renderText(COLOR_SYMBOLS[c], 5, {opacity:.4, extraStyle:'position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%)'}):'';
 
-  // Unified pile renderer — outputs the complete card-col (space + pile content).
-  // The space handles positioning; the pile is always centered within its content area.
-  // Like renderText always pairs font-size with line-height, renderPile always pairs pile with space.
+  // renderPile — N cards centered in a space. That's all it does.
   //
-  // opts.color:       expedition color (for border tint on N=0)
-  // opts.side:        'opp' | 'my' — owns centering: computes origin, so, score label.
-  //                   Omit for discard/draw (no score label budget, flex-centered).
-  // opts.height:      section height in px (for play stacks). Omit for auto-height.
+  // Cards in, card-col out. The pile is vertically centered in the space.
+  // Board-specific logic (stackOrigin, scoreLineH, side) belongs in callers.
+  //
+  // opts.so:          card offset in px between cards (default 0 = stacked)
+  // opts.spaceH:      space height in px. If omitted, auto-sized to fit pile.
+  // opts.contentH:    centering reference height in px. If omitted, equals spaceH or pileH.
+  //                   Pile is centered within contentH, positioned at padTop from space top.
+  // opts.padTop:      px from top of space to top of content area (default 0)
+  // opts.color:       expedition color (for border tint on N=0 empty slot)
   // opts.targetLabel: label for N=0 target ('Play', 'Discard', etc.)
-  // opts.so:          override card offset in px (e.g. spreadOffset for expanded). Default: cardOffset(n).
-  // opts.zBase:       z-index base (0 normal, 100+ for expanded)
+  // opts.zBase:       z-index base (default 0)
   // opts.perCard:     fn(card, i, isTop) => {extra, handler, suffix}
-  // opts.onclick:     column click handler string
-  // opts.colStyle:    extra inline CSS on the card-col
-  //
-  // When opts.side is set ('opp'|'my'), renderPile OWNS centering:
-  //   - so defaults to cardOffset(n), origin from stackOrigin
-  //   - Computes score label position internally
-  //   - opts.so overrides default card offset (e.g. for expanded stacks)
-  // When opts.side is omitted (discards/single), collapsed by default:
-  //   - so defaults to 0 (only top card visible), origin=0
-  //   - Auto-height spacer since absolute children don't give card-col flow height
+  // opts.onclick:     click handler string on the space
+  // opts.colStyle:    extra inline CSS on the space
+  // opts.after:       extra HTML after the pile inside the space (e.g. score label)
   function renderPile(cards, opts){
     opts=opts||{};
     const n=cards?cards.length:0;
+    const so=opts.so||0;
     let inner;
 
     if(n===0){
-      // N=0: card space — the empty slot. Always present, same dimensions as a card would occupy.
+      // Empty slot — centered in the space
       const label=opts.targetLabel;
       const cls=label?'card target':'card empty-slot';
       const border=(!label&&opts.color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`:'';
       const content=label?'<span class="target-label">'+label+'</span>':(opts.color?cbLabel(opts.color):'');
-      if(opts.side){
-        // Play stack: position slot where a 1-card pile would sit (within cardContentH)
-        const slotTop=stackOrigin(1, 0, opts.side);
+      if(opts.contentH){
+        // Fixed content area: position slot at vertical center
+        const slotTop=(opts.padTop||0)+Math.max(0,Math.round((opts.contentH-curCardH)/2));
         inner=`<div class="${cls}" style="${border};position:absolute;top:${slotTop}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
       } else {
-        // Discard/single: flex-centered by card-col
+        // Auto-height: flex-centered by card-col
         inner=`<div class="${cls}" style="${border}">${content}</div>`;
       }
     } else {
-      // N>=1: absolute-positioned cards
-      // With side: spread cards, centered via stackOrigin
-      // Without side: collapsed (so=0), top-aligned, auto-height
-      const so=opts.so!==undefined?opts.so:(opts.side?cardOffset(n):0);
-      const origin=opts.side?stackOrigin(n, so, opts.side):0;
+      // N>=1: absolute-positioned cards, pile centered in space
+      const ph=pileH(n, so);
+      let origin;
+      if(opts.contentH){
+        // Center pile within contentH, offset by padTop
+        origin=(opts.padTop||0)+Math.max(0,Math.round((opts.contentH-ph)/2));
+      } else {
+        // Auto-height: pile starts at top
+        origin=0;
+      }
       const zBase=opts.zBase||0;
       const perCard=opts.perCard;
       inner=cards.map((card,i)=>{
         const pc=perCard?perCard(card,i,i===cards.length-1):{};
         return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${card.ghost?'':jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
       }).join('');
-      // Score label: renderPile computes position when side is set
-      if(opts.side){
-        const real=cards.filter(c=>!c.ghost);
-        if(real.length>0){
-          const labelTop=opts.side==='my'?origin-scoreLineH:origin+(n-1)*so+curCardH;
-          inner+=stackScoreLabelAt(real, labelTop);
-        }
-      }
-      // Auto-height spacer: absolute children don't give card-col flow height
-      if(!opts.height){
-        const ph=pileH(n, so);
+      // Auto-height spacer when no fixed space height
+      if(!opts.spaceH){
         inner=`<div style="height:${Math.max(ph,curCardH)}px"></div>`+inner;
       }
     }
+    if(opts.after) inner+=opts.after;
 
-    // Card-col wrapper (the space) — always present, inseparable from pile content
-    const hStyle=opts.height?'height:'+opts.height+'px;':'';
+    // The space — always present, inseparable from the pile
+    const hStyle=opts.spaceH?'height:'+opts.spaceH+'px;':'';
     const extra=opts.colStyle||'';
     const onclick=opts.onclick?' onclick="'+opts.onclick+'"':'';
     return `<div class="card-col" style="${hStyle}${extra}"${onclick}>${inner}</div>`;
@@ -472,13 +468,20 @@ function renderBoard(layout){
     return renderText(show?score:'', 5, {align:'center', color:scoreColor||undefined, opacity:show?.7:0, tabular:true, tag:'div', extraStyle:`position:absolute;top:${topPx}px;left:0;right:0;pointer-events:none`});
   }
 
-  // Opponent row — renderPile owns centering when side is set
+  // Opponent row — score line at bottom, pile centered in content area above it
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
-    return renderPile(cards, {color:c, side:'opp', height:sectionH,
-      so:isExp?spreadOffset:undefined, zBase:isExp?100:0,
-      onclick:cards.length>0?"toggleExpand('opp','"+c+"')":undefined});
+    const so=isExp?spreadOffset:cardOffset(cards.length);
+    // Score label below pile
+    const n=cards.length;
+    const ph=pileH(n, so);
+    const origin=Math.max(0,Math.round((cardContentH-ph)/2));
+    const labelTop=n>0?origin+(n-1)*so+curCardH:0;
+    const after=n>0?stackScoreLabelAt(cards, labelTop):'';
+    return renderPile(cards, {color:c, spaceH:sectionH, contentH:cardContentH, padTop:0,
+      so, zBase:isExp?100:0, after,
+      onclick:n>0?"toggleExpand('opp','"+c+"')":undefined});
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -513,61 +516,47 @@ function renderBoard(layout){
       });
     }).join('');
 
-    // Render draw pile
+    // Draw pile — same renderer, cards are face-down
     const isLandscapeLayout=window.innerWidth>window.innerHeight;
     const drawPileSlot=document.getElementById('draw-pile-slot');
-    const drawPileTarget=isMyTurn && inDrawPhase ? 'target' : '';
-    let drawPileCardsHTML='';
-    // Portrait layout: landscape cards in draw pile. Landscape layout: portrait cards (6th column)
-    const drawPileCardClass=isLandscapeLayout?'card card-back':'card card-back draw-pile-landscape';
-    if(drawPileLen>0){
-      const showCount=Math.min(drawPileLen,10);
-      for(let i=0;i<showCount;i++){
-        const h=(i*7919+i*i*31)&0xFFFF;
-        const rot=((h%100)/100*6-3).toFixed(1);
-        const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
-        const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
-        drawPileCardsHTML+=`<div class="${drawPileCardClass}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
-      }
-    }
+    const showCount=Math.min(drawPileLen,10);
+    const drawCards=[];
+    const extraClass=isLandscapeLayout?'':'draw-pile-landscape';
+    for(let i=0;i<showCount;i++) drawCards.push({back:true, id:'draw-'+i, extraClass});
     const countLabel=renderText(drawPileLen+' left', 5, {align:'center', color:'var(--parchment-dark)', opacity:.5, tag:'div'});
+    const drawTarget=isMyTurn&&inDrawPhase;
+    const drawPileHTML=renderPile(drawCards, {
+      targetLabel:drawTarget?'Draw':'',
+      onclick:'drawFromDrawPile()',
+      after:countLabel,
+      perCard:(card,i,isTop)=>({extra:(isTop&&drawTarget?'target':'')})
+    });
 
     if(isLandscapeLayout){
-      // Landscape: draw pile as 6th column, appended without shifting the 5 discard columns
-      // Don't change grid-template-columns — keep same 5-col layout as other rows
-      // Instead, add draw pile as an absolutely positioned element to the right
-      discardRow.style.gridTemplateColumns='';
-      discardRow.style.position='relative';
-      const slotW='var(--col-w)';
-      const slotH='calc(var(--card-h) + var(--slot-pad))';
-      const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
-      // Append draw pile inline as 6th grid item but keep grid at 6 cols with same justify
+      // Landscape: draw pile as 6th grid column
       discardRow.style.gridTemplateColumns=`repeat(${COLORS.length},var(--col-w)) var(--col-w)`;
       discardRow.style.justifyContent='start';
-      // Calculate left padding to keep 5 discard columns centered with the other rows
+      discardRow.style.position='relative';
       const totalGridW=`calc(${COLORS.length} * var(--col-w))`;
       const rowPad=`calc((100% - ${totalGridW}) / 2)`;
       discardRow.style.paddingLeft=rowPad;
       discardRow.style.paddingRight='0';
-      discardRow.innerHTML+=`<div class="card-col ${drawPileTarget}" id="draw-pile-col" onclick="drawFromDrawPile()" style="position:relative;width:${slotW};height:${slotH}">${drawPileLen>0?drawPileCardsHTML:emptySlot}${countLabel}</div>`;
+      discardRow.innerHTML+=drawPileHTML;
       if(drawPileSlot) drawPileSlot.style.display='none';
     } else {
-      // Portrait: draw pile below discards, landscape oriented, centered
+      // Portrait: draw pile below discards
       discardRow.style.gridTemplateColumns='';
       if(drawPileSlot){
         drawPileSlot.style.display='flex';
         drawPileSlot.style.flexDirection='column';
         drawPileSlot.style.justifyContent='center';
         drawPileSlot.style.alignItems='center';
-        const slotW='calc(var(--card-h) + var(--slot-pad))';
-        const slotH='var(--col-w)';
-        const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
-        drawPileSlot.innerHTML=`<div class="${drawPileTarget}" id="draw-pile-col" onclick="drawFromDrawPile()" style="position:relative;width:${slotW};height:${slotH}">${drawPileLen>0?drawPileCardsHTML:emptySlot}</div>${countLabel}`;
+        drawPileSlot.innerHTML=drawPileHTML;
       }
     }
   }
 
-  // My expedition row — renderPile owns centering when side is set.
+  // My expedition row — score line at top, pile centered in content area below it
   // Ghost card: play target is a pile member, included in N count.
   myRow.innerHTML=COLORS.map(c=>{
     const realCards=getCards(gameState,'expeditions',mySlot,c);
@@ -576,15 +565,21 @@ function renderBoard(layout){
     const ghost=canPlay?{color:c, value:-1, id:'ghost-'+c, ghost:true}:null;
     const cards=ghost?[...realCards, ghost]:realCards;
     if(cards.length===0){
-      return renderPile([], {color:c, side:'my', height:sectionH,
+      return renderPile([], {color:c, spaceH:sectionH, contentH:cardContentH, padTop:scoreLineH,
         onclick:"playToExpedition('"+c+"')"});
     }
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
+    const so=isExp?spreadOffset:cardOffset(cards.length);
+    // Score label above pile
+    const n=cards.length;
+    const ph=pileH(n, so);
+    const origin=scoreLineH+Math.max(0,Math.round((cardContentH-ph)/2));
+    const labelTop=realCards.length>0?origin-scoreLineH:undefined;
+    const after=labelTop!==undefined?stackScoreLabelAt(realCards, labelTop):'';
     const stackClick=canPlay||isUndoTarget?"playToExpedition('"+c+"')":"toggleExpand('my','"+c+"')";
     return renderPile(cards, {
-      color:c, side:'my', height:sectionH,
-      so:isExp?spreadOffset:undefined, zBase:isExp?100:0,
-      onclick:stackClick,
+      color:c, spaceH:sectionH, contentH:cardContentH, padTop:scoreLineH,
+      so, zBase:isExp?100:0, after, onclick:stackClick,
       perCard:(card,i,isTop)=>{
         if(card.ghost) return {
           extra:'target',
