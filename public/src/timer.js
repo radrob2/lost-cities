@@ -203,7 +203,7 @@ function _timerRenderHook() {
   function createTimerPicker(id) {
     const wrap = document.createElement('div');
     wrap.id = id;
-    wrap.style.cssText = 'display:flex;gap:6px;justify-content:center;flex-wrap:wrap;';
+    wrap.style.cssText = 'display:flex;gap:var(--gap-col);justify-content:center;flex-wrap:wrap;';
     const options = [
       { val: '30', label: '30s' },
       { val: '60', label: '60s' },
@@ -231,7 +231,7 @@ function _timerRenderHook() {
     btns.forEach(b => { if (b.textContent.trim() === 'Start Game') targetBtn = b; });
     if (targetBtn) {
       const label = document.createElement('div');
-      label.style.cssText = "font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);margin:8px 0 4px;opacity:.5;text-align:center;";
+      label.style.cssText = "font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--gap-col);opacity:.5;text-align:center;";
       label.textContent = 'Turn Timer';
       targetBtn.parentNode.insertBefore(label, targetBtn);
       targetBtn.parentNode.insertBefore(createTimerPicker('timer-picker-ai'), targetBtn);
@@ -246,7 +246,7 @@ function _timerRenderHook() {
     menuBtns.forEach(b => { if (b.textContent.trim() === 'Main Menu') mainMenuBtn = b; });
     if (mainMenuBtn) {
       const label = document.createElement('div');
-      label.style.cssText = "font-family:'Cinzel',serif;font-size:10px;color:var(--parchment-dark);margin:8px 0 4px;opacity:.5;text-align:center;";
+      label.style.cssText = "font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--gap-col);opacity:.5;text-align:center;";
       label.textContent = 'Turn Timer';
       mainMenuBtn.parentNode.insertBefore(label, mainMenuBtn);
       mainMenuBtn.parentNode.insertBefore(createTimerPicker('timer-picker-menu'), mainMenuBtn);

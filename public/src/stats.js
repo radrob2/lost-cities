@@ -151,7 +151,7 @@ function renderStats(){
 
   if(s.totalGames===0){
     html+=`<div class="stats-section" style="text-align:center">
-      <p style="color:var(--parchment-dark);font-style:italic;font-size:14px">No expeditions completed yet.<br>Play a game to start tracking!</p>
+      <p style="color:var(--parchment-dark);font-style:italic;font-size:var(--text-md)">No expeditions completed yet.<br>Play a game to start tracking!</p>
     </div>`;
   }
 

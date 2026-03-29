@@ -115,7 +115,7 @@ function renderGame(){
   if(oppHandRow){
     const oppSlotN=mySlot==='player1'?'player2':'player1';
     const oppHandLen=getCards(gameState,'hands',oppSlotN).length;
-    const oppContainerW=oppHandRow.parentElement?.offsetWidth||375;
+    const oppContainerW=oppHandRow.offsetWidth||oppHandRow.parentElement?.offsetWidth||375;
     const oppCone=computeCone(oppHandLen, oppContainerW);
     const {cardW:oCW, cardH:oCH, R:oR, h:oH, d:oD, slantH:oSH, POV:oPOV, cardWRad:oWR, cardHSlant:oHS, stepRad:oSR, focalLen:oFL}=oppCone;
     const oCX=oppContainerW/2;
@@ -348,7 +348,7 @@ function renderBoard(){
     const totalStackPx=((cards.length-1)*so)+curCardH;
     const stackHPx=fixedStackContentH||Math.round(stackContentHeight(MAX_CARDS_PER_COLOR, curCardH));
     const topOffset=Math.max(0,Math.round((stackHPx-totalStackPx)/2));
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:var(--gap-col);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
+    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${topOffset+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
     return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>${stackScoreLabel(cards)}</div>`;
   }).join('');
 
@@ -400,7 +400,7 @@ function renderBoard(){
         const rot=((h%100)/100*6-3).toFixed(1);
         const dx=((((h>>4)%100)/100*5-2.5)).toFixed(1);
         const dy=((((h>>8)%100)/100*5-2.5)).toFixed(1);
-        deckCardsHTML+=`<div class="${deckCardClass}" style="position:absolute;inset:0;transform:rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
+        deckCardsHTML+=`<div class="${deckCardClass}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
       }
     }
     const countLabel=`<div style="text-align:center;font-size:var(--text-sm);line-height:var(--line-sm);color:var(--parchment-dark);opacity:.5;font-family:'Cinzel',serif">${deckLen} left</div>`;
@@ -463,9 +463,9 @@ function renderBoard(){
       const isTop=i===cards.length-1;
       const extra=isTop&&isUndoTarget?'undoable':'';
       const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${topOffset+i*so}px;left:var(--gap-col);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
+      return `<div style="position:absolute;top:${topOffset+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
     }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:var(--gap-col);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
+    if(canPlay) inner+=`<div style="position:absolute;top:${topOffset+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
     let html=`<div class="card-col" style="position:relative" onclick="${stackClick}">${stackScoreLabel(cards)}<div class="expedition-stack" style="height:${fixedStackH};overflow:visible">${inner}</div>`;
     return html+`</div>`;

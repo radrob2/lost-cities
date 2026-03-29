@@ -247,12 +247,12 @@ function showGameOver(){
 
   // Centered-label row: [You value left-aligned] [label centered] [Opp value right-aligned]
   function row(mV,label,oV,mC,oC,extra){
-    return `<div class="r-line sc-row" style="justify-content:center;${extra||''}"><span style="flex:1;text-align:left" class="${mC||''}">${mV}</span><span style="min-width:90px;text-align:center;padding:0 4px;font-size:11px;opacity:.7">${label}</span><span style="flex:1;text-align:right" class="${oC||''}">${oV}</span></div>`;
+    return `<div class="r-line sc-row" style="justify-content:center;${extra||''}"><span style="flex:1;text-align:left" class="${mC||''}">${mV}</span><span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--gap-col);font-size:var(--text-md);opacity:.7">${label}</span><span style="flex:1;text-align:right" class="${oC||''}">${oV}</span></div>`;
   }
 
   // Column headers — fixed width center column for alignment
-  let html=`<div class="r-line sc-row" style="justify-content:center;font-size:15px;font-family:'Cinzel',serif;padding-bottom:8px;color:var(--parchment)">
-    <span style="flex:1;text-align:left;${myWin?'color:var(--gold-bright)':''}">You</span><span style="min-width:90px;text-align:center;padding:0 4px"></span><span style="flex:1;text-align:right;${oppWin?'color:var(--gold-bright)':''}">Opp</span></div>`;
+  let html=`<div class="r-line sc-row" style="justify-content:center;font-size:var(--text-lg);font-family:'Cinzel',serif;padding-bottom:var(--gap-sm);color:var(--parchment)">
+    <span style="flex:1;text-align:left;${myWin?'color:var(--gold-bright)':''}">You</span><span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--gap-col)"></span><span style="flex:1;text-align:right;${oppWin?'color:var(--gold-bright)':''}">Opp</span></div>`;
 
   // Color rows
   let colorIdx=0;
@@ -271,25 +271,25 @@ function showGameOver(){
     if(idx>0) html+=`<div class="r-sep-color"></div>`;
 
     // Collapsed: scores flanking color dot — negative=red, positive=gold
-    html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
+    html+=`<div id="sc-row-${idx}" style="cursor:pointer;padding:var(--gap-col) 0" onclick="toggleScore(${idx})">
       <div class="r-line sc-row r-color-total" style="justify-content:center">
         <span style="flex:1;text-align:left" ${m.count?colorStyle(m.score,mWinC):'class="r-muted"'}>${mS}</span>
-        <span style="min-width:90px;text-align:center;padding:0 4px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▼</span></span>
+        <span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--gap-col)"><span class="color-dot" style="background:${chex[c]};width:var(--text-lg);height:var(--text-lg);display:inline-flex;align-items:center;justify-content:center;font-size:var(--text-sm);color:rgba(255,255,255,.6)">▼</span></span>
         <span style="flex:1;text-align:right" ${o.count?colorStyle(o.score,oWinC):'class="r-muted"'}>${oS}</span>
       </div>
     </div>`;
 
     // Expanded header: cards flanking color dot — truncated on overflow
-    html+=`<div id="sc-exp-${idx}" style="display:none;cursor:pointer;padding:6px 0" onclick="toggleScore(${idx})">
+    html+=`<div id="sc-exp-${idx}" style="display:none;cursor:pointer;padding:var(--gap-col) 0" onclick="toggleScore(${idx})">
       <div class="r-line sc-row" style="justify-content:center">
         <span class="sc-cards" style="flex:1;text-align:left;opacity:.6">${mCards}</span>
-        <span style="min-width:90px;text-align:center;padding:0 4px"><span class="color-dot" style="background:${chex[c]};width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:rgba(255,255,255,.6)">▲</span></span>
+        <span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--gap-col)"><span class="color-dot" style="background:${chex[c]};width:var(--text-lg);height:var(--text-lg);display:inline-flex;align-items:center;justify-content:center;font-size:var(--text-sm);color:rgba(255,255,255,.6)">▲</span></span>
         <span class="sc-cards" style="flex:1;text-align:right;opacity:.6">${oCards}</span>
       </div>
     </div>`;
 
     // Breakdown body — thin separators within
-    html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 6px">`;
+    html+=`<div id="sc-body-${idx}" style="display:none;padding:0 0 var(--gap-col)">`;
 
     html+=row(m.count?m.sum:dash,'Card total',o.count?o.sum:dash,m.count?neg(m.sum):'',o.count?neg(o.sum):'');
     html+=row(m.count?'<span class="sc-sign">−</span>20':dash,'Venture cost',o.count?'<span class="sc-sign">−</span>20':dash,'r-muted','r-muted');
@@ -307,20 +307,20 @@ function showGameOver(){
 
     // Color subtotal with thin separator above
     html+=`<div class="r-sep-breakdown"></div>`;
-    html+=`<div class="r-line sc-row r-color-total" style="justify-content:center;padding-top:2px">
+    html+=`<div class="r-line sc-row r-color-total" style="justify-content:center;padding-top:var(--gap-col)">
       <span style="flex:1;text-align:left" ${m.count?colorStyle(m.score,mWinC):'class="r-muted"'}>${m.count?fmt(m.score):dash}</span>
-      <span style="min-width:90px;text-align:center;padding:0 4px"></span>
+      <span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--gap-col)"></span>
       <span style="flex:1;text-align:right" ${o.count?colorStyle(o.score,oWinC):'class="r-muted"'}>${o.count?fmt(o.score):dash}</span></div>`;
 
     html+=`</div>`;
   });
 
   // Game total — bold gold separator (strongest visual weight)
-  html+=`<div style="border-top:3px solid var(--gold);margin:10px 0 4px"></div>`;
-  html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:8px 0;font-variant-numeric:tabular-nums">
-    <span style="flex:1;text-align:left;font-size:22px" ${winStyle(my.total,myWin)}>${fmt(my.total)}</span>
-    <span style="min-width:90px;text-align:center;padding:0 4px"></span>
-    <span style="flex:1;text-align:right;font-size:22px" ${winStyle(opp.total,oppWin)}>${fmt(opp.total)}</span>
+  html+=`<div style="border-top:calc(var(--border-w) * 2) solid var(--gold);margin:var(--gap-sm) 0 var(--gap-col)"></div>`;
+  html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:var(--gap-sm) 0;font-variant-numeric:tabular-nums">
+    <span style="flex:1;text-align:left;font-size:var(--line-md)" ${winStyle(my.total,myWin)}>${fmt(my.total)}</span>
+    <span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--gap-col)"></span>
+    <span style="flex:1;text-align:right;font-size:var(--line-md)" ${winStyle(opp.total,oppWin)}>${fmt(opp.total)}</span>
   </div>`;
 
   // Put it all in one container

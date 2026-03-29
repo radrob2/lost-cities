@@ -104,7 +104,7 @@ function computeLayout() {
   // Text sizes
   const textLg = lvl(3, cardH);
   const textMd = lvl(4, cardH);
-  const textSm = lvl(5, cardH);
+  const textSm = Math.max(lvl(5, cardH), 9);
 
   // Line heights (one tier above text size)
   const lineLg = lvl(2, cardH);
