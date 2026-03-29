@@ -6,6 +6,9 @@ let idleShown=false;  // whether overlay is currently visible
 const IDLE_MS=30000;  // 30 seconds
 
 function cardHTML(card, extra=''){
+  if(card.ghost){
+    return `<div class="card target ${extra}" style="border-color:var(--gold-bright);border-style:dashed"></div>`;
+  }
   if(card.back){
     return `<div class="card card-back ${card.extraClass||''} ${extra}" data-id="${card.id||''}"></div>`;
   }
@@ -328,7 +331,7 @@ function renderBoard(layout){
     const isUndoSingle=canUndo && lastPlayedCard.to==='single';
     if(!topCard){
       singleContainer.innerHTML=renderPile([], {
-        targetLabel:canDiscard?'Discard':'',
+        spaceLabel:canDiscard?'Discard':'',
         onclick:'discardToSingle()'
       });
     } else {
@@ -388,19 +391,44 @@ function renderBoard(layout){
 
   const cbLabel=c=>colorblindMode?renderText(COLOR_SYMBOLS[c], 5, {opacity:.4, extraStyle:'position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%)'}):'';
 
-  // renderPile — N cards centered in a pile space. One path, no branches.
+  // Pile origin — where the first card (or card space) sits vertically.
+  // Shared by renderPile and callers who need to position things at card level.
+  function pileOrigin(n, so, spaceH, padTop, padBot){
+    const ph=n>0?pileH(n, so):curCardH;
+    const h=spaceH||Math.round(ph+(padTop||0)+(padBot||0));
+    const centerH=h-(padTop||0)-(padBot||0);
+    return (padTop||0)+Math.max(0,Math.round((centerH-ph)/2));
+  }
+
+  // Card space — the board marking visible when a pile is empty.
+  // This is a visual concern, not layout. renderPile doesn't know about it.
+  // Callers pass this as opts.after when N=0.
+  function cardSpaceHTML(origin, color, label){
+    const cls=label?'card target':'card empty-slot';
+    const border=(!label&&color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[color]}30`:'';
+    const content=label?'<span class="target-label">'+label+'</span>':(color?cbLabel(color):'');
+    return `<div class="${cls}" style="${border};position:absolute;top:${origin}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
+  }
+
+  // renderPile — N cards centered in a pile space. Layout only.
+  // Doesn't know what cards look like (cardHTML does that).
+  // Doesn't know what an empty pile looks like (callers pass that via opts.after).
   //
-  // opts.so:          px between cards (default 0 = stacked on top of each other)
+  // opts.so:          px between cards (default 0 = stacked)
   // opts.spaceH:      pile space height in px (default: auto-fit to pile)
-  // opts.padTop:      reserved px at top of space before centering area (default 0)
-  // opts.padBot:      reserved px at bottom of space after centering area (default 0)
-  // opts.color:       color for N=0 empty slot border tint
-  // opts.targetLabel: label for N=0 slot ('Play', 'Discard', 'Draw')
+  // opts.padTop:      reserved px at top before centering area (default 0)
+  // opts.padBot:      reserved px at bottom after centering area (default 0)
   // opts.zBase:       starting z-index (default 0)
   // opts.perCard:     fn(card, i, isTop) => {extra, handler, suffix}
   // opts.onclick:     click handler on the pile space
   // opts.colStyle:    extra inline CSS on the pile space
-  // opts.after:       extra HTML inside the space after the pile (e.g. score label)
+  // opts.after:       extra HTML inside the space after the pile
+  // opts.color:       color for the card space marking (board marking at origin)
+  // opts.spaceLabel:  label on the card space ('Play', 'Discard', 'Draw', or '')
+  // opts.hideSpace:   true to hide the card space marking (default: false = shown)
+  //
+  // Returns HTML string — the pile space div.
+  // Callers needing origin use pileOrigin() with the same parameters.
   function renderPile(cards, opts){
     opts=opts||{};
     const n=cards?cards.length:0;
@@ -408,42 +436,36 @@ function renderBoard(layout){
     const padTop=opts.padTop||0;
     const padBot=opts.padBot||0;
 
-    // Pile height and space height — one path
-    const ph=n>0?pileH(n, so):curCardH;  // N=0 uses card height as reference
+    const ph=n>0?pileH(n, so):curCardH;
     const spaceH=opts.spaceH||Math.round(ph+padTop+padBot);
-    const centerH=spaceH-padTop-padBot;   // available height for centering
-    const origin=padTop+Math.max(0,Math.round((centerH-ph)/2));
+    const origin=pileOrigin(n, so, spaceH, padTop, padBot);
 
-    let inner;
-    if(n===0){
-      // Empty slot — positioned like a card would be
-      const label=opts.targetLabel;
-      const cls=label?'card target':'card empty-slot';
-      const border=(!label&&opts.color)?`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`:'';
-      const content=label?'<span class="target-label">'+label+'</span>':(opts.color?cbLabel(opts.color):'');
-      inner=`<div class="${cls}" style="${border};position:absolute;top:${origin}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
-    } else {
-      // N>=1: cards at origin, origin+so, origin+2*so...
+    // Card space marking — always at origin, toggleable
+    let inner='';
+    if(!opts.hideSpace){
+      inner+=cardSpaceHTML(origin, opts.color, opts.spaceLabel);
+    }
+
+    // Cards on top of the card space
+    if(n>0){
       const zBase=opts.zBase||0;
       const perCard=opts.perCard;
-      inner=cards.map((card,i)=>{
-        const pc=perCard?perCard(card,i,i===cards.length-1):{};
-        const isGhost=card.ghost;
-        // Ghost: render as target slot at this position, not as a card
-        if(isGhost){
-          const ghostCls='card target';
-          const ghostContent='<span class="target-label">'+(pc.suffix||'')+'</span>';
-          return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i}"${pc.handler||''}><div class="${ghostCls}" style="border-color:var(--gold-bright);border-style:dashed">${ghostContent}</div></div>`;
-        }
-        return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
+      inner+=cards.map((card,i)=>{
+        const isTop=i===n-1;
+        const pc=perCard?perCard(card,i,isTop):null;
+        const extra=pc?pc.extra:'';
+        const handler=pc?pc.handler:'';
+        const suffix=pc?pc.suffix:'';
+        const transform=card.ghost?'':jitter(card,i);
+        return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${transform}"${handler}>${cardHTML(card,extra)}${suffix}</div>`;
       }).join('');
     }
     if(opts.after) inner+=opts.after;
 
-    // Pile space — always has explicit height, cards always absolute
     const extra=opts.colStyle||'';
     const onclick=opts.onclick?' onclick="'+opts.onclick+'"':'';
-    return `<div class="card-col" style="height:${spaceH}px;${extra}"${onclick}>${inner}</div>`;
+    const html=`<div class="card-col" style="height:${spaceH}px;${extra}"${onclick}>${inner}</div>`;
+    return html;
   }
 
   function stackScoreLabelAt(cards, topPx){
@@ -460,13 +482,10 @@ function renderBoard(layout){
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const so=isExp?spreadOffset:cardOffset(cards.length);
-    // Score label below pile
     const n=cards.length;
-    const ph=pileH(n, so);
-    const origin=Math.max(0,Math.round((cardContentH-ph)/2));
-    const labelTop=n>0?origin+(n-1)*so+curCardH:0;
-    const after=n>0?stackScoreLabelAt(cards, labelTop):'';
-    return renderPile(cards, {color:c, spaceH:sectionH, contentH:cardContentH, padTop:0,
+    const o=pileOrigin(n, so, sectionH, 0, scoreLineH);
+    const after=n>0?stackScoreLabelAt(cards, o+(n-1)*so+curCardH):'';
+    return renderPile(cards, {color:c, spaceH:sectionH, padBot:scoreLineH,
       so, zBase:isExp?100:0, after,
       onclick:n>0?"toggleExpand('opp','"+c+"')":undefined});
   }).join('');
@@ -479,13 +498,13 @@ function renderBoard(layout){
       const canDiscard=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn;
       const canDraw=inDrawPhase && isMyTurn && topCard && c!==gameState.lastDiscardedColor;
       if(!topCard){
-        return renderPile([], {color:c, targetLabel:canDiscard?'Discard':'', onclick:"discardTo('"+c+"')"});
+        return renderPile([], {color:c, spaceLabel:canDiscard?'Discard':'', onclick:"discardTo('"+c+"')"});
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
       const isExp=expandedStack && expandedStack.who==='discard' && expandedStack.color===c;
       const hasAction=canDraw||canDiscard;
       const colHandler=hasAction?(inDrawPhase&&isMyTurn?`drawFromDiscard('${c}')`:`discardTo('${c}')`):(pile.length>1?`toggleExpand('discard','${c}')`:'');
-      return renderPile(pile, {color:c, so:isExp?spreadOffset:undefined,
+      return renderPile(pile, {so:isExp?spreadOffset:undefined,
         colStyle:isExp?'z-index:3000':'',
         onclick:colHandler,
         perCard:(card,i,isTop)=>{
@@ -513,7 +532,7 @@ function renderBoard(layout){
     const countLabel=renderText(drawPileLen+' left', 5, {align:'center', color:'var(--parchment-dark)', opacity:.5, tag:'div'});
     const drawTarget=isMyTurn&&inDrawPhase;
     const drawPileHTML=renderPile(drawCards, {
-      targetLabel:drawTarget?'Draw':'',
+      spaceLabel:drawTarget?'Draw':'',
       onclick:'drawFromDrawPile()',
       after:countLabel,
       perCard:(card,i,isTop)=>({extra:(isTop&&drawTarget?'target':'')})
@@ -552,20 +571,17 @@ function renderBoard(layout){
     const ghost=canPlay?{color:c, value:-1, id:'ghost-'+c, ghost:true}:null;
     const cards=ghost?[...realCards, ghost]:realCards;
     if(cards.length===0){
-      return renderPile([], {color:c, spaceH:sectionH, contentH:cardContentH, padTop:scoreLineH,
+      return renderPile([], {color:c, spaceH:sectionH, padTop:scoreLineH,
         onclick:"playToExpedition('"+c+"')"});
     }
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
     const so=isExp?spreadOffset:cardOffset(cards.length);
-    // Score label above pile
     const n=cards.length;
-    const ph=pileH(n, so);
-    const origin=scoreLineH+Math.max(0,Math.round((cardContentH-ph)/2));
-    const labelTop=realCards.length>0?origin-scoreLineH:undefined;
-    const after=labelTop!==undefined?stackScoreLabelAt(realCards, labelTop):'';
+    const o=pileOrigin(n, so, sectionH, scoreLineH, 0);
+    const after=realCards.length>0?stackScoreLabelAt(realCards, o-scoreLineH):'';
     const stackClick=canPlay||isUndoTarget?"playToExpedition('"+c+"')":"toggleExpand('my','"+c+"')";
     return renderPile(cards, {
-      color:c, spaceH:sectionH, contentH:cardContentH, padTop:scoreLineH,
+      color:c, spaceH:sectionH, padTop:scoreLineH,
       so, zBase:isExp?100:0, after, onclick:stackClick,
       perCard:(card,i,isTop)=>{
         if(card.ghost) return {
