@@ -336,7 +336,7 @@ function renderBoard(layout){
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
     if(cards.length===0){
-      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${sectionH}px;display:flex;align-items:center;justify-content:center"><div class="card empty-slot" style="border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30;position:relative">${cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="height:${sectionH}px"><div class="card empty-slot" style="border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30">${cbLabel(c)}</div></div>`;
     }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=cardOffset(cards.length);
@@ -348,7 +348,7 @@ function renderBoard(layout){
     // Score label right below the last card
     const scoreLabelTop=topOffset+(cards.length-1)*so+curCardH;
     inner+=stackScoreLabelAt(cards, scoreLabelTop);
-    return `<div class="card-col" style="position:relative" onclick="toggleExpand('opp','${c}')"><div class="expedition-stack" style="height:${sectionH}px;overflow:visible">${inner}</div></div>`;
+    return `<div class="card-col" style="height:${sectionH}px" onclick="toggleExpand('opp','${c}')">${inner}</div>`;
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -364,7 +364,7 @@ function renderBoard(layout){
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
       if(isUndoDiscard){
-        return `<div class="card-col"><div class="card-slot" onclick="undoLastPlay()">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div></div>`;
+        return `<div class="card-col" onclick="undoLastPlay()" style="position:relative">${cardHTML(topCard,'undoable')}<span class="undo-label">undo</span></div>`;
       }
       const extra=canDraw?'target':(canDiscard?'target':'');
       const hasAction=canDraw||canDiscard;
@@ -382,7 +382,7 @@ function renderBoard(layout){
       const topSo=isExp?(pile.length-1)*18:0;
       stackHTML+=`<div style="position:relative;top:${topSo}px;transform:${jitter(topCard,pile.length-1)}">${cardHTML(topCard,extra)}</div>`;
       const labels=(canDraw?'<span class="target-label">Draw</span>':'')+(canDiscard?'<span class="target-label">Discard</span>':'');
-      return `<div class="card-col" style="${isExp?'z-index:50;position:relative':''}"><div class="card-slot" onclick="${handler}" style="position:relative;overflow:visible">${stackHTML}${labels}</div></div>`;
+      return `<div class="card-col" style="position:relative;${isExp?'z-index:50':''}" onclick="${handler}">${stackHTML}${labels}</div>`;
     }).join('');
 
     // Render deck
@@ -421,7 +421,7 @@ function renderBoard(layout){
       const rowPad=`calc((100% - ${totalGridW}) / 2)`;
       discardRow.style.paddingLeft=rowPad;
       discardRow.style.paddingRight='0';
-      discardRow.innerHTML+=`<div class="card-col"><div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}</div>`;
+      discardRow.innerHTML+=`<div class="card-col ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}${countLabel}</div>`;
       if(deckSlot) deckSlot.style.display='none';
     } else {
       // Portrait: deck below discards, landscape oriented, centered
@@ -434,7 +434,7 @@ function renderBoard(layout){
         const slotW='calc(var(--card-h) + var(--slot-pad))';
         const slotH='var(--col-w)';
         const emptySlot=`<div class="card empty-slot" style="width:${slotW};height:${slotH};border-bottom:var(--border-w) solid rgba(212,168,67,.2)"></div>`;
-        deckSlot.innerHTML=`<div class="card-slot ${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
+        deckSlot.innerHTML=`<div class="${deckTarget}" id="deck-col" onclick="drawFromDeck()" style="position:relative;width:${slotW};height:${slotH}">${deckLen>0?deckCardsHTML:emptySlot}</div>${countLabel}`;
       }
     }
   }
@@ -446,7 +446,7 @@ function renderBoard(layout){
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
       const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col" style="position:relative"><div class="expedition-stack" style="height:${sectionH}px;display:flex;align-items:center;justify-content:center"><div class="${cls}" style="${canPlay?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`};position:relative" onclick="playToExpedition('${c}')">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div></div>`;
+      return `<div class="card-col" style="height:${sectionH}px" onclick="playToExpedition('${c}')"><div class="${cls}" style="${canPlay?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`}">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div>`;
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
@@ -468,8 +468,7 @@ function renderBoard(layout){
     const scoreLabelTop=topOffset-scoreLineH;
     inner+=stackScoreLabelAt(cards, scoreLabelTop);
     const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    let html=`<div class="card-col" style="position:relative" onclick="${stackClick}"><div class="expedition-stack" style="height:${sectionH}px;overflow:visible">${inner}</div>`;
-    return html+`</div>`;
+    return `<div class="card-col" style="height:${sectionH}px" onclick="${stackClick}">${inner}</div>`;
   }).join('');
 }
 
