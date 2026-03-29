@@ -53,21 +53,21 @@ function renderGame(){
   const gameScreenEl=document.getElementById('game-screen');
   const wasMyTurn=gameScreenEl&&gameScreenEl.classList.contains('your-turn-glow');
   if(isMyTurn && !wasMyTurn && gameState.phase==='play') SFX.yourTurn();
-  // Player hint
+  // Player hint (center of my info row)
   if(phaseBar){
-    if(!isMyTurn) phaseBar.textContent='Waiting...';
-    else if(inPlayPhase) phaseBar.textContent=selectedCard?'Play or discard':'Select a card';
-    else phaseBar.textContent='Draw a card';
-    phaseBar.classList.toggle('draw-phase',isMyTurn&&inDrawPhase);
-    phaseBar.style.fontStyle=isMyTurn?'':'italic';
-    phaseBar.style.opacity=isMyTurn?'':'0.4';
+    let phaseText='';
+    if(!isMyTurn) phaseText='Waiting...';
+    else if(inPlayPhase) phaseText=selectedCard?'Play or discard':'Select a card';
+    else phaseText='Draw a card';
+    const phaseColor=(isMyTurn&&inDrawPhase)?'var(--gold-bright)':'var(--parchment-dark)';
+    const phaseOpacity=isMyTurn?undefined:0.4;
+    const phaseStyle=isMyTurn?undefined:'font-style:italic';
+    phaseBar.innerHTML=renderText(phaseText,4,{font:'crimson',color:phaseColor,opacity:phaseOpacity,extraStyle:phaseStyle});
   }
-  // Opponent status
+  // Opponent status (center of opp info row)
   if(oppStatus){
-    if(isMyTurn) oppStatus.textContent='';
-    else oppStatus.textContent='thinking...';
-    oppStatus.style.fontStyle='italic';
-    oppStatus.style.opacity='0.4';
+    if(isMyTurn) oppStatus.innerHTML='';
+    else oppStatus.innerHTML=renderText('thinking...',4,{font:'crimson',color:'var(--parchment-dark)',opacity:0.4,extraStyle:'font-style:italic'});
   }
   // Screen edge glow
   if(gameScreenEl){
@@ -91,16 +91,16 @@ function renderGame(){
     const myS=calcScore(gameState.expeditions[mySlot]);
     const oppS=calcScore(gameState.expeditions[oppSlotName]);
     if(oppTotalEl){
-      if(oppS.total===0) oppTotalEl.textContent='';
-      else{oppTotalEl.textContent=oppS.total;oppTotalEl.style.color=oppS.total>=0?'var(--gold-bright)':'#e07060';}
+      if(oppS.total===0) oppTotalEl.innerHTML='';
+      else oppTotalEl.innerHTML=renderText(oppS.total,4,{weight:700,tabular:true,color:oppS.total>=0?'var(--gold-bright)':'#e07060'});
     }
     if(myTotalEl){
-      if(myS.total===0) myTotalEl.textContent='';
-      else{myTotalEl.textContent=myS.total;myTotalEl.style.color=myS.total>=0?'var(--gold-bright)':'#e07060';}
+      if(myS.total===0) myTotalEl.innerHTML='';
+      else myTotalEl.innerHTML=renderText(myS.total,4,{weight:700,tabular:true,color:myS.total>=0?'var(--gold-bright)':'#e07060'});
     }
   } else {
-    if(oppTotalEl) oppTotalEl.textContent='';
-    if(myTotalEl) myTotalEl.textContent='';
+    if(oppTotalEl) oppTotalEl.innerHTML='';
+    if(myTotalEl) myTotalEl.innerHTML='';
   }
 
   // Phase bar handled above in turn state section
@@ -171,11 +171,12 @@ function renderGame(){
     oppHandRow.innerHTML=html;
   }
 
-  // Name labels (symmetric: left-aligned)
+  // Name labels (symmetric: left-aligned, tier 5 uppercase)
+  const labelOpts={color:'var(--parchment-dark)',opacity:0.5,uppercase:true,letterSpacing:'1.5px'};
   const oppNameLabel=document.getElementById('opp-name-label');
-  if(oppNameLabel) oppNameLabel.textContent=document.getElementById('opponent-name-store')?.textContent||'Opponent';
+  if(oppNameLabel) oppNameLabel.innerHTML=renderText(document.getElementById('opponent-name-store')?.textContent||'Opponent',5,labelOpts);
   const myNameLabel=document.getElementById('my-name-label');
-  if(myNameLabel) myNameLabel.textContent=getName?getName().toUpperCase():'YOU';
+  if(myNameLabel) myNameLabel.innerHTML=renderText(getName?getName():'YOU',5,labelOpts);
 
   // Layout is now fully deterministic (fixed stack heights, fixed hand height)
   // — no overflow correction loop needed.
@@ -337,30 +338,82 @@ function renderBoard(layout){
   // Spread view uses card offset at N=2 (max readable spacing)
   const spreadOffset = cardOffset(2);
 
-  const cbLabel=c=>colorblindMode?`<span style="position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%);font-size:var(--text-sm);line-height:var(--line-sm);opacity:.4">${COLOR_SYMBOLS[c]}</span>`:'';
+  const cbLabel=c=>colorblindMode?renderText(COLOR_SYMBOLS[c], 5, {opacity:.4, extraStyle:'position:absolute;bottom:var(--border-w);left:50%;transform:translateX(-50%)'}):'';
+
+  // Unified pile renderer — outputs the complete card-col (space + pile content).
+  // The space handles positioning; the pile is always centered within its content area.
+  // Like renderText always pairs font-size with line-height, renderPile always pairs pile with space.
+  //
+  // opts.color:       expedition color (for border tint on N=0)
+  // opts.side:        'opp' | 'my' — positions content within cardContentH, respects scoreLineH.
+  //                   Omit for discard/draw (no score label budget, flex-centered).
+  // opts.height:      section height in px (for play stacks). Omit for auto-height.
+  // opts.targetLabel: label for N=0 target ('Play', 'Discard', etc.)
+  // opts.origin:      top px of first card (from stackOrigin)
+  // opts.so:          card offset in px
+  // opts.zBase:       z-index base (0 normal, 100+ for expanded)
+  // opts.perCard:     fn(card, i, isTop) => {extra, handler, suffix}
+  // opts.scoreLabel:  topPx for score label, or undefined to skip
+  // opts.append:      extra HTML after cards (e.g. play target slot)
+  // opts.onclick:     column click handler string
+  // opts.colStyle:    extra inline CSS on the card-col
+  function renderPile(cards, opts){
+    opts=opts||{};
+    const n=cards?cards.length:0;
+    let inner;
+
+    if(n===0){
+      // N=0: card space — centered in the same content area as cards would be
+      const label=opts.targetLabel;
+      const cls=label?'card target':'card empty-slot';
+      const border=label?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[opts.color]}30`;
+      const content=label?'<span class="target-label">'+label+'</span>':cbLabel(opts.color);
+      if(opts.side){
+        // Play stack: position slot where a 1-card pile would sit (within cardContentH)
+        const slotTop=stackOrigin(1, 0, opts.side);
+        inner=`<div class="${cls}" style="${border};position:absolute;top:${slotTop}px;left:calc(var(--slot-pad) / 2)">${content}</div>`;
+      } else {
+        // Discard: no score label budget, flex-centered by card-col
+        inner=`<div class="${cls}" style="${border}">${content}</div>`;
+      }
+    } else {
+      // N>=1: absolute-positioned cards with jitter
+      const zBase=opts.zBase||0;
+      const perCard=opts.perCard;
+      inner=cards.map((card,i)=>{
+        const pc=perCard?perCard(card,i,i===cards.length-1):{};
+        return `<div style="position:absolute;top:${opts.origin+i*opts.so}px;left:calc(var(--slot-pad) / 2);z-index:${zBase+i};transition:top .25s ease;transform:${jitter(card,i)}"${pc.handler||''}>${cardHTML(card,pc.extra||'')}${pc.suffix||''}</div>`;
+      }).join('');
+      if(opts.scoreLabel!==undefined) inner+=stackScoreLabelAt(cards, opts.scoreLabel);
+      if(opts.append) inner+=opts.append;
+    }
+
+    // Card-col wrapper (the space) — always present, inseparable from pile content
+    const hStyle=opts.height?'height:'+opts.height+'px;':'';
+    const extra=opts.colStyle||'';
+    const onclick=opts.onclick?' onclick="'+opts.onclick+'"':'';
+    return `<div class="card-col" style="${hStyle}${extra}"${onclick}>${inner}</div>`;
+  }
+
   function stackScoreLabelAt(cards, topPx){
     const hasCards=cards&&cards.length>0;
     const show=liveScoreEnabled&&hasCards;
-    let score=0,cls='';
-    if(hasCards){let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(cards.length>=8?20:0);cls=score>=0?'color:var(--gold-bright)':'color:#e07060';}
-    return `<div style="position:absolute;top:${topPx}px;left:0;right:0;text-align:center;font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-sm);${cls};opacity:${show?.7:0};font-variant-numeric:tabular-nums;pointer-events:none">${show?score:''}</div>`;
+    let score=0,scoreColor='';
+    if(hasCards){let w=0,s=0;for(const c of cards){if(c.value===0)w++;else s+=c.value;}score=(s-20)*(1+w)+(cards.length>=8?20:0);scoreColor=score>=0?'var(--gold-bright)':'#e07060';}
+    return renderText(show?score:'', 5, {align:'center', color:scoreColor||undefined, opacity:show?.7:0, tabular:true, tag:'div', extraStyle:`position:absolute;top:${topPx}px;left:0;right:0;pointer-events:none`});
   }
 
   // Opponent row — stack score floats below actual cards
   oppRow.innerHTML=COLORS.map(c=>{
     const cards=getCards(gameState,'expeditions',oppSlot,c);
-    if(cards.length===0){
-      return `<div class="card-col" style="height:${sectionH}px"><div class="card empty-slot" style="border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30">${cbLabel(c)}</div></div>`;
-    }
     const isExp=expandedStack&&expandedStack.who==='opp'&&expandedStack.color===c;
     const baseSo=cardOffset(cards.length);
     const so=isExp?spreadOffset:baseSo;
     const origin=stackOrigin(cards.length, so, 'opp');
-    let inner=cards.map((card,i)=>`<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}">${cardHTML(card)}</div>`).join('');
-    // Stack score below last card (toward the middle of the board)
-    const labelTop=origin+(cards.length-1)*so+curCardH;
-    inner+=stackScoreLabelAt(cards, labelTop);
-    return `<div class="card-col" style="height:${sectionH}px" onclick="toggleExpand('opp','${c}')">${inner}</div>`;
+    const labelTop=cards.length>0?origin+(cards.length-1)*so+curCardH:0;
+    return renderPile(cards, {color:c, side:'opp', height:sectionH, origin, so, zBase:isExp?100:0,
+      scoreLabel:cards.length>0?labelTop:undefined,
+      onclick:cards.length>0?"toggleExpand('opp','"+c+"')":undefined});
   }).join('');
 
   // Discard row (classic) — show stacked cards with jitter
@@ -371,8 +424,7 @@ function renderBoard(layout){
       const canDiscard=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn;
       const canDraw=inDrawPhase && isMyTurn && topCard && c!==gameState.lastDiscardedColor;
       if(!topCard){
-        const cls=canDiscard?'card target':'card empty-slot';
-        return `<div class="card-col"><div class="${cls}" style="${canDiscard?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`}" onclick="discardTo('${c}')">${canDiscard?'<span class="target-label">Discard</span>':''}</div></div>`;
+        return renderPile([], {color:c, targetLabel:canDiscard?'Discard':'', onclick:"discardTo('"+c+"')"});
       }
       const isUndoDiscard=canUndo && lastPlayedCard.to==='discard' && lastPlayedCard.color===c;
       if(isUndoDiscard){
@@ -414,7 +466,7 @@ function renderBoard(layout){
         drawPileCardsHTML+=`<div class="${drawPileCardClass}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${rot}deg) translate(${dx}px,${dy}px)"></div>`;
       }
     }
-    const countLabel=`<div style="text-align:center;font-size:var(--text-sm);line-height:var(--line-sm);color:var(--parchment-dark);opacity:.5;font-family:'Cinzel',serif">${drawPileLen} left</div>`;
+    const countLabel=renderText(drawPileLen+' left', 5, {align:'center', color:'var(--parchment-dark)', opacity:.5, tag:'div'});
 
     if(isLandscapeLayout){
       // Landscape: draw pile as 6th column, appended without shifting the 5 discard columns
@@ -457,8 +509,8 @@ function renderBoard(layout){
     const canPlay=selectedCard && selectedCard.color===c && inPlayPhase && isMyTurn && canPlayOnExpedition(selectedCard,cards);
     const isUndoTarget=canUndo && lastPlayedCard.to==='expedition' && lastPlayedCard.color===c;
     if(cards.length===0){
-      const cls=canPlay?'card target':'card empty-slot';
-      return `<div class="card-col" style="height:${sectionH}px" onclick="playToExpedition('${c}')"><div class="${cls}" style="${canPlay?'':`border-bottom:var(--border-w) solid ${COLOR_HEX[c]}30`}">${canPlay?'<span class="target-label">Play</span>':''}${canPlay?'':cbLabel(c)}</div></div>`;
+      return renderPile([], {color:c, side:'my', height:sectionH,
+        targetLabel:canPlay?'Play':'', onclick:"playToExpedition('"+c+"')"});
     }
     const nextIdx=cards.length;
     const isExp=expandedStack&&expandedStack.who==='my'&&expandedStack.color===c;
@@ -467,18 +519,18 @@ function renderBoard(layout){
     const baseSo=cardOffset(withPlayCount);
     const so=isExp?spreadOffset:baseSo;
     const origin=stackOrigin(withPlayCount, so, 'my');
-    let inner=cards.map((card,i)=>{
-      const isTop=i===cards.length-1;
-      const extra=isTop&&isUndoTarget?'undoable':'';
-      const handler=isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'';;
-      return `<div style="position:absolute;top:${origin+i*so}px;left:calc(var(--slot-pad) / 2);z-index:${isExp?100+i:i};transition:top .25s ease;transform:${jitter(card,i)}"${handler}>${cardHTML(card,extra)}${isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''}</div>`;
-    }).join('');
-    if(canPlay) inner+=`<div style="position:absolute;top:${origin+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`;
-    // Score label right above the first card
     const labelTop=origin-scoreLineH;
-    inner+=stackScoreLabelAt(cards, labelTop);
-    const stackClick=canPlay||isUndoTarget?`playToExpedition('${c}')`:`toggleExpand('my','${c}')`;
-    return `<div class="card-col" style="height:${sectionH}px" onclick="${stackClick}">${inner}</div>`;
+    const playTarget=canPlay?`<div style="position:absolute;top:${origin+nextIdx*baseSo}px;left:calc(var(--slot-pad) / 2);z-index:${nextIdx}" onclick="event.stopPropagation();playToExpedition('${c}')"><div class="card target"><span class="target-label">Play</span></div></div>`:'';
+    const stackClick=canPlay||isUndoTarget?"playToExpedition('"+c+"')":"toggleExpand('my','"+c+"')";
+    return renderPile(cards, {
+      color:c, side:'my', height:sectionH, origin, so, zBase:isExp?100:0,
+      scoreLabel:labelTop, append:playTarget, onclick:stackClick,
+      perCard:(card,i,isTop)=>({
+        extra:isTop&&isUndoTarget?'undoable':'',
+        handler:isTop&&isUndoTarget?` onclick="event.stopPropagation();undoLastPlay()"`:'',
+        suffix:isTop&&isUndoTarget?'<span class="undo-label">undo</span>':''
+      })
+    });
   }).join('');
 }
 

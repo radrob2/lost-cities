@@ -96,7 +96,7 @@ showGameOver = function() {
       const sign = _lastEloChange.change >= 0 ? '+' : '';
       const color = _lastEloChange.change >= 0 ? '#4caf50' : '#e07060';
       const elo = loadElo();
-      el.innerHTML = `<span style="color:${color};font-family:'Cinzel',serif;font-weight:700;font-size:var(--text-lg)">${sign}${_lastEloChange.change}</span> <span style="color:var(--parchment-dark);font-size:var(--text-sm)">Rating: ${elo.rating}</span>`;
+      el.innerHTML = renderText(sign+_lastEloChange.change, 3, {color:color, weight:700}) + ' ' + renderText('Rating: '+elo.rating, 5, {color:'var(--parchment-dark)'});
       el.style.display = 'block';
     }
   }
@@ -130,7 +130,7 @@ renderStats = function() {
     <div class="stat-row"><span class="stat-label">K-Factor</span><span class="stat-value">${elo.gamesPlayed < 20 ? '32 (provisional)' : '16'}</span></div>`;
 
   if (elo.history.length > 0) {
-    html += `<div style="margin-top:var(--gap-sm);font-size:var(--text-sm);color:var(--parchment-dark)">Recent</div>
+    html += renderText('Recent', 5, {color:'var(--parchment-dark)', tag:'div', extraStyle:'margin-top:var(--gap-sm)'}) + `
     <div style="margin-top:var(--space-micro);display:flex;flex-direction:column;gap:var(--space-micro)">`;
     // Show last 10 entries, most recent first
     const recent = elo.history.slice(-10).reverse();
@@ -139,11 +139,11 @@ renderStats = function() {
       const color = entry.change >= 0 ? '#4caf50' : '#e07060';
       const resultLabel = entry.result === 1 ? 'W' : entry.result === 0 ? 'L' : 'D';
       const resultColor = entry.result === 1 ? '#4caf50' : entry.result === 0 ? '#e07060' : 'var(--parchment-dark)';
-      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--text-md);padding:var(--space-micro) 0">
-        <span style="color:${resultColor};font-weight:700;width:var(--text-lg)">${resultLabel}</span>
-        <span style="color:var(--parchment-dark);flex:1;text-align:center;font-size:var(--text-sm)">vs ${entry.opp}</span>
-        <span style="color:${color};font-family:'Cinzel',serif;font-weight:700;width:calc(var(--text-lg) * 2.8);text-align:right">${sign}${entry.change}</span>
-        <span style="color:var(--parchment-dark);font-size:var(--text-sm);width:calc(var(--text-lg) * 2.5);text-align:right">${entry.newRating}</span>
+      html += `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--text-md);line-height:var(--line-lg);padding:var(--space-micro) 0">
+        ${renderText(resultLabel, 4, {color:resultColor, weight:700, extraStyle:'width:var(--text-lg)'})}
+        ${renderText('vs '+entry.opp, 5, {color:'var(--parchment-dark)', extraStyle:'flex:1;text-align:center'})}
+        ${renderText(sign+entry.change, 4, {color:color, weight:700, extraStyle:'width:calc(var(--text-lg) * 2.8);text-align:right'})}
+        ${renderText(entry.newRating, 5, {color:'var(--parchment-dark)', extraStyle:'width:calc(var(--text-lg) * 2.5);text-align:right'})}
       </div>`;
     }
     html += `</div>`;

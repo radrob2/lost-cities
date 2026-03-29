@@ -247,12 +247,12 @@ function showGameOver(){
 
   // Centered-label row: [You value left-aligned] [label centered] [Opp value right-aligned]
   function row(mV,label,oV,mC,oC,extra){
-    return `<div class="r-line sc-row" style="justify-content:center;${extra||''}"><span style="flex:1;text-align:left" class="${mC||''}">${mV}</span><span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--space-micro);font-size:var(--text-md);opacity:.7">${label}</span><span style="flex:1;text-align:right" class="${oC||''}">${oV}</span></div>`;
+    return `<div class="r-line sc-row" style="justify-content:center;${extra||''}"><span style="flex:1;text-align:left" class="${mC||''}">${mV}</span>${renderText(label, 4, {opacity:.7, align:'center', extraStyle:'min-width:calc(var(--card-h) * 1.15);padding:0 var(--space-micro)'})}<span style="flex:1;text-align:right" class="${oC||''}">${oV}</span></div>`;
   }
 
   // Column headers — fixed width center column for alignment
-  let html=`<div class="r-line sc-row" style="justify-content:center;font-size:var(--text-lg);font-family:'Cinzel',serif;padding-bottom:var(--gap-sm);color:var(--parchment)">
-    <span style="flex:1;text-align:left;${myWin?'color:var(--gold-bright)':''}">You</span><span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--space-micro)"></span><span style="flex:1;text-align:right;${oppWin?'color:var(--gold-bright)':''}">Opp</span></div>`;
+  let html=`<div class="r-line sc-row" style="justify-content:center;padding-bottom:var(--gap-sm)">
+    ${renderText('You', 3, {extraStyle:'flex:1;text-align:left', color:myWin?'var(--gold-bright)':'var(--parchment)'})}<span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--space-micro)"></span>${renderText('Opp', 3, {extraStyle:'flex:1;text-align:right', color:oppWin?'var(--gold-bright)':'var(--parchment)'})}</div>`;
 
   // Color rows
   let colorIdx=0;
@@ -318,9 +318,9 @@ function showGameOver(){
   // Game total — bold gold separator (strongest visual weight)
   html+=`<div style="border-top:calc(var(--border-w) * 2) solid var(--gold);margin:var(--gap-sm) 0 var(--space-micro)"></div>`;
   html+=`<div class="r-line sc-row" style="justify-content:center;font-weight:900;font-family:'Cinzel',serif;padding:var(--gap-sm) 0;font-variant-numeric:tabular-nums">
-    <span style="flex:1;text-align:left;font-size:var(--line-md)" ${winStyle(my.total,myWin)}>${fmt(my.total)}</span>
+    <span style="flex:1;text-align:left;font-size:var(--text-lg);line-height:var(--line-lg)" ${winStyle(my.total,myWin)}>${fmt(my.total)}</span>
     <span style="min-width:calc(var(--card-h) * 1.15);text-align:center;padding:0 var(--space-micro)"></span>
-    <span style="flex:1;text-align:right;font-size:var(--line-md)" ${winStyle(opp.total,oppWin)}>${fmt(opp.total)}</span>
+    <span style="flex:1;text-align:right;font-size:var(--text-lg);line-height:var(--line-lg)" ${winStyle(opp.total,oppWin)}>${fmt(opp.total)}</span>
   </div>`;
 
   // Put it all in one container

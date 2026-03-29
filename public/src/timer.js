@@ -57,7 +57,7 @@ function getOrCreateTimerDisplay() {
   if (!el) {
     el = document.createElement('span');
     el.id = 'turn-timer-display';
-    el.style.cssText = 'font-family:Cinzel,serif;font-weight:700;font-size:var(--text-md);margin-left:var(--space-micro);font-variant-numeric:tabular-nums;display:none;transition:color 0.3s;';
+    el.style.cssText = 'font-family:Cinzel,serif;font-weight:700;font-size:var(--text-md);line-height:var(--line-lg);margin-left:var(--space-micro);font-variant-numeric:tabular-nums;display:none;transition:color 0.3s;';
     const ti = document.getElementById('turn-indicator');
     if (ti && ti.parentNode) {
       ti.parentNode.insertBefore(el, ti.nextSibling);
@@ -231,7 +231,7 @@ function _timerRenderHook() {
     btns.forEach(b => { if (b.textContent.trim() === 'Start Game') targetBtn = b; });
     if (targetBtn) {
       const label = document.createElement('div');
-      label.style.cssText = "font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--space-micro);opacity:.5;text-align:center;";
+      label.style.cssText = "font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-md);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--space-micro);opacity:.5;text-align:center;";
       label.textContent = 'Turn Timer';
       targetBtn.parentNode.insertBefore(label, targetBtn);
       targetBtn.parentNode.insertBefore(createTimerPicker('timer-picker-ai'), targetBtn);
@@ -246,7 +246,7 @@ function _timerRenderHook() {
     menuBtns.forEach(b => { if (b.textContent.trim() === 'Main Menu') mainMenuBtn = b; });
     if (mainMenuBtn) {
       const label = document.createElement('div');
-      label.style.cssText = "font-family:'Cinzel',serif;font-size:var(--text-sm);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--space-micro);opacity:.5;text-align:center;";
+      label.style.cssText = "font-family:'Cinzel',serif;font-size:var(--text-sm);line-height:var(--line-md);color:var(--parchment-dark);margin:var(--gap-sm) 0 var(--space-micro);opacity:.5;text-align:center;";
       label.textContent = 'Turn Timer';
       mainMenuBtn.parentNode.insertBefore(label, mainMenuBtn);
       mainMenuBtn.parentNode.insertBefore(createTimerPicker('timer-picker-menu'), mainMenuBtn);
