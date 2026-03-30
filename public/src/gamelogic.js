@@ -1,12 +1,5 @@
 // gamelogic.js — Game actions: card selection, play, discard, draw, undo, scoring display, game over
 
-function canPlayOnExpedition(card, expedition){
-  if(expedition.length===0) return true;
-  const top=expedition[expedition.length-1];
-  if(card.value===0) return top.value===0; // wager only before numbers
-  return card.value > top.value;
-}
-
 function selectCard(cardId){
   if(gameState.currentTurn!==mySlot || gameState.phase!=='play') return;
   SFX.select();

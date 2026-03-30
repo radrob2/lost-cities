@@ -101,12 +101,3 @@ function toggleLiveScore(){
 function confirmQuit(){closeGameMenu();document.getElementById('quit-confirm').classList.add('active')}
 function closeQuitConfirm(){document.getElementById('quit-confirm').classList.remove('active')}
 
-function createDrawPile(){
-  let drawPile=[];
-  COLORS.forEach(c=>{
-    for(let i=0;i<3;i++)drawPile.push({color:c,value:0,id:c+'_w'+i});
-    for(let v=2;v<=10;v++)drawPile.push({color:c,value:v,id:c+'_'+v});
-  });
-  for(let i=drawPile.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[drawPile[i],drawPile[j]]=[drawPile[j],drawPile[i]]}
-  return drawPile;
-}
