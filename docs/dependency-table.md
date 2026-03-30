@@ -49,4 +49,6 @@ Current dependencies do not match this table. `constants.js` and `gamelogic.js` 
 
 **As of Phase 2**: config.js, math.js, events.js, and rules.js match the target dependency structure. ai-worker.js now loads config/math/rules via `importScripts`, eliminating duplicated COLORS, scoring, and legality check definitions.
 
+**As of Phase 3**: showGameOver monkey-patch chain (stats, elo, achievements, replay) converted to 'gameOver' event subscribers. Remaining lifecycle wrappers (rematch, renderStats, doResetStats, leaveGame, showStats, startAIGame) also converted. ui.js created with DOM helpers from constants.js. Remaining monkey-patches: replay action wrappers (8), ai-game interceptors (6), timer wrappers (4), replay selectCard guard (1) — deferred to Phase 4.
+
 Until migration is complete, treat this table as the contract to build toward — not a description of today's code.

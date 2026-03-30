@@ -19,6 +19,7 @@ This is the authoritative directory map for the project. It must be updated when
 | src/text.js | Text rendering utility with phi-based sizing | current |
 | src/animations.js | FLIP animation system | current |
 | src/sound.js | Web Audio SFX and haptic feedback | current |
+| src/ui.js | Screen transitions, toast, modal helpers (DOM manipulation) | new |
 | src/elo.js | ELO rating calculation and persistence | current |
 | src/achievements.js | Achievement definitions and unlock checking | current |
 | src/stats.js | Game statistics persistence | current |
