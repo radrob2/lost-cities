@@ -180,11 +180,10 @@ executeAIPhase2 = function(p2) {
 };
 
 // ===== HOOK INTO GAME START =====
-const _replayOrigStartAIGame = startAIGame;
-startAIGame = function() {
-  _replayOrigStartAIGame();
+on('newGame', function() {
+  _replaySavedForGame = false;
   startReplayRecording();
-};
+});
 
 // ===== SAVE REPLAY ON GAME OVER =====
 let _replaySavedForGame = false;
@@ -560,14 +559,6 @@ if (typeof selectCard !== 'undefined') {
     return _origSelectCard.apply(this, arguments);
   };
 }
-
-// ===== HOOK INTO REMATCH TO RESET RECORDING FLAG =====
-const _replayOrigRematch = rematch;
-rematch = function() {
-  _replaySavedForGame = false;
-  _replayOrigRematch();
-  startReplayRecording();
-};
 
 // ===== INJECT REPLAY STYLES =====
 (function _injectReplayStyles() {

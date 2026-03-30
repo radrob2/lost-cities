@@ -177,12 +177,9 @@ function renderAchievements() {
   container.innerHTML = html;
 }
 
-// Hook into showStats so achievements render on stats screen
-const _origShowStats = showStats;
-showStats = function() {
-  _origShowStats();
+on('statsShown', function() {
   renderAchievements();
-};
+});
 
 on('gameOver', function(data) {
   const newlyUnlocked = checkAchievements(data.myScore, data.oppScore, gameState, data.personality);

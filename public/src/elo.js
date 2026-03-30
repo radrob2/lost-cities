@@ -93,21 +93,15 @@ on('gameOver', function(data) {
 });
 
 // Reset ELO tracking flag on new games
-const _origRematchElo = typeof rematch === 'function' ? rematch : null;
-if (_origRematchElo) {
-  rematch = function() {
-    _eloRecordedForGame = false;
-    _lastEloChange = null;
-    const el = document.getElementById('elo-change-display');
-    if (el) el.style.display = 'none';
-    _origRematchElo();
-  };
-}
+on('rematch', function() {
+  _eloRecordedForGame = false;
+  _lastEloChange = null;
+  const el = document.getElementById('elo-change-display');
+  if (el) el.style.display = 'none';
+});
 
 // Patch renderStats to include ELO rating section
-const _origRenderStats = renderStats;
-renderStats = function() {
-  _origRenderStats();
+on('statsRendered', function() {
   const container = document.getElementById('stats-content');
   if (!container) return;
   const elo = loadElo();
@@ -142,21 +136,14 @@ renderStats = function() {
   html += `</div>`;
   // Prepend rating section to top of stats
   container.innerHTML = html + container.innerHTML;
-};
+});
 
 // Wrap doResetStats to also reset ELO data
-const _origDoResetStats = doResetStats;
-doResetStats = function() {
+on('statsReset', function() {
   localStorage.removeItem(ELO_KEY);
-  _origDoResetStats();
-};
+});
 
-// Also reset elo flag when leaving games
-const _origLeaveGameElo = typeof leaveGame === 'function' ? leaveGame : null;
-if (_origLeaveGameElo) {
-  leaveGame = function() {
-    _eloRecordedForGame = false;
-    _lastEloChange = null;
-    _origLeaveGameElo();
-  };
-}
+on('newGame', function() {
+  _eloRecordedForGame = false;
+  _lastEloChange = null;
+});

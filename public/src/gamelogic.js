@@ -362,6 +362,7 @@ function rematch(){
   // Swap who goes first
   seriesFirstPlayer=seriesFirstPlayer==='player1'?'player2':'player1';
   playAgain();
+  emit('rematch');
 }
 
 async function playAgain(){
@@ -378,6 +379,7 @@ async function playAgain(){
     });
   }
   selectedCard=null; document.getElementById('back-to-scores').style.display='none'; if(typeof _statsRecordedForGame!=='undefined') _statsRecordedForGame=false; showScreen('game-screen');
+  emit('newGame');
 }
 
 // ===== LOCAL UPDATE (for AI mode) =====

@@ -75,9 +75,18 @@ on('gameOver', function(data) {
   }
 });
 
+on('newGame', function() {
+  _statsRecordedForGame = false;
+});
+
+on('rematch', function() {
+  _statsRecordedForGame = false;
+});
+
 function showStats(){
   renderStats();
   showScreen('stats-screen');
+  emit('statsShown');
 }
 
 function pct(n,total){return total===0?'0%':Math.round(n/total*100)+'%'}
@@ -149,6 +158,7 @@ function renderStats(){
   }
 
   document.getElementById('stats-content').innerHTML=html;
+  emit('statsRendered');
 }
 
 function confirmResetStats(){
@@ -162,4 +172,5 @@ function doResetStats(){
   localStorage.removeItem(STATS_KEY);
   renderStats();
   toast('Stats reset');
+  emit('statsReset');
 }
