@@ -5,6 +5,7 @@ const tests = [
   'test-config.js',
   'test-events.js',
   'test-math.js',
+  'test-rules.js',
   'test-scoring.js',
   'test-legal-moves.js',
   'test-edge-cases.js',
