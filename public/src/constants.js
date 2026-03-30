@@ -49,12 +49,6 @@ function genId(){return Math.random().toString(36).substr(2,9)}
 
 // Sound loaded from src/sound.js, animations from src/animations.js
 function genRoomCode(){const c='ABCDEFGHJKLMNPQRSTUVWXYZ';let r='';for(let i=0;i<4;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
-function toast(msg){const t=document.getElementById('toast');t.innerHTML=msg;t.classList.add('show');SFX.error();setTimeout(()=>t.classList.remove('show'),2200)}
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active')}
-function showRules(){document.getElementById('rules-modal').classList.add('active')}
-function closeRules(){document.getElementById('rules-modal').classList.remove('active')}
-function openAIPersonalityModal(){document.getElementById('ai-personality-modal').classList.add('active')}
-function closeAIPersonalityModal(){document.getElementById('ai-personality-modal').classList.remove('active')}
 // ===== TURN NOTIFICATIONS =====
 function requestNotificationPermission(){
   if('Notification' in window && Notification.permission==='default'){
@@ -67,18 +61,6 @@ function notifyTurn(){
   }
 }
 
-function showGameMenu(){
-  document.getElementById('game-menu').classList.add('active');
-  const sndBtn=document.getElementById('sound-toggle-btn');
-  if(sndBtn) sndBtn.textContent='Sound: '+(soundEnabled?'On':'Off');
-  const btn=document.getElementById('cb-toggle-btn');
-  if(btn) btn.textContent='Colorblind Mode: '+(colorblindMode?'On':'Off');
-  const hcbtn=document.getElementById('hc-toggle-btn');
-  if(hcbtn) hcbtn.textContent='High Contrast: '+(highContrastMode?'On':'Off');
-  const sbtn=document.getElementById('score-toggle-btn');
-  if(sbtn) sbtn.textContent='Live Score: '+(liveScoreEnabled?'On':'Off');
-}
-function closeGameMenu(){document.getElementById('game-menu').classList.remove('active')}
 function toggleColorblind(){
   colorblindMode=!colorblindMode;
   localStorage.setItem('expedition-colorblind',colorblindMode);
@@ -98,6 +80,4 @@ function toggleLiveScore(){
   document.getElementById('score-toggle-btn').textContent='Live Score: '+(liveScoreEnabled?'On':'Off');
   renderGame();
 }
-function confirmQuit(){closeGameMenu();document.getElementById('quit-confirm').classList.add('active')}
-function closeQuitConfirm(){document.getElementById('quit-confirm').classList.remove('active')}
 
