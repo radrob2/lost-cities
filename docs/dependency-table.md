@@ -47,4 +47,6 @@ Current dependencies do not match this table. `constants.js` and `gamelogic.js` 
 - **Phase 4**: Split `constants.js` into `config.js`, `ui.js`, and remaining helpers
 - **Phase 5**: Enforce dependency table via automated tests; delete `constants.js` and `gamelogic.js`
 
+**As of Phase 2**: config.js, math.js, events.js, and rules.js match the target dependency structure. ai-worker.js now loads config/math/rules via `importScripts`, eliminating duplicated COLORS, scoring, and legality check definitions.
+
 Until migration is complete, treat this table as the contract to build toward — not a description of today's code.

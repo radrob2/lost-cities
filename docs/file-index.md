@@ -32,7 +32,7 @@ This is the authoritative directory map for the project. It must be updated when
 
 | Path | Responsibility | Status |
 |------|----------------|--------|
-| src/rules.js | Pure functions: legal moves, card definitions | target |
+| src/rules.js | Card legality checks and deck construction (pure functions) | new |
 | src/engine.js | Game state, turn flow, actions, emits events | target |
 | src/ui.js | showScreen, toast, modal helpers | target |
 
@@ -61,6 +61,7 @@ This is the authoritative directory map for the project. It must be updated when
 | tools/test/test-edge-cases.js | Edge case tests (14 tests) | current |
 | tools/test/test-game-sim.js | Game simulation tests (10 tests) | current |
 | tools/test/test-ai-playtest.js | AI stress tests (8 tests) | current |
+| tools/test/test-rules.js | Rules tests (17 tests) | new |
 
 ---
 
