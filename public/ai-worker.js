@@ -2,7 +2,19 @@
 // Uses evolved champion genomes for rollout policy instead of greedy heuristics.
 // Accepts a `personality` parameter to select which genome drives decisions.
 
-const COLORS = ['red','green','blue','white','yellow'];
+importScripts('src/config.js', 'src/math.js', 'src/rules.js');
+
+// Aliases — canonical implementations, local names for zero-diff on 30+ call sites
+const COLORS = CONFIG.colors;
+const canPlayCard = canPlayOnExpedition;
+const scoreColor = MATH.scoreExpedition;
+const ALL_CARDS = allCards();
+
+function scoreAll(exps) {
+  let t = 0;
+  for (const c of COLORS) t += scoreColor(exps[c] || []);
+  return t;
+}
 
 // ==================== CHAMPION GENOMES ====================
 const GENOMES = {
@@ -21,38 +33,6 @@ const GENOMES_SINGLE = {
   spy: {"earlyPlayThresh":14.707,"midPlayThresh":7.555,"latePlayThresh":17.777,"earlyPhaseBound":28.857,"latePhaseBound":15.681,"phaseBlendWidth":5.887,"endgameUrgency":0.629,"maxExpeditions":3.952,"newExpMinProjected":25,"newExpLatePenalty":30,"eightCardWeight":6.693,"concentrationBonus":9.704,"abandonThreshold":-37.655,"cardCountVsValue":0.811,"focusVsSpread":0.496,"colorSynergyWeight":10,"orphanPenalty":8.711,"wagerMinProjected":21.21,"wagerEarlyBonus":4.927,"wagerLatePenalty":6.055,"wagerStackBonus":0,"wagerHoldValue":0.097,"wagerRiskTolerance":0.327,"wagerMinHandCards":2.844,"wagerAsVariance":0.273,"oppAwareness":2.5,"oppBlockWeight":7.408,"oppDiscardDanger":12,"oppWagerFear":13.755,"oppDenyDrawWeight":10,"oppColorTrackWeight":0,"oppDrawSignalWeight":1.172,"counterPlayWeight":4.273,"oppMirrorPenalty":5,"oppExpCountFear":1.513,"drawDiscardThresh":0,"drawExpBonus":24.456,"drawDenyBonus":15.555,"drawDenyWagerMult":6.332,"drawUnknownValue":3.357,"drawForNewExpThresh":0,"drawDenyOnlyThresh":11.903,"drawInfoLeakPenalty":3.011,"riskSeekWhenBehind":0,"riskAvoidWhenAhead":0.668,"scoreDiffSensitivity":0.158,"variancePreference":0.218,"highCardBias":-5,"safeDiscardBias":4,"rushWhenAheadBy":15.874,"stallWhenBehindBy":8.794,"tempoAwareness":1.075,"drawSourceTempo":-0.654,"holdVsPlayBias":2.792,"cardCountingWeight":2.797,"deckRichnessWeight":4.696,"colorDepletionTrack":0,"oppHandSizeWeight":0.468,"perfectInfoEndgame":14.91},
   gambler: {"earlyPlayThresh":6.652,"midPlayThresh":11.903,"latePlayThresh":-9.336,"earlyPhaseBound":23.867,"latePhaseBound":17.263,"phaseBlendWidth":1.036,"endgameUrgency":1.273,"maxExpeditions":2.041,"newExpMinProjected":11.421,"newExpLatePenalty":0.843,"eightCardWeight":19.223,"concentrationBonus":12.484,"abandonThreshold":-27.757,"cardCountVsValue":0.414,"focusVsSpread":0.194,"colorSynergyWeight":5.324,"orphanPenalty":2.755,"wagerMinProjected":-6.578,"wagerEarlyBonus":9.295,"wagerLatePenalty":29.964,"wagerStackBonus":1.845,"wagerHoldValue":7.961,"wagerRiskTolerance":0.121,"wagerMinHandCards":2.425,"wagerAsVariance":-0.692,"oppAwareness":1.373,"oppBlockWeight":6.692,"oppDiscardDanger":10.569,"oppWagerFear":11.588,"oppDenyDrawWeight":10.076,"oppColorTrackWeight":2.782,"oppDrawSignalWeight":6.841,"counterPlayWeight":4.517,"oppMirrorPenalty":7.301,"oppExpCountFear":4.612,"drawDiscardThresh":9.827,"drawExpBonus":21.328,"drawDenyBonus":9.391,"drawDenyWagerMult":6.723,"drawUnknownValue":4.41,"drawForNewExpThresh":11.578,"drawDenyOnlyThresh":14.96,"drawInfoLeakPenalty":2.487,"riskSeekWhenBehind":1.813,"riskAvoidWhenAhead":0.303,"scoreDiffSensitivity":0.058,"variancePreference":0.887,"highCardBias":1.959,"safeDiscardBias":0.651,"rushWhenAheadBy":21.532,"stallWhenBehindBy":59.89,"tempoAwareness":0.539,"drawSourceTempo":-0.107,"holdVsPlayBias":-1.829,"cardCountingWeight":0.826,"deckRichnessWeight":4.004,"colorDepletionTrack":1.389,"oppHandSizeWeight":2.025,"perfectInfoEndgame":19.865},
 };
-
-// ==================== GAME ENGINE ====================
-
-function allCards(){
-  const cards=[];
-  for(const c of COLORS){
-    for(let i=0;i<3;i++) cards.push({color:c,value:0,id:c+'_w'+i});
-    for(let v=2;v<=10;v++) cards.push({color:c,value:v,id:c+'_'+v});
-  }
-  return cards;
-}
-const ALL_CARDS=allCards();
-
-function canPlayCard(card, exp){
-  if(!exp||exp.length===0) return true;
-  const top=exp[exp.length-1];
-  if(card.value===0) return top.value===0;
-  return card.value > top.value;
-}
-
-function scoreColor(cards){
-  if(!cards||cards.length===0) return 0;
-  let wagers=0, sum=0;
-  for(const c of cards){ if(c.value===0) wagers++; else sum+=c.value; }
-  return (sum-20)*(1+wagers)+(cards.length>=8?20:0);
-}
-
-function scoreAll(exps){
-  let t=0;
-  for(const c of COLORS) t+=scoreColor(exps[c]||[]);
-  return t;
-}
 
 function shuffle(arr){
   for(let i=arr.length-1;i>0;i--){
