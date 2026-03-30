@@ -2,6 +2,9 @@ const { execSync } = require('child_process');
 const path = require('path');
 
 const tests = [
+  'test-config.js',
+  'test-events.js',
+  'test-math.js',
   'test-scoring.js',
   'test-legal-moves.js',
   'test-edge-cases.js',

@@ -1,53 +1,33 @@
-// Pure game logic extracted from public/index.html and public/ai-worker.js
-// No dependencies. Used by automated tests.
+// Test harness — imports from production config and math.
+// No duplicated logic. Single source of truth.
+const CONFIG = require('../../public/src/config');
+const MATH = require('../../public/src/math');
 
-const COLORS = ['red', 'green', 'blue', 'white', 'yellow'];
-
-/**
- * Score a single expedition (array of cards).
- * Formula: (sum_of_numbers - 20) * (1 + wager_count) + (length >= 8 ? 20 : 0)
- * Empty expedition = 0.
- */
-function calculateScore(expedition) {
-  if (!expedition || expedition.length === 0) return 0;
-  let wagers = 0, sum = 0;
-  for (const c of expedition) {
-    if (c.value === 0) wagers++;
-    else sum += c.value;
+module.exports = {
+  COLORS: CONFIG.colors,
+  calculateScore: MATH.scoreExpedition,
+  canPlayOnExpedition: function(card, expedition) {
+    // This will move to rules.js in Phase 2.
+    // For now, keep the implementation here — it's the only copy.
+    if (!expedition || expedition.length === 0) return true;
+    const top = expedition[expedition.length - 1];
+    if (card.value === 0) return top.value === 0;
+    return card.value > top.value;
+  },
+  createDrawPile: function() {
+    // This will move to engine.js in Phase 3.
+    // For now, keep the implementation here — it's the only copy.
+    const drawPile = [];
+    CONFIG.colors.forEach(c => {
+      for (let i = 0; i < CONFIG.wagerCount; i++)
+        drawPile.push({ color: c, value: 0, id: c + '_w' + i });
+      for (let v = CONFIG.numberRange[0]; v <= CONFIG.numberRange[1]; v++)
+        drawPile.push({ color: c, value: v, id: c + '_' + v });
+    });
+    for (let i = drawPile.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [drawPile[i], drawPile[j]] = [drawPile[j], drawPile[i]];
+    }
+    return drawPile;
   }
-  return (sum - 20) * (1 + wagers) + (expedition.length >= 8 ? 20 : 0);
-}
-
-/**
- * Can this card legally be played on top of this expedition?
- * Rules:
- *   - Empty expedition: anything is legal.
- *   - Wager (value 0): only if top card is also a wager.
- *   - Number card: must be strictly greater than top card value.
- */
-function canPlayOnExpedition(card, expedition) {
-  if (!expedition || expedition.length === 0) return true;
-  const top = expedition[expedition.length - 1];
-  if (card.value === 0) return top.value === 0;
-  return card.value > top.value;
-}
-
-/**
- * Create a full 60-card draw pile (shuffled).
- * 5 colors x (3 wagers + numbers 2-10) = 60 cards.
- */
-function createDrawPile() {
-  const drawPile = [];
-  COLORS.forEach(c => {
-    for (let i = 0; i < 3; i++) drawPile.push({ color: c, value: 0, id: c + '_w' + i });
-    for (let v = 2; v <= 10; v++) drawPile.push({ color: c, value: v, id: c + '_' + v });
-  });
-  // Fisher-Yates shuffle
-  for (let i = drawPile.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [drawPile[i], drawPile[j]] = [drawPile[j], drawPile[i]];
-  }
-  return drawPile;
-}
-
-module.exports = { COLORS, calculateScore, canPlayOnExpedition, createDrawPile };
+};
