@@ -117,7 +117,7 @@ Translation of content relative to other content. Offsets position things within
 | Offset | What | How computed |
 |--------|------|-------------|
 | **Card offset** | Vertical distance between consecutive card tops in a stack | `cardH × 0.367 / N^0.613` pixels. Decreases as more cards are added. |
-| **Stack origin** | Vertical position of the first card's top edge | Centering: `(sectionContentH - pileH) / 2`, where pileH excludes score line |
+| **Stack origin** | Vertical position of the first card's top edge | Centering: `(sectionH - pileH) / 2`, where sectionH is the full section height including the score line budget. Current code: centers against full `sectionH`. Target: same — centering against `sectionContentH` was an earlier design that was not implemented. |
 | **Jitter** | Deterministic random rotation + displacement | Hash of card identity + position index. Visual variety, not layout. |
 | **Label position** | Where the stack score text sits | At pile edge: below opponent piles (origin + pileH), above player piles (origin - lineH) |
 
@@ -193,6 +193,8 @@ This ensures:
 
 This principle applies broadly: any elements with similar structure (text labels, pile spaces, info rows) should flow through shared rendering functions parameterized by their differences.
 
+**Current code:** There is no standalone `renderPile` function. Pile rendering is done inline in `renderBoard` via helpers `pileLayout`, `pileSpaceHTML`, and `positionedCardHTML`. **Target:** extract a `renderPile(cards, opts)` function in `ui.js` (Phase 4). The term `renderPile` is used in this doc to describe the logical responsibility, not a current function name.
+
 ### 4.3 Board Markings
 
 | Term | What | Layer |
@@ -232,7 +234,7 @@ All text uses the φ tier system. Text at size n has line-height at n-1. The tex
 ### 6.1 Centering Rules
 
 - **Horizontal**: cards center within their column. The column width is the content space; leftover is breathing room on both sides.
-- **Vertical**: card piles center within the section height, computed against pile height ONLY (score line-height excluded from centering). The section height includes the score line in its budget, but the pile centers as if that space doesn't exist.
+- **Vertical**: card piles center within the full section height (including score line budget). The centering formula is `(sectionH - pileH) / 2`. Current code: this is what `centerTop(ph, sectionH)` computes. Note: an earlier design described centering against `sectionContentH` (score excluded) — that was not implemented; the full `sectionH` is used.
 - **One authority per element**: either JS computes the position (for overlapping cards) or CSS flex centers it (for single elements). Never both on the same element.
 
 ### 6.2 Centering Method
@@ -292,3 +294,97 @@ Elements with similar structure should flow through shared code parameterized by
 | All text labels | Text renderer | content, tier, position |
 | All pile spaces | Pile renderer (N=0 case) | color, interactivity |
 | All info rows | Info row renderer | name, status/hint, score |
+
+---
+
+## 8. Code Conventions
+
+### 8.1 Naming
+
+- **camelCase** for all JS variables and functions: `cardOffset`, `pileHeight`, `sectionHeights`
+- **No abbreviations that require tribal knowledge.** Use full descriptive names:
+  - `pileHeight` not `ph`
+  - `sectionHeights` not `sH`
+  - `cardOffset` not `co`
+  - `stackOrigin` not `so` (when used as a variable, not a local scope shorthand)
+- **Names must match domain terminology** from this document. If the doc says "stack origin", the variable is `stackOrigin`.
+- **Files are named for their single responsibility**: `math.js` for pure formula functions, `config.js` for game rule variables, `events.js` for the pub/sub bus.
+
+### 8.2 Structure
+
+- No abstraction until a pattern appears twice.
+- Three similar lines are preferable to one premature helper that obscures intent.
+- Functions that are pure (no side effects, no DOM access) live in `math.js` or `rules.js`, not in rendering files.
+
+---
+
+## 9. Architecture Terms
+
+The new module names replace the old L0–L4 layer labels from CLAUDE.md. The new terms describe **responsibility**, not hierarchy.
+
+| Module | Responsibility | File | Status |
+|--------|---------------|------|--------|
+| **config** | Game rule variables, thresholds, display data. The root of all derived values. All other modules read from config, never write to it. | `config.js` | Phase 1 — exists |
+| **math** | Pure formula functions. No DOM, no state, no side effects. Reads config only. | `math.js` | Phase 1 — exists |
+| **events** | Pub/sub bus for decoupled communication between modules. No dependencies on other modules. | `events.js` | Phase 1 — exists |
+| **rules** | Legal move checks, card definitions, game constraints. Reads config and math. | `rules.js` | Phase 2 — planned |
+| **engine** | Game state, turn flow, play/discard/draw actions. Emits events on state changes. | `engine.js` | Phase 3 — planned |
+| **ui** | Rendering, DOM manipulation, animations. Reads engine state via events. | `ui.js` | Phase 4 — planned |
+
+**Direction of dependency:** config ← math ← rules ← engine ← ui. Events flows sideways (any module can emit or subscribe). No module reaches up the chain.
+
+---
+
+## 10. Config & Event Terminology
+
+### 10.1 Config Key Paths
+
+Config values are referenced using dot-notation paths:
+
+| Path | What |
+|------|------|
+| `config.scoring.baseCost` | The expedition investment cost (20) |
+| `config.colors` | Array of color names: `['red','green','blue','white','yellow']` |
+| `config.ai.mcSimulations` | Number of Monte Carlo simulations per move |
+| `config.storagePrefix` | Prefix for all localStorage keys (currently `"expedition"`) |
+
+When documenting a config value, always use its full dot-notation path.
+
+### 10.2 Event Names
+
+Event names use **past tense** — they describe something that already happened:
+
+| Event | When emitted |
+|-------|-------------|
+| `cardPlayed` | A card was played to an expedition |
+| `cardDiscarded` | A card was discarded |
+| `cardDrawn` | A card was drawn from the deck or discard pile |
+| `turnChanged` | The active turn changed from one player to another |
+| `gameOver` | The deck was emptied and the game ended |
+| `phaseChanged` | The turn phase changed (play → draw) |
+
+Pattern: `noun + past-tense-verb`. Not `onCardPlay`, not `CARD_PLAYED`, not `card:play`.
+
+### 10.3 Storage Keys
+
+All localStorage keys are derived from `config.storagePrefix`. No module hardcodes a raw string key like `"expedition_elo"` — keys are always constructed as `config.storagePrefix + '_' + suffix`.
+
+---
+
+## 11. Math Reference Terms
+
+Every formula has a canonical function name in `math.js`. That function name IS the name for the formula throughout all code, comments, and documentation.
+
+| Function | Formula | What it computes |
+|----------|---------|-----------------|
+| `scoreExpedition` | `(sum − 20) × (1 + wagers) + (n≥8 ? 20 : 0)` | Score for a single expedition |
+| `scoreAll` | Sum of `scoreExpedition` across all active colors | Total score for one player |
+| `eloExpected` | `1 / (1 + 10^((oppRating − myRating) / 400))` | Expected win probability (ELO) |
+| `eloChange` | `K × (actual − expected)` | ELO rating update after a game |
+| `phiTier` | `cardH / φ^n` | Golden ratio size at tier n |
+| `stackOffset` | `cardH × 0.367 / N^0.613` | Card peek-out distance in a pile of N cards |
+| `pileHeight` | `cardH + max(0, N−1) × stackOffset` | Total visual height of a pile of N cards |
+| `center` | `(containerH − contentH) / 2` | Top offset to center content in container |
+| `jitter` | Hash of card identity + position index → rotation + translation | Deterministic card scatter |
+
+For full derivations, constants, and rationale see `docs/math-reference.md`.
