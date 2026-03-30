@@ -66,21 +66,14 @@ function recordGameResult(myScore,oppScore,personality,gameVariant){
   saveStats(s);
 }
 
-// Hook into showGameOver to record stats (once per game)
-let _statsRecordedForGame=false;
-const _origShowGameOver=showGameOver;
-showGameOver=function(){
-  if(gameState&&gameState.status==='finished'&&!_statsRecordedForGame){
-    _statsRecordedForGame=true;
-    const s1=calcScore(gameState.expeditions.player1);
-    const s2=calcScore(gameState.expeditions.player2);
-    const myScore=mySlot==='player1'?s1.total:s2.total;
-    const oppScore=mySlot==='player1'?s2.total:s1.total;
-    const pers=isAIGame?aiPersonality:null;
-    recordGameResult(myScore,oppScore,pers,variant);
+// Subscribe to gameOver event to record stats
+let _statsRecordedForGame = false;
+on('gameOver', function(data) {
+  if (!_statsRecordedForGame) {
+    _statsRecordedForGame = true;
+    recordGameResult(data.myScore, data.oppScore, data.personality, data.variant);
   }
-  _origShowGameOver();
-};
+});
 
 function showStats(){
   renderStats();

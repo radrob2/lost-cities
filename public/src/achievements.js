@@ -184,21 +184,9 @@ showStats = function() {
   renderAchievements();
 };
 
-// Hook into showGameOver to check achievements (runs after stats.js hook)
-const _origShowGameOverAch = showGameOver;
-showGameOver = function() {
-  _origShowGameOverAch();
-  // Check achievements after stats have been recorded
-  if (gameState && gameState.status === 'finished') {
-    const s1 = calcScore(gameState.expeditions.player1);
-    const s2 = calcScore(gameState.expeditions.player2);
-    const myScore = mySlot === 'player1' ? s1.total : s2.total;
-    const oppScore = mySlot === 'player1' ? s2.total : s1.total;
-    const pers = isAIGame ? aiPersonality : null;
-    const newlyUnlocked = checkAchievements(myScore, oppScore, gameState, pers);
-    if (newlyUnlocked.length > 0) {
-      // Small delay so game over screen renders first
-      setTimeout(() => showAchievementToasts(newlyUnlocked), 800);
-    }
+on('gameOver', function(data) {
+  const newlyUnlocked = checkAchievements(data.myScore, data.oppScore, gameState, data.personality);
+  if (newlyUnlocked.length > 0) {
+    setTimeout(() => showAchievementToasts(newlyUnlocked), 800);
   }
-};
+});

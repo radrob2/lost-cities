@@ -71,36 +71,26 @@ function getAIRating(personality) {
   return AI_RATINGS[personality] || ELO_START;
 }
 
-// Hook into showGameOver to show ELO change
 let _eloRecordedForGame = false;
 let _lastEloChange = null;
-const _origShowGameOverElo = showGameOver;
-showGameOver = function() {
-  // Record ELO before rendering game over screen
-  if (gameState && gameState.status === 'finished' && !_eloRecordedForGame && isAIGame) {
+on('gameOver', function(data) {
+  if (!_eloRecordedForGame && isAIGame) {
     _eloRecordedForGame = true;
-    const s1 = calcScore(gameState.expeditions.player1);
-    const s2 = calcScore(gameState.expeditions.player2);
-    const myScore = mySlot === 'player1' ? s1.total : s2.total;
-    const oppScore = mySlot === 'player1' ? s2.total : s1.total;
-    const result = myScore > oppScore ? 1 : myScore < oppScore ? 0 : 0.5;
+    const result = data.myScore > data.oppScore ? 1 : data.myScore < data.oppScore ? 0 : 0.5;
     const oppRating = getAIRating(aiPersonality);
     _lastEloChange = recordEloResult(oppRating, result);
   }
-  // Call the previous showGameOver (which may be the stats-wrapped version)
-  _origShowGameOverElo();
-  // Inject ELO change display after the game over screen renders
   if (_lastEloChange) {
     const el = document.getElementById('elo-change-display');
     if (el) {
       const sign = _lastEloChange.change >= 0 ? '+' : '';
       const color = _lastEloChange.change >= 0 ? '#4caf50' : '#e07060';
       const elo = loadElo();
-      el.innerHTML = renderText(sign+_lastEloChange.change, 3, {color:color, weight:700}) + ' ' + renderText('Rating: '+elo.rating, 5, {color:'var(--parchment-dark)'});
+      el.innerHTML = renderText(sign + _lastEloChange.change, 3, {color: color, weight: 700}) + ' ' + renderText('Rating: ' + elo.rating, 5, {color: 'var(--parchment-dark)'});
       el.style.display = 'block';
     }
   }
-};
+});
 
 // Reset ELO tracking flag on new games
 const _origRematchElo = typeof rematch === 'function' ? rematch : null;

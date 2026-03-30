@@ -187,18 +187,15 @@ startAIGame = function() {
 };
 
 // ===== SAVE REPLAY ON GAME OVER =====
-const _replayOrigShowGameOver = showGameOver;
 let _replaySavedForGame = false;
-showGameOver = function() {
-  if (gameState && gameState.status === 'finished' && !_replaySavedForGame) {
+on('gameOver', function(data) {
+  if (!_replaySavedForGame) {
     _replaySavedForGame = true;
     stopReplayRecording();
     saveReplay();
   }
-  _replayOrigShowGameOver();
-  // Inject replay button if not present
   _injectReplayButton();
-};
+});
 
 function saveReplay() {
   if (!_replayInitialState || gameReplayLog.length === 0) return;

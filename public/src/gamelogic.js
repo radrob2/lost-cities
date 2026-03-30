@@ -321,6 +321,19 @@ function showGameOver(){
   document.getElementById('score-details').innerHTML=html;
   showScreen('gameover-screen');
   if(myWin) SFX.win(); else SFX.gameOver();
+
+  // Emit event for subscribers (stats, elo, achievements, replay)
+  const myScores = mySlot === 'player1' ? s1 : s2;
+  const oppScores = mySlot === 'player1' ? s2 : s1;
+  emit('gameOver', {
+    myScore: myScores.total,
+    oppScore: oppScores.total,
+    myBreakdown: myScores.breakdown,
+    oppBreakdown: oppScores.breakdown,
+    won: myScores.total > oppScores.total,
+    personality: isAIGame ? aiPersonality : null,
+    variant: variant,
+  });
 }
 
 function toggleScore(idx){
